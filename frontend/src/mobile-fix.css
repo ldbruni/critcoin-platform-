@@ -74,3 +74,55 @@ button {
   word-break: break-all;
   overflow-wrap: break-word;
 }
+
+/* Mobile navigation fixes */
+@media (max-width: 768px) {
+  /* Target navigation paragraph elements */
+  h1 + p {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 0;
+    margin: 8px 0;
+  }
+  
+  /* Style all navigation links in paragraphs for mobile */
+  h1 + p a {
+    padding: 6px 12px;
+    margin: 2px;
+    display: inline-block;
+    text-decoration: none;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    color: #007bff !important;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  
+  h1 + p a:hover {
+    background-color: #e2e6ea;
+    text-decoration: none;
+  }
+  
+  /* General paragraph with links styling */
+  p {
+    line-height: 1.6;
+  }
+}
+
+/* Stack navigation vertically on very small screens */
+@media (max-width: 480px) {
+  h1 + p {
+    white-space: normal;
+    overflow-x: visible;
+  }
+  
+  h1 + p a {
+    display: block;
+    margin: 4px 0;
+    text-align: center;
+    width: calc(100% - 8px);
+    box-sizing: border-box;
+  }
+}
