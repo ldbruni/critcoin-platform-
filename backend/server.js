@@ -33,6 +33,16 @@ app.use(express.json());
 // Serve static files for profile photos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Mount routes once
 app.use("/api/posts", postRoutes);
 app.use("/api/profiles", profileRoutes);
@@ -40,13 +50,47 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/explorer", explorerRoutes);
 app.use("/api/admin", adminRoutes);
 
+// Debug environment variables
+console.log("🔍 Environment check:");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("PORT:", process.env.PORT);
+console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
+console.log("MONGO_URI preview:", process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + "..." : "NOT SET");
+console.log("ADMIN_WALLET:", process.env.ADMIN_WALLET);
+console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+
 // Connect to MongoDB
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI environment variable is not set!");
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-  .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .then(() => {
+    console.log("✅ Connected to MongoDB successfully");
+    console.log("Database name:", mongoose.connection.name);
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
+    console.error("Full error details:", JSON.stringify(err, null, 2));
+    process.exit(1);
+  });
+
+// Monitor MongoDB connection
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
 
 // Start server
 app.listen(PORT, () => {
