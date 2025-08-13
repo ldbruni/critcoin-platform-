@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 
 const API = {
-  admin: "http://localhost:3001/api/admin",
-  profiles: "http://localhost:3001/api/profiles"
+  admin: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin` : "http://localhost:3001/api/admin",
+  profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
 };
 
 // Replace with your actual admin wallet address

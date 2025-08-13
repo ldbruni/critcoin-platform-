@@ -12,8 +12,8 @@ export default function ForumPage() {
   const [newPost, setNewPost] = useState("");
 
   const API = {
-    profiles: "http://localhost:3001/api/profiles", // GET / (all) and GET /:wallet
-    posts: "http://localhost:3001/api/posts"
+    profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
+    posts: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/posts` : "http://localhost:3001/api/posts"
   };
 
   useEffect(() => {

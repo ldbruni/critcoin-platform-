@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import deployed from "../contracts/sepolia.json";
 
 const API = {
-  profiles: "http://localhost:3001/api/profiles"
+  profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
 };
 
 export default function Profiles() {

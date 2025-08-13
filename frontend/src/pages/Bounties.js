@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 
 const API = {
-  bounties: "http://localhost:3001/api/admin/public/bounties",
-  profiles: "http://localhost:3001/api/profiles"
+  bounties: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin/public/bounties` : "http://localhost:3001/api/admin/public/bounties",
+  profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
 };
 
 export default function Bounties() {
