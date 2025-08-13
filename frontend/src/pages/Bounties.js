@@ -50,15 +50,28 @@ export default function Bounties() {
   const fetchBounties = async () => {
     setLoading(true);
     try {
+      console.log("🎯 Fetching bounties from:", API.bounties);
       const res = await fetch(API.bounties);
+      console.log("🎯 Response status:", res.status);
+      
       if (res.ok) {
-        const data = await res.json();
-        setBounties(data);
+        const text = await res.text();
+        console.log("🎯 Response text:", text.substring(0, 200));
+        
+        try {
+          const data = JSON.parse(text);
+          setBounties(data);
+        } catch (parseErr) {
+          console.error("❌ JSON parse error:", parseErr);
+          console.error("❌ Response was not JSON:", text);
+        }
       } else {
-        console.error("Failed to fetch bounties");
+        const errorText = await res.text();
+        console.error("❌ Failed to fetch bounties. Status:", res.status);
+        console.error("❌ Error response:", errorText);
       }
     } catch (err) {
-      console.error("Network error fetching bounties:", err);
+      console.error("❌ Network error fetching bounties:", err);
     } finally {
       setLoading(false);
     }
