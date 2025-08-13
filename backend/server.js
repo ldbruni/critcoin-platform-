@@ -13,14 +13,25 @@ const adminRoutes = require("./routes/admin");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Ensure uploads directory exists
+const fs = require('fs');
+const path = require('path');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-domain.vercel.app'] // Update with your frontend URL
+    ? [process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app']
     : ['http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
+
+// Serve static files for profile photos
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routes once
 app.use("/api/posts", postRoutes);
