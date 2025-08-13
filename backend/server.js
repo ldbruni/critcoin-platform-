@@ -24,9 +24,11 @@ if (!fs.existsSync(uploadsDir)) {
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://critcoin-platform.vercel.app/']
+    ? [process.env.FRONTEND_URL || 'https://critcoin-platform.vercel.app']
     : ['http://localhost:3000'],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
