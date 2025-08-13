@@ -24,7 +24,7 @@ if (!fs.existsSync(uploadsDir)) {
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app']
+    ? [process.env.FRONTEND_URL || 'https://critcoin-platform.vercel.app/']
     : ['http://localhost:3000'],
   credentials: true
 }));
