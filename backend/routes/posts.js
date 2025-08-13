@@ -33,11 +33,13 @@ router.post("/", async (req, res) => {
 // Get all posts (newest first)
 router.get("/", async (req, res) => {
   try {
+    console.log("📋 Fetching posts...");
     // Only show non-hidden posts to regular users
     const posts = await Post.find({ hidden: { $ne: true } }).sort({ createdAt: -1 });
+    console.log(`📋 Found ${posts.length} posts`);
     res.json(posts);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Get posts error:", err);
     res.status(500).send("Failed to fetch posts");
   }
 });

@@ -336,15 +336,17 @@ router.post("/deploy-critcoin", authenticateAdmin, async (req, res) => {
 // Public endpoint - GET active bounties (non-admin)
 router.get("/public/bounties", async (req, res) => {
   try {
+    console.log("🎯 Fetching public bounties...");
     // Only show active, non-crossed-out bounties to the public
     const bounties = await Bounty.find({ 
       status: 'active',
       crossedOut: { $ne: true }
     }).sort({ createdAt: -1 });
+    console.log(`🎯 Found ${bounties.length} public bounties`);
     
     res.json(bounties);
   } catch (err) {
-    console.error("Public bounties fetch error:", err);
+    console.error("❌ Public bounties fetch error:", err);
     res.status(500).send("Failed to fetch bounties");
   }
 });
