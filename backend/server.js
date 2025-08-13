@@ -21,14 +21,38 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Middleware
+// CORS configuration with debugging
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      process.env.FRONTEND_URL, 
+      'https://critcoin-platform.vercel.app',
+      'https://critcoin-platform.vercel.app/'
+    ].filter(Boolean)
+  : ['http://localhost:3000'];
+
+console.log("🔧 CORS Configuration:");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+console.log("Allowed origins:", allowedOrigins);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://critcoin-platform.vercel.app']
-    : ['http://localhost:3000'],
+  origin: function (origin, callback) {
+    console.log("🌐 Request origin:", origin);
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log("✅ Origin allowed:", origin);
+      callback(null, true);
+    } else {
+      console.log("❌ Origin blocked:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
 app.use(express.json());
 
