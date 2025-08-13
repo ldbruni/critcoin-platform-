@@ -1,6 +1,27 @@
 node_modules
+*/node_modules/
 .idea
+.env
+frontend/.env
+backend/.env
+
+# Build outputs
+build/
+dist/
+frontend/build/
 
 #Hardhat files
 cache
 artifacts
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db

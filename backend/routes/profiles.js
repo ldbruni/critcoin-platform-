@@ -1,0 +1,181 @@
+// backend/routes/profiles.js
+const express = require("express");
+const router = express.Router();
+const Profile = require("../models/Profiles");
+const multer = require("multer");
+const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs");
+const { ethers } = require("ethers");
+
+// Load contract info
+const contractInfo = require("../sepolia.json");
+
+// Helper function to check CritCoin balance
+async function checkCritCoinBalance(walletAddress) {
+  try {
+    // For now, we'll skip the actual blockchain call and assume validation happens on frontend
+    // In production, you'd want to verify this on-chain
+    return true; // Assume balance check passes for now
+  } catch (error) {
+    console.error("Balance check failed:", error);
+    return false;
+  }
+}
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+const uploadsDir = path.join(__dirname, '../uploads/profiles');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// GET profile by wallet
+router.get("/:wallet", async (req, res) => {
+  try {
+    const profile = await Profile.findOne({ wallet: req.params.wallet.toLowerCase() });
+    if (!profile) return res.status(404).send("Profile not found");
+    res.json(profile);
+  } catch (err) {
+    console.error("Profile fetch error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// GET all profiles (non-archived)
+router.get("/", async (req, res) => {
+  try {
+    const profiles = await Profile.find({ archived: { $ne: true } });
+    res.json(profiles);
+  } catch (err) {
+    console.error("Get all profiles error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// POST create profile with optional photo
+router.post("/", upload.single('photo'), async (req, res) => {
+  const { wallet, name, birthday, starSign, balance } = req.body;
+  if (!wallet || !name || !birthday || !starSign)
+    return res.status(400).send("Missing fields");
+
+  try {
+    const existing = await Profile.findOne({ wallet: wallet.toLowerCase() });
+    if (existing) return res.status(409).send("Profile already exists");
+
+    // Check CritCoin balance requirement (frontend should pass balance for verification)
+    if (!balance || Number(balance) < 1) {
+      return res.status(400).send("Need ≥1 CritCoin to create profile");
+    }
+
+    let photoFilename = null;
+    
+    // Process uploaded photo if provided
+    if (req.file) {
+      photoFilename = `${wallet.toLowerCase()}.jpg`;
+      const photoPath = path.join(uploadsDir, photoFilename);
+      
+      await sharp(req.file.buffer)
+        .resize(1080, 1080, { fit: 'cover' })
+        .jpeg({ quality: 90 })
+        .toFile(photoPath);
+    }
+
+    const profile = new Profile({ 
+      wallet: wallet.toLowerCase(), 
+      name, 
+      birthday, 
+      starSign,
+      photo: photoFilename 
+    });
+    await profile.save();
+    res.status(201).json(profile);
+  } catch (err) {
+    console.error("Profile create error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// POST update profile with optional photo
+router.post("/update", upload.single('photo'), async (req, res) => {
+  const { wallet, name, birthday, starSign } = req.body;
+  if (!wallet) return res.status(400).send("Wallet required");
+
+  try {
+    const updateData = { name, birthday, starSign };
+    
+    // Process uploaded photo if provided
+    if (req.file) {
+      const photoFilename = `${wallet.toLowerCase()}.jpg`;
+      const photoPath = path.join(uploadsDir, photoFilename);
+      
+      await sharp(req.file.buffer)
+        .resize(1080, 1080, { fit: 'cover' })
+        .jpeg({ quality: 90 })
+        .toFile(photoPath);
+        
+      updateData.photo = photoFilename;
+    }
+
+    const updated = await Profile.findOneAndUpdate(
+      { wallet: wallet.toLowerCase() },
+      updateData,
+      { new: true }
+    );
+    if (!updated) return res.status(404).send("Profile not found");
+    res.json(updated);
+  } catch (err) {
+    console.error("Profile update error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// POST archive profile (admin only)
+router.post("/archive", async (req, res) => {
+  const { wallet, adminWallet } = req.body;
+  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
+
+  if (!wallet || !adminWallet)
+    return res.status(400).send("Missing fields");
+  if (adminWallet.toLowerCase() !== ADMIN_WALLET)
+    return res.status(403).send("Unauthorized");
+
+  try {
+    const profile = await Profile.findOneAndUpdate(
+      { wallet: wallet.toLowerCase() },
+      { archived: true },
+      { new: true }
+    );
+    if (!profile) return res.status(404).send("Profile not found");
+    res.json({ message: "Profile archived", profile });
+  } catch (err) {
+    console.error("Archive error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// Serve profile photos
+router.get("/photo/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const photoPath = path.join(uploadsDir, filename);
+  
+  if (fs.existsSync(photoPath)) {
+    res.sendFile(photoPath);
+  } else {
+    res.status(404).send("Photo not found");
+  }
+});
+
+module.exports = router;

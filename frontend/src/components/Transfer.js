@@ -1,4 +1,5 @@
 import React from "react";
+import { utils as ethersUtils } from "ethers";
 
 export function Transfer({ transferTokens, tokenSymbol }) {
   return (
@@ -6,17 +7,25 @@ export function Transfer({ transferTokens, tokenSymbol }) {
       <h4>Transfer</h4>
       <form
         onSubmit={(event) => {
-          // This function just calls the transferTokens callback with the
-          // form's data.
           event.preventDefault();
 
           const formData = new FormData(event.target);
-          const to = formData.get("to");
-          const amount = formData.get("amount");
+          const to = formData.get("to").trim();
+          const amount = formData.get("amount").trim();
 
-          if (to && amount) {
-            transferTokens(to, amount);
+          // ✅ Address validation
+          if (!to || !ethersUtils.isAddress(to)) {
+            alert("❌ Please enter a valid Ethereum address.");
+            return;
           }
+
+          // ✅ Amount validation
+          if (!amount || isNaN(amount) || Number(amount) <= 0) {
+            alert("❌ Please enter a valid amount greater than 0.");
+            return;
+          }
+
+          transferTokens(to, amount);
         }}
       >
         <div className="form-group">
@@ -32,7 +41,13 @@ export function Transfer({ transferTokens, tokenSymbol }) {
         </div>
         <div className="form-group">
           <label>Recipient address</label>
-          <input className="form-control" type="text" name="to" required />
+          <input
+            className="form-control"
+            type="text"
+            name="to"
+            placeholder="0x..."
+            required
+          />
         </div>
         <div className="form-group">
           <input className="btn btn-primary" type="submit" value="Transfer" />
