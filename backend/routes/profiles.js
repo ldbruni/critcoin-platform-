@@ -68,6 +68,9 @@ router.get("/", async (req, res) => {
 // POST create profile with optional photo
 router.post("/", upload.single('photo'), async (req, res) => {
   const { wallet, name, birthday, starSign, balance } = req.body;
+  
+  console.log("Profile create request:", { wallet, name, birthday, starSign, balance });
+  
   if (!wallet || !name || !birthday || !starSign)
     return res.status(400).send("Missing fields");
 
@@ -82,16 +85,9 @@ router.post("/", upload.single('photo'), async (req, res) => {
 
     let photoFilename = null;
     
-    // Process uploaded photo if provided
-    if (req.file) {
-      photoFilename = `${wallet.toLowerCase()}.jpg`;
-      const photoPath = path.join(uploadsDir, photoFilename);
-      
-      await sharp(req.file.buffer)
-        .resize(1080, 1080, { fit: 'cover' })
-        .jpeg({ quality: 90 })
-        .toFile(photoPath);
-    }
+    // Skip photo processing for now due to Railway storage limitations
+    // TODO: Implement cloud storage (AWS S3, Cloudinary, etc.) for production
+    console.log("Photo upload skipped - implement cloud storage for production");
 
     const profile = new Profile({ 
       wallet: wallet.toLowerCase(), 
@@ -100,34 +96,31 @@ router.post("/", upload.single('photo'), async (req, res) => {
       starSign,
       photo: photoFilename 
     });
+    
+    console.log("Attempting to save profile:", profile);
     await profile.save();
+    console.log("Profile saved successfully");
+    
     res.status(201).json(profile);
   } catch (err) {
     console.error("Profile create error:", err);
-    res.status(500).send("Database error");
+    res.status(500).send(`Database error: ${err.message}`);
   }
 });
 
 // POST update profile with optional photo
 router.post("/update", upload.single('photo'), async (req, res) => {
   const { wallet, name, birthday, starSign } = req.body;
+  
+  console.log("Profile update request:", { wallet, name, birthday, starSign });
+  
   if (!wallet) return res.status(400).send("Wallet required");
 
   try {
     const updateData = { name, birthday, starSign };
     
-    // Process uploaded photo if provided
-    if (req.file) {
-      const photoFilename = `${wallet.toLowerCase()}.jpg`;
-      const photoPath = path.join(uploadsDir, photoFilename);
-      
-      await sharp(req.file.buffer)
-        .resize(1080, 1080, { fit: 'cover' })
-        .jpeg({ quality: 90 })
-        .toFile(photoPath);
-        
-      updateData.photo = photoFilename;
-    }
+    // Skip photo processing for now due to Railway storage limitations
+    console.log("Photo upload skipped - implement cloud storage for production");
 
     const updated = await Profile.findOneAndUpdate(
       { wallet: wallet.toLowerCase() },
@@ -135,10 +128,12 @@ router.post("/update", upload.single('photo'), async (req, res) => {
       { new: true }
     );
     if (!updated) return res.status(404).send("Profile not found");
+    
+    console.log("Profile updated successfully:", updated);
     res.json(updated);
   } catch (err) {
     console.error("Profile update error:", err);
-    res.status(500).send("Database error");
+    res.status(500).send(`Database error: ${err.message}`);
   }
 });
 
