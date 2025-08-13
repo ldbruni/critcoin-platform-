@@ -24,14 +24,46 @@ export default function Profiles() {
 
   const connectWallet = async () => {
     try {
+      console.log("🔗 Connecting wallet...");
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      console.log("👤 Connected address:", addr);
+      
+      // Check network
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      const sepoliaChainId = '0xaa36a7';
+      console.log("🌐 Current chain:", chainId, "Expected:", sepoliaChainId);
+      
+      if (chainId !== sepoliaChainId) {
+        console.log("⚠️ Wrong network, attempting to switch...");
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: sepoliaChainId }],
+          });
+        } catch (switchError) {
+          console.error("❌ Failed to switch network:", switchError);
+          alert("Please switch to Sepolia network in MetaMask");
+          return;
+        }
+      }
+      
       setWallet(addr);
 
+      console.log("💰 Getting CritCoin balance...");
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      const bal = await contract.balanceOf(addr);
-      setBalance(Number(bal.toString()));
+      
+      try {
+        const bal = await contract.balanceOf(addr);
+        const balanceNumber = Number(bal.toString());
+        console.log("💰 CritCoin balance:", balanceNumber);
+        setBalance(balanceNumber);
+      } catch (contractError) {
+        console.error("❌ Contract error:", contractError);
+        setBalance(0);
+      }
 
+      console.log("👤 Fetching profile...");
       const res = await fetch(`${API.profiles}/${addr}`);
       if (res.ok) {
         const data = await res.json();
@@ -47,7 +79,7 @@ export default function Profiles() {
         console.error("Profile fetch error:", await res.text());
       }
     } catch (err) {
-      console.error("Wallet connect error:", err);
+      console.error("❌ Wallet connect error:", err);
     }
   };
 

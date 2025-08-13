@@ -124,17 +124,57 @@ export class Dapp extends React.Component {
   }
 
   async _connectWallet() {
-    const [selectedAddress] = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    if (window.ethereum.networkVersion !== SEPOLIA_CHAIN_ID) {
-      alert("Please switch to the Sepolia test network in MetaMask.");
-      return;
+    try {
+      const [selectedAddress] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      
+      // Check network using chainId (more reliable for mobile)
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      const sepoliaChainId = '0xaa36a7'; // Sepolia chain ID in hex
+      
+      console.log("Current chain ID:", chainId);
+      console.log("Expected chain ID:", sepoliaChainId);
+      
+      if (chainId !== sepoliaChainId) {
+        // Try to switch to Sepolia automatically
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: sepoliaChainId }],
+          });
+        } catch (switchError) {
+          console.error("Failed to switch network:", switchError);
+          alert("Please switch to the Sepolia test network in MetaMask.");
+          return;
+        }
+      }
+      
+      this._initialize(selectedAddress);
+      
+      // Listen for account changes
+      window.ethereum.on("accountsChanged", ([newAddress]) => {
+        this._stopPollingData();
+        if (newAddress === undefined) return this._resetState();
+        this._initialize(newAddress);
+      });
+      
+      // Listen for network changes
+      window.ethereum.on("chainChanged", (chainId) => {
+        console.log("Network changed to:", chainId);
+        if (chainId !== sepoliaChainId) {
+          alert("Please switch back to Sepolia network");
+          this._resetState();
+        } else {
+          // Reload data when back on Sepolia
+          if (this.state.selectedAddress) {
+            this._getTokenData();
+            this._updateBalance();
+          }
+        }
+      });
+      
+    } catch (error) {
+      console.error("Wallet connection error:", error);
     }
-    this._initialize(selectedAddress);
-    window.ethereum.on("accountsChanged", ([newAddress]) => {
-      this._stopPollingData();
-      if (newAddress === undefined) return this._resetState();
-      this._initialize(newAddress);
-    });
   }
 
   _initialize(userAddress) {
