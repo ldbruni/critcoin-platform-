@@ -3,9 +3,15 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import deployed from "../contracts/sepolia.json";
 
+// Debug environment variables
+console.log("🔍 Environment debug:");
+console.log("REACT_APP_API_URL:", process.env.REACT_APP_API_URL);
+
 const API = {
   profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
 };
+
+console.log("🔍 Final API.profiles URL:", API.profiles);
 
 export default function Profiles() {
   const [wallet, setWallet] = useState(null);
