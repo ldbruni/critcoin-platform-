@@ -15,13 +15,19 @@ const API = {
 console.log("🔍 Final API.profiles URL:", API.profiles);
 
 export default function Profiles() {
+  console.log("🏁 Profiles component starting");
+  
   const [wallet, setWallet] = useState(null);
   const [balance, setBalance] = useState(0);
   const [profile, setProfile] = useState(null);
+  const [publicProfiles, setPublicProfiles] = useState([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [form, setForm] = useState({ name: "", birthday: "", starSign: "" });
   const [editing, setEditing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  
+  console.log("📊 State initialized, publicProfiles length:", publicProfiles.length);
 
   const connectWallet = async () => {
     try {
@@ -141,6 +147,8 @@ export default function Profiles() {
         setEditing(false);
         setSelectedPhoto(null);
         setPhotoPreview(null);
+        // Refresh public profiles to show updated profile
+        fetchPublicProfiles();
       } else {
         const errText = await res.text();
         console.error("Save failed:", errText);
@@ -151,43 +159,205 @@ export default function Profiles() {
     }
   };
 
+  const fetchPublicProfiles = async () => {
+    try {
+      setLoadingProfiles(true);
+      console.log("🌐 Fetching public profiles...");
+      console.log("📍 API URL:", `${API.profiles}`);
+      const res = await fetch(`${API.profiles}`);
+      console.log("📡 Response status:", res.status, res.statusText);
+      
+      if (res.ok) {
+        const profiles = await res.json();
+        console.log("📋 Found profiles:", profiles.length, profiles);
+        setPublicProfiles(profiles);
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Failed to fetch public profiles:", res.status, errorText);
+      }
+    } catch (err) {
+      console.error("❌ Network error fetching public profiles:", err);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
   useEffect(() => {
-    if (window.ethereum) connectWallet();
+    // Always fetch public profiles for display - this should always run
+    console.log("🚀 useEffect running - fetching public profiles");
+    fetchPublicProfiles();
   }, []);
+
+  useEffect(() => {
+    // Try to connect wallet if available - separate effect so errors don't block profiles
+    // Only auto-connect if there are already connected accounts
+    const checkWallet = async () => {
+      console.log("🔗 useEffect running - checking for wallet");
+      if (window.ethereum) {
+        try {
+          // Check if already connected without requesting connection
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0) {
+            console.log("👤 Found existing connection, connecting...");
+            connectWallet();
+          } else {
+            console.log("👤 No existing connection, skipping auto-connect");
+          }
+        } catch (err) {
+          console.log("👤 Error checking accounts, skipping auto-connect:", err);
+        }
+      }
+    };
+    checkWallet();
+  }, []);
+
+  console.log("🎨 About to render component");
 
   return (
     <div style={{ padding: "2rem" }}>
       <h1>🪪 CritCoin Profile</h1>
-      <div style={{ 
-        display: "flex", 
-        flexWrap: "wrap", 
-        gap: "0.5rem", 
-        marginBottom: "1rem",
-        fontSize: "1rem"
-      }}>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "0.5rem",
-          width: "100%",
-          justifyContent: "center"
-        }}>
-          <Link to="/projects" style={{ textDecoration: "none" }}>🎨 Projects</Link>
-          <span>|</span>
-          <Link to="/explorer" style={{ textDecoration: "none" }}>🔍 Explorer</Link>
-        </div>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          width: "100%",
-          justifyContent: "center"
-        }}>
-          <Link to="/forum" style={{ textDecoration: "none" }}>💬 Forum</Link>
-        </div>
+      <div style={{ backgroundColor: "red", color: "white", padding: "1rem" }}>
+        TEST: Component is rendering! Wallet: {wallet ? "connected" : "not connected"}
       </div>
 
       {!wallet ? (
-        <button onClick={connectWallet}>Connect Wallet</button>
+        <div>
+          <div style={{ 
+            backgroundColor: "#f8f9fa", 
+            padding: "1.5rem", 
+            borderRadius: "8px", 
+            marginBottom: "2rem",
+            textAlign: "center"
+          }}>
+            <h3>🔗 Connect Your Wallet</h3>
+            <p>Connect your wallet to create or edit your profile</p>
+            <button 
+              onClick={connectWallet}
+              style={{
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                padding: "0.75rem 1.5rem",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "1rem"
+              }}
+            >
+              Connect Wallet
+            </button>
+          </div>
+
+          <h2>👥 Community Profiles</h2>
+          <p style={{ marginBottom: "2rem", color: "#666" }}>
+            Discover the CritCoin community members and their profiles
+          </p>
+
+          {/* Debug info */}
+          <div style={{ 
+            backgroundColor: "#fff3cd", 
+            border: "1px solid #ffeaa7", 
+            borderRadius: "4px", 
+            padding: "0.5rem", 
+            marginBottom: "1rem",
+            fontSize: "0.9rem"
+          }}>
+            Debug: {loadingProfiles ? 'Loading...' : `Found ${publicProfiles.length} profiles`}. Check console for details.
+            <br />
+            State: loadingProfiles={String(loadingProfiles)}, publicProfiles.length={publicProfiles.length}
+            <br />
+            {publicProfiles.length > 0 && `First profile: ${JSON.stringify(publicProfiles[0]?.name || 'no name')}`}
+          </div>
+
+          {loadingProfiles ? (
+            <p style={{ textAlign: "center", color: "#666" }}>
+              Loading community profiles...
+            </p>
+          ) : publicProfiles.length === 0 ? (
+            <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+              No profiles found. Be the first to create one!
+            </p>
+          ) : (
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", 
+              gap: "1.5rem" 
+            }}>
+              {publicProfiles.map((prof) => (
+                <div 
+                  key={prof._id}
+                  style={{ 
+                    backgroundColor: "white",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  }}
+                >
+                  {prof.photo && (
+                    <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                      <img 
+                        src={`${API.profiles}/photo/${prof.photo}`}
+                        alt={`${prof.name || 'Profile'}'s profile`}
+                        style={{ 
+                          width: "80px", 
+                          height: "80px", 
+                          objectFit: "cover",
+                          borderRadius: "50%",
+                          border: "3px solid #007bff"
+                        }}
+                        onError={(e) => {
+                          console.log("❌ Photo failed to load:", e.target.src);
+                          e.target.style.display = 'none';
+                        }}
+                        onLoad={() => {
+                          console.log("✅ Photo loaded successfully");
+                        }}
+                      />
+                    </div>
+                  )}
+                  <h4 style={{ 
+                    textAlign: "center", 
+                    marginBottom: "0.5rem",
+                    color: "#333"
+                  }}>
+                    {prof.name || prof.wallet?.slice(0, 8) + '...' || 'Unknown User'}
+                  </h4>
+                  {prof.starSign && (
+                    <p style={{ 
+                      textAlign: "center", 
+                      color: "#666",
+                      fontSize: "0.9rem",
+                      marginBottom: "0.5rem"
+                    }}>
+                      ⭐ {prof.starSign}
+                    </p>
+                  )}
+                  {prof.bio && (
+                    <p style={{ 
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      textAlign: "center",
+                      lineHeight: "1.4"
+                    }}>
+                      {prof.bio}
+                    </p>
+                  )}
+                  <div style={{ 
+                    marginTop: "1rem",
+                    padding: "0.5rem",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "4px",
+                    fontSize: "0.8rem",
+                    color: "#666",
+                    textAlign: "center"
+                  }}>
+                    Joined: {new Date(prof.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ) : profile && !editing ? (
         <>
           <p><strong>Wallet:</strong> {wallet}</p>
@@ -296,6 +466,97 @@ export default function Profiles() {
             }}>Cancel</button>}
           </form>
         </>
+      )}
+
+      {/* Community Profiles Section for logged-in users */}
+      {wallet && (
+        <div style={{ marginTop: "3rem", borderTop: "2px solid #eee", paddingTop: "2rem" }}>
+          <h2>👥 Community Profiles</h2>
+          <p style={{ marginBottom: "2rem", color: "#666" }}>
+            Discover other CritCoin community members
+          </p>
+
+          {publicProfiles.length === 0 ? (
+            <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+              No other profiles found yet.
+            </p>
+          ) : (
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", 
+              gap: "1.5rem" 
+            }}>
+              {publicProfiles
+                .filter(prof => prof.wallet.toLowerCase() !== wallet.toLowerCase()) // Exclude current user
+                .map((prof) => (
+                <div 
+                  key={prof._id}
+                  style={{ 
+                    backgroundColor: "white",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  }}
+                >
+                  {prof.photo && (
+                    <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                      <img 
+                        src={`${API.profiles}/photo/${prof.photo}`}
+                        alt={`${prof.name}'s profile`}
+                        style={{ 
+                          width: "70px", 
+                          height: "70px", 
+                          objectFit: "cover",
+                          borderRadius: "50%",
+                          border: "3px solid #007bff"
+                        }}
+                      />
+                    </div>
+                  )}
+                  <h4 style={{ 
+                    textAlign: "center", 
+                    marginBottom: "0.5rem",
+                    color: "#333"
+                  }}>
+                    {prof.name}
+                  </h4>
+                  {prof.starSign && (
+                    <p style={{ 
+                      textAlign: "center", 
+                      color: "#666",
+                      fontSize: "0.9rem",
+                      marginBottom: "0.5rem"
+                    }}>
+                      ⭐ {prof.starSign}
+                    </p>
+                  )}
+                  {prof.bio && (
+                    <p style={{ 
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      textAlign: "center",
+                      lineHeight: "1.4"
+                    }}>
+                      {prof.bio}
+                    </p>
+                  )}
+                  <div style={{ 
+                    marginTop: "1rem",
+                    padding: "0.5rem",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "4px",
+                    fontSize: "0.8rem",
+                    color: "#666",
+                    textAlign: "center"
+                  }}>
+                    Joined: {new Date(prof.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

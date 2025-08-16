@@ -58,14 +58,66 @@ export default function App() {
 
   return (
     <Router>
-      <nav style={{ padding: "1rem", borderBottom: "1px solid #ccc" }}>
-        <Link to="/" style={{ marginRight: "1rem" }}>Home</Link>
-        <Link to="/bounties" style={{ marginRight: "1rem" }}>Bounties</Link>
-        <Link to="/profiles" style={{ marginRight: "1rem" }}>Profiles</Link>
-        <Link to="/projects" style={{ marginRight: "1rem" }}>Projects</Link>
-        <Link to="/explorer" style={{ marginRight: "1rem" }}>Explorer</Link>
-        <Link to="/forum" style={{ marginRight: "1rem" }}>Forum</Link>
-        {isAdmin && <Link to="/admin" style={{ color: "#dc3545", fontWeight: "bold" }}>🛡️ Admin</Link>}
+      <nav style={{ 
+        padding: "1rem", 
+        borderBottom: "1px solid #ccc",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "0.5rem"
+      }}>
+        <div style={{ 
+          display: "flex", 
+          flexWrap: "wrap", 
+          justifyContent: "center",
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%"
+        }}>
+          {/* First row - main navigation */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "0.5rem",
+            justifyContent: "center",
+            flexWrap: "wrap"
+          }}>
+            <Link to="/" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🏠 Home</Link>
+            <span>|</span>
+            <Link to="/profiles" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>👤 Profiles</Link>
+            <span>|</span>
+            <Link to="/projects" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🎨 Projects</Link>
+            <span>|</span>
+            <Link to="/explorer" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🔍 Explorer</Link>
+          </div>
+          
+          {/* Second row - secondary navigation */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "0.5rem",
+            justifyContent: "center",
+            width: "100%",
+            marginTop: "0.25rem"
+          }}>
+            <Link to="/forum" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>💬 Forum</Link>
+            <span>|</span>
+            <Link to="/bounties" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🎯 Bounties</Link>
+            {isAdmin && (
+              <>
+                <span>|</span>
+                <Link to="/admin" style={{ 
+                  color: "#dc3545", 
+                  fontWeight: "bold", 
+                  textDecoration: "none", 
+                  padding: "0.25rem 0.5rem" 
+                }}>
+                  🛡️ Admin
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </nav>
 
       <Routes>
