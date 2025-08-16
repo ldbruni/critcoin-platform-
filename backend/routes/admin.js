@@ -6,6 +6,8 @@ const Post = require("../models/Post");
 const Bounty = require("../models/Bounty");
 const Project = require("../models/Project");
 const Transaction = require("../models/Transaction");
+const SystemSettings = require("../models/SystemSettings");
+const Whitelist = require("../models/Whitelist");
 
 // Admin authentication middleware
 const authenticateAdmin = (req, res, next) => {
@@ -395,6 +397,128 @@ router.post("/projects/archive", authenticateAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Archive project error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// GET system settings
+router.get("/settings/:adminWallet", async (req, res) => {
+  const adminWallet = req.params.adminWallet.toLowerCase();
+  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
+  
+  if (adminWallet !== ADMIN_WALLET) {
+    return res.status(403).send("Unauthorized");
+  }
+
+  try {
+    const settings = await SystemSettings.find();
+    const settingsObj = {};
+    settings.forEach(setting => {
+      settingsObj[setting.key] = setting.value;
+    });
+    
+    // Default values if not set
+    if (!settingsObj.hasOwnProperty('whitelistMode')) {
+      settingsObj.whitelistMode = false;
+    }
+    
+    res.json(settingsObj);
+  } catch (err) {
+    console.error("Settings fetch error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// POST update system setting
+router.post("/settings", authenticateAdmin, async (req, res) => {
+  const { key, value, adminWallet } = req.body;
+  
+  if (!key) {
+    return res.status(400).send("Setting key required");
+  }
+
+  try {
+    await SystemSettings.findOneAndUpdate(
+      { key },
+      { 
+        value, 
+        updatedAt: new Date(),
+        updatedBy: adminWallet.toLowerCase()
+      },
+      { upsert: true, new: true }
+    );
+    
+    res.json({ message: `Setting ${key} updated successfully` });
+  } catch (err) {
+    console.error("Update setting error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// GET whitelist
+router.get("/whitelist/:adminWallet", async (req, res) => {
+  const adminWallet = req.params.adminWallet.toLowerCase();
+  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
+  
+  if (adminWallet !== ADMIN_WALLET) {
+    return res.status(403).send("Unauthorized");
+  }
+
+  try {
+    const whitelist = await Whitelist.find().sort({ addedAt: -1 });
+    res.json(whitelist);
+  } catch (err) {
+    console.error("Whitelist fetch error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// POST add wallet to whitelist
+router.post("/whitelist/add", authenticateAdmin, async (req, res) => {
+  const { wallet, notes, adminWallet } = req.body;
+  
+  if (!wallet) {
+    return res.status(400).send("Wallet address required");
+  }
+
+  try {
+    const whitelistEntry = new Whitelist({
+      wallet: wallet.toLowerCase(),
+      addedBy: adminWallet.toLowerCase(),
+      notes: notes || ""
+    });
+    
+    await whitelistEntry.save();
+    res.json({ message: "Wallet added to whitelist successfully" });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).send("Wallet already whitelisted");
+    }
+    console.error("Add to whitelist error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// POST remove wallet from whitelist
+router.post("/whitelist/remove", authenticateAdmin, async (req, res) => {
+  const { wallet } = req.body;
+  
+  if (!wallet) {
+    return res.status(400).send("Wallet address required");
+  }
+
+  try {
+    const result = await Whitelist.findOneAndDelete({ 
+      wallet: wallet.toLowerCase() 
+    });
+    
+    if (!result) {
+      return res.status(404).send("Wallet not found in whitelist");
+    }
+    
+    res.json({ message: "Wallet removed from whitelist successfully" });
+  } catch (err) {
+    console.error("Remove from whitelist error:", err);
     res.status(500).send("Database error");
   }
 });

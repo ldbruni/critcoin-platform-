@@ -21,6 +21,8 @@ export default function Admin() {
   const [posts, setPosts] = useState([]);
   const [bounties, setBounties] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [whitelist, setWhitelist] = useState([]);
   const [loading, setLoading] = useState(false);
   
   // Deploy CritCoin confirmation
@@ -30,6 +32,9 @@ export default function Admin() {
   // Bounty form
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
   const [editingBounty, setEditingBounty] = useState(null);
+  
+  // Whitelist form
+  const [whitelistForm, setWhitelistForm] = useState({ wallet: "", notes: "" });
 
   useEffect(() => {
     if (window.ethereum) connectWallet();
@@ -42,6 +47,10 @@ export default function Admin() {
       if (activeTab === "posts") fetchPosts();
       if (activeTab === "bounties") fetchBounties();
       if (activeTab === "projects") fetchProjects();
+      if (activeTab === "whitelist") {
+        fetchSettings();
+        fetchWhitelist();
+      }
     }
   }, [isAdmin, activeTab]);
 
@@ -122,6 +131,33 @@ export default function Admin() {
       }
     } catch (err) {
       console.error("Projects fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(`${API.admin}/settings/${wallet}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch (err) {
+      console.error("Settings fetch error:", err);
+    }
+  };
+
+  const fetchWhitelist = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API.admin}/whitelist/${wallet}`);
+      if (res.ok) {
+        const data = await res.json();
+        setWhitelist(data);
+      }
+    } catch (err) {
+      console.error("Whitelist fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -271,6 +307,92 @@ export default function Admin() {
     }
   };
 
+  const handleToggleWhitelistMode = async () => {
+    try {
+      const res = await fetch(`${API.admin}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: wallet,
+          key: "whitelistMode",
+          value: !settings.whitelistMode
+        })
+      });
+
+      if (res.ok) {
+        alert(`Whitelist mode ${!settings.whitelistMode ? 'enabled' : 'disabled'} successfully`);
+        fetchSettings();
+      } else {
+        const errorText = await res.text();
+        alert("Error: " + errorText);
+      }
+    } catch (err) {
+      console.error("Toggle whitelist mode error:", err);
+      alert("Error toggling whitelist mode");
+    }
+  };
+
+  const handleAddToWhitelist = async (e) => {
+    e.preventDefault();
+    
+    if (!whitelistForm.wallet) {
+      alert("Wallet address is required");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API.admin}/whitelist/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: wallet,
+          wallet: whitelistForm.wallet,
+          notes: whitelistForm.notes
+        })
+      });
+
+      if (res.ok) {
+        alert("Wallet added to whitelist successfully");
+        setWhitelistForm({ wallet: "", notes: "" });
+        fetchWhitelist();
+      } else {
+        const errorText = await res.text();
+        alert("Error: " + errorText);
+      }
+    } catch (err) {
+      console.error("Add to whitelist error:", err);
+      alert("Error adding wallet to whitelist");
+    }
+  };
+
+  const handleRemoveFromWhitelist = async (walletToRemove) => {
+    if (!confirm(`Are you sure you want to remove ${walletToRemove} from the whitelist?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API.admin}/whitelist/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: wallet,
+          wallet: walletToRemove
+        })
+      });
+
+      if (res.ok) {
+        alert("Wallet removed from whitelist successfully");
+        fetchWhitelist();
+      } else {
+        const errorText = await res.text();
+        alert("Error: " + errorText);
+      }
+    } catch (err) {
+      console.error("Remove from whitelist error:", err);
+      alert("Error removing wallet from whitelist");
+    }
+  };
+
   const handleDeployCritCoin = async () => {
     if (!showDeployConfirm) {
       setShowDeployConfirm(true);
@@ -339,7 +461,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "projects", "bounties", "deploy"].map(tab => (
+        {["dashboard", "profiles", "posts", "projects", "bounties", "whitelist", "deploy"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -780,6 +902,181 @@ export default function Admin() {
                         {bounty.crossedOut ? "Restore" : "Cross Out"}
                       </button>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Whitelist Tab */}
+      {activeTab === "whitelist" && (
+        <div>
+          <h2>🔐 Whitelist Management</h2>
+          
+          {/* Whitelist Mode Toggle */}
+          <div style={{ 
+            backgroundColor: settings.whitelistMode ? "#d1ecf1" : "#fff3cd", 
+            padding: "1rem", 
+            borderRadius: "8px", 
+            marginBottom: "2rem",
+            border: `1px solid ${settings.whitelistMode ? "#bee5eb" : "#ffeaa7"}`
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h4 style={{ margin: "0 0 0.5rem 0" }}>
+                  {settings.whitelistMode ? "🔒 Whitelist Mode: ENABLED" : "🔓 Whitelist Mode: DISABLED"}
+                </h4>
+                <p style={{ margin: 0, color: "#666" }}>
+                  {settings.whitelistMode 
+                    ? "Only whitelisted wallets can create new profiles. Existing profiles can still access the platform."
+                    : "Anyone with ≥1 CritCoin can create profiles. Perfect for first day of class."
+                  }
+                </p>
+              </div>
+              <button
+                onClick={handleToggleWhitelistMode}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: settings.whitelistMode ? "#dc3545" : "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "bold"
+                }}
+              >
+                {settings.whitelistMode ? "Disable Whitelist" : "Enable Whitelist"}
+              </button>
+            </div>
+          </div>
+
+          {/* Add to Whitelist Form */}
+          <div style={{ 
+            backgroundColor: "#f8f9fa", 
+            padding: "1rem", 
+            borderRadius: "8px", 
+            marginBottom: "2rem",
+            border: "1px solid #dee2e6"
+          }}>
+            <h4>Add Wallet to Whitelist</h4>
+            <form onSubmit={handleAddToWhitelist}>
+              <div style={{ display: "grid", gridTemplateColumns: "300px 1fr auto", gap: "1rem", alignItems: "end" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                    Wallet Address *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="0x..."
+                    value={whitelistForm.wallet}
+                    onChange={(e) => setWhitelistForm({...whitelistForm, wallet: e.target.value})}
+                    required
+                    style={{ 
+                      width: "100%", 
+                      padding: "0.5rem", 
+                      borderRadius: "4px", 
+                      border: "1px solid #ced4da"
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                    Notes (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Reason for whitelisting..."
+                    value={whitelistForm.notes}
+                    onChange={(e) => setWhitelistForm({...whitelistForm, notes: e.target.value})}
+                    style={{ 
+                      width: "100%", 
+                      padding: "0.5rem", 
+                      borderRadius: "4px", 
+                      border: "1px solid #ced4da"
+                    }}
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  style={{
+                    padding: "0.5rem 1rem",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "bold"
+                  }}
+                >
+                  Add to Whitelist
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Whitelist Entries */}
+          <h4>Whitelisted Wallets ({whitelist.length})</h4>
+          {loading ? (
+            <p>Loading whitelist...</p>
+          ) : whitelist.length === 0 ? (
+            <div style={{ 
+              backgroundColor: "#f8f9fa", 
+              padding: "2rem", 
+              textAlign: "center", 
+              borderRadius: "8px",
+              border: "1px solid #dee2e6"
+            }}>
+              <p style={{ margin: 0, color: "#666" }}>No wallets in whitelist yet</p>
+            </div>
+          ) : (
+            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+              <div style={{ 
+                padding: "1rem", 
+                borderBottom: "1px solid #ddd",
+                backgroundColor: "#f8f9fa",
+                fontWeight: "bold"
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem" }}>
+                  <span>Wallet Address</span>
+                  <span>Notes</span>
+                  <span>Added</span>
+                  <span>Actions</span>
+                </div>
+              </div>
+              {whitelist.map((entry, index) => (
+                <div 
+                  key={entry._id}
+                  style={{ 
+                    padding: "1rem", 
+                    borderBottom: index < whitelist.length - 1 ? "1px solid #e9ecef" : "none"
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem", alignItems: "center" }}>
+                    <code style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
+                      {entry.wallet}
+                    </code>
+                    <span style={{ fontSize: "0.9rem" }}>
+                      {entry.notes || <em style={{ color: "#999" }}>No notes</em>}
+                    </span>
+                    <span style={{ fontSize: "0.8rem", color: "#666" }}>
+                      {new Date(entry.addedAt).toLocaleDateString()}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveFromWhitelist(entry.wallet)}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        backgroundColor: "#dc3545",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem"
+                      }}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}

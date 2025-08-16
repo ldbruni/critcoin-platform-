@@ -148,7 +148,13 @@ export default function Profiles() {
       } else {
         const errText = await res.text();
         console.error("Save failed:", errText);
-        alert("Profile save error: " + errText);
+        
+        // Handle specific whitelist error with user-friendly message
+        if (res.status === 403 && errText.includes("whitelist")) {
+          alert("⚠️ Profile Creation Restricted\n\nProfile creation is currently restricted to whitelisted wallets only. Please contact your instructor to be added to the whitelist.");
+        } else {
+          alert("Profile save error: " + errText);
+        }
       }
     } catch (err) {
       console.error("Profile submit error:", err);

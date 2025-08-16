@@ -2,6 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const Profile = require("../models/Profiles");
+const SystemSettings = require("../models/SystemSettings");
+const Whitelist = require("../models/Whitelist");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
@@ -77,6 +79,17 @@ router.post("/", upload.single('photo'), async (req, res) => {
   try {
     const existing = await Profile.findOne({ wallet: wallet.toLowerCase() });
     if (existing) return res.status(409).send("Profile already exists");
+
+    // Check whitelist mode
+    const whitelistSetting = await SystemSettings.findOne({ key: 'whitelistMode' });
+    const isWhitelistMode = whitelistSetting ? whitelistSetting.value : false;
+    
+    if (isWhitelistMode) {
+      const isWhitelisted = await Whitelist.findOne({ wallet: wallet.toLowerCase() });
+      if (!isWhitelisted) {
+        return res.status(403).send("Profile creation restricted to whitelisted wallets only");
+      }
+    }
 
     // Check CritCoin balance requirement (frontend should pass balance for verification)
     if (!balance || Number(balance) < 1) {

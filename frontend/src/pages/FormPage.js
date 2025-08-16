@@ -214,31 +214,80 @@ export default function ForumPage() {
             </div>
           </div>
           <p>{p.content}</p>
-          {wallet && (
-            <div>
-              <button 
-                onClick={() => vote(p._id, "up")}
-                disabled={p.votes && p.votes[wallet?.toLowerCase()] === "up"}
-                style={{ 
-                  backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "#90EE90" : "",
-                  opacity: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? 0.7 : 1
-                }}
-              >
-                ⬆️ {p.upvotes}
-              </button>
-              <button 
-                onClick={() => vote(p._id, "down")}
-                disabled={p.votes && p.votes[wallet?.toLowerCase()] === "down"}
-                style={{ 
-                  backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "#FFB6C1" : "",
-                  opacity: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? 0.7 : 1,
-                  marginLeft: "8px"
-                }}
-              >
-                ⬇️ {p.downvotes}
-              </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "0.5rem" }}>
+            {/* Vote counts always visible */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                color: "#28a745",
+                fontWeight: "bold",
+                fontSize: "0.9rem"
+              }}>
+                ⬆️ {p.upvotes || 0}
+              </span>
+              <span style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                color: "#dc3545",
+                fontWeight: "bold",
+                fontSize: "0.9rem"
+              }}>
+                ⬇️ {p.downvotes || 0}
+              </span>
             </div>
-          )}
+            
+            {/* Voting buttons only for connected users */}
+            {wallet && (
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button 
+                  onClick={() => vote(p._id, "up")}
+                  disabled={p.votes && p.votes[wallet?.toLowerCase()] === "up"}
+                  style={{ 
+                    backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "#90EE90" : "#f8f9fa",
+                    border: "1px solid #28a745",
+                    color: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "#155724" : "#28a745",
+                    borderRadius: "4px",
+                    padding: "0.25rem 0.5rem",
+                    cursor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "default" : "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold"
+                  }}
+                  title={p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "You upvoted this" : "Upvote"}
+                >
+                  ⬆️ Upvote
+                </button>
+                <button 
+                  onClick={() => vote(p._id, "down")}
+                  disabled={p.votes && p.votes[wallet?.toLowerCase()] === "down"}
+                  style={{ 
+                    backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "#FFB6C1" : "#f8f9fa",
+                    border: "1px solid #dc3545",
+                    color: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "#721c24" : "#dc3545",
+                    borderRadius: "4px",
+                    padding: "0.25rem 0.5rem",
+                    cursor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "default" : "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: "bold"
+                  }}
+                  title={p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "You downvoted this" : "Downvote"}
+                >
+                  ⬇️ Downvote
+                </button>
+              </div>
+            )}
+            
+            {/* Message for non-connected users */}
+            {!wallet && (
+              <span style={{ 
+                fontSize: "0.8rem", 
+                color: "#6c757d",
+                fontStyle: "italic"
+              }}>
+                Connect wallet to vote
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </div>
