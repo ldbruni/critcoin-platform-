@@ -15,8 +15,6 @@ const API = {
 console.log("🔍 Final API.profiles URL:", API.profiles);
 
 export default function Profiles() {
-  console.log("🏁 Profiles component starting");
-  
   const [wallet, setWallet] = useState(null);
   const [balance, setBalance] = useState(0);
   const [profile, setProfile] = useState(null);
@@ -26,8 +24,6 @@ export default function Profiles() {
   const [editing, setEditing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  
-  console.log("📊 State initialized, publicProfiles length:", publicProfiles.length);
 
   const connectWallet = async () => {
     try {
@@ -162,63 +158,44 @@ export default function Profiles() {
   const fetchPublicProfiles = async () => {
     try {
       setLoadingProfiles(true);
-      console.log("🌐 Fetching public profiles...");
-      console.log("📍 API URL:", `${API.profiles}`);
       const res = await fetch(`${API.profiles}`);
-      console.log("📡 Response status:", res.status, res.statusText);
       
       if (res.ok) {
         const profiles = await res.json();
-        console.log("📋 Found profiles:", profiles.length, profiles);
         setPublicProfiles(profiles);
       } else {
-        const errorText = await res.text();
-        console.error("❌ Failed to fetch public profiles:", res.status, errorText);
+        console.error("Failed to fetch public profiles");
       }
     } catch (err) {
-      console.error("❌ Network error fetching public profiles:", err);
+      console.error("Error fetching public profiles:", err);
     } finally {
       setLoadingProfiles(false);
     }
   };
 
   useEffect(() => {
-    // Always fetch public profiles for display - this should always run
-    console.log("🚀 useEffect running - fetching public profiles");
     fetchPublicProfiles();
   }, []);
 
   useEffect(() => {
-    // Try to connect wallet if available - separate effect so errors don't block profiles
-    // Only auto-connect if there are already connected accounts
     const checkWallet = async () => {
-      console.log("🔗 useEffect running - checking for wallet");
       if (window.ethereum) {
         try {
-          // Check if already connected without requesting connection
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0) {
-            console.log("👤 Found existing connection, connecting...");
             connectWallet();
-          } else {
-            console.log("👤 No existing connection, skipping auto-connect");
           }
         } catch (err) {
-          console.log("👤 Error checking accounts, skipping auto-connect:", err);
+          // Silently ignore wallet errors
         }
       }
     };
     checkWallet();
   }, []);
 
-  console.log("🎨 About to render component");
-
   return (
     <div style={{ padding: "2rem" }}>
       <h1>🪪 CritCoin Profile</h1>
-      <div style={{ backgroundColor: "red", color: "white", padding: "1rem" }}>
-        TEST: Component is rendering! Wallet: {wallet ? "connected" : "not connected"}
-      </div>
 
       {!wallet ? (
         <div>
@@ -252,21 +229,6 @@ export default function Profiles() {
             Discover the CritCoin community members and their profiles
           </p>
 
-          {/* Debug info */}
-          <div style={{ 
-            backgroundColor: "#fff3cd", 
-            border: "1px solid #ffeaa7", 
-            borderRadius: "4px", 
-            padding: "0.5rem", 
-            marginBottom: "1rem",
-            fontSize: "0.9rem"
-          }}>
-            Debug: {loadingProfiles ? 'Loading...' : `Found ${publicProfiles.length} profiles`}. Check console for details.
-            <br />
-            State: loadingProfiles={String(loadingProfiles)}, publicProfiles.length={publicProfiles.length}
-            <br />
-            {publicProfiles.length > 0 && `First profile: ${JSON.stringify(publicProfiles[0]?.name || 'no name')}`}
-          </div>
 
           {loadingProfiles ? (
             <p style={{ textAlign: "center", color: "#666" }}>
@@ -293,8 +255,8 @@ export default function Profiles() {
                     boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                   }}
                 >
-                  {prof.photo && (
-                    <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                    {prof.photo ? (
                       <img 
                         src={`${API.profiles}/photo/${prof.photo}`}
                         alt={`${prof.name || 'Profile'}'s profile`}
@@ -303,18 +265,33 @@ export default function Profiles() {
                           height: "80px", 
                           objectFit: "cover",
                           borderRadius: "50%",
-                          border: "3px solid #007bff"
+                          border: "3px solid #007bff",
+                          backgroundColor: "#f8f9fa"
                         }}
                         onError={(e) => {
-                          console.log("❌ Photo failed to load:", e.target.src);
                           e.target.style.display = 'none';
-                        }}
-                        onLoad={() => {
-                          console.log("✅ Photo loaded successfully");
+                          e.target.nextSibling.style.display = 'flex';
                         }}
                       />
+                    ) : null}
+                    <div 
+                      style={{ 
+                        width: "80px", 
+                        height: "80px", 
+                        borderRadius: "50%",
+                        border: "3px solid #007bff",
+                        backgroundColor: "#e9ecef",
+                        display: prof.photo ? "none" : "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "2rem",
+                        color: "#6c757d",
+                        margin: "0 auto"
+                      }}
+                    >
+                      👤
                     </div>
-                  )}
+                  </div>
                   <h4 style={{ 
                     textAlign: "center", 
                     marginBottom: "0.5rem",
@@ -499,8 +476,8 @@ export default function Profiles() {
                     boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                   }}
                 >
-                  {prof.photo && (
-                    <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                  <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                    {prof.photo ? (
                       <img 
                         src={`${API.profiles}/photo/${prof.photo}`}
                         alt={`${prof.name}'s profile`}
@@ -509,11 +486,33 @@ export default function Profiles() {
                           height: "70px", 
                           objectFit: "cover",
                           borderRadius: "50%",
-                          border: "3px solid #007bff"
+                          border: "3px solid #007bff",
+                          backgroundColor: "#f8f9fa"
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
                         }}
                       />
+                    ) : null}
+                    <div 
+                      style={{ 
+                        width: "70px", 
+                        height: "70px", 
+                        borderRadius: "50%",
+                        border: "3px solid #007bff",
+                        backgroundColor: "#e9ecef",
+                        display: prof.photo ? "none" : "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.8rem",
+                        color: "#6c757d",
+                        margin: "0 auto"
+                      }}
+                    >
+                      👤
                     </div>
-                  )}
+                  </div>
                   <h4 style={{ 
                     textAlign: "center", 
                     marginBottom: "0.5rem",
