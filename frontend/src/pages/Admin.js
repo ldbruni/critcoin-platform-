@@ -370,7 +370,7 @@ export default function Admin() {
   };
 
   const handleRemoveFromWhitelist = async (walletToRemove) => {
-    if (!confirm(`Are you sure you want to remove ${walletToRemove} from the whitelist?`)) {
+    if (!window.confirm(`Are you sure you want to remove ${walletToRemove} from the whitelist?`)) {
       return;
     }
 
