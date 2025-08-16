@@ -334,12 +334,35 @@ export default function Admin() {
   return (
     <div style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
       <h1>🛡️ Admin Panel</h1>
-      <p>
-        <Link to="/profiles">👤 Profiles</Link> | 
-        <Link to="/projects" style={{ margin: "0 1rem" }}>🎨 Projects</Link> | 
-        <Link to="/explorer" style={{ marginRight: "1rem" }}>🔍 Explorer</Link> | 
-        <Link to="/forum">💬 Forum</Link>
-      </p>
+      <div style={{ 
+        display: "flex", 
+        flexWrap: "wrap", 
+        gap: "0.5rem", 
+        marginBottom: "1rem",
+        fontSize: "1rem"
+      }}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%",
+          justifyContent: "center"
+        }}>
+          <Link to="/profiles" style={{ textDecoration: "none" }}>👤 Profiles</Link>
+          <span>|</span>
+          <Link to="/projects" style={{ textDecoration: "none" }}>🎨 Projects</Link>
+          <span>|</span>
+          <Link to="/explorer" style={{ textDecoration: "none" }}>🔍 Explorer</Link>
+        </div>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          width: "100%",
+          justifyContent: "center"
+        }}>
+          <Link to="/forum" style={{ textDecoration: "none" }}>💬 Forum</Link>
+        </div>
+      </div>
       
       <p><strong>Admin:</strong> {wallet}</p>
 

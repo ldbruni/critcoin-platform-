@@ -1,6 +1,7 @@
 // src/pages/Profiles.js
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 
 // Debug environment variables
@@ -157,6 +158,33 @@ export default function Profiles() {
   return (
     <div style={{ padding: "2rem" }}>
       <h1>🪪 CritCoin Profile</h1>
+      <div style={{ 
+        display: "flex", 
+        flexWrap: "wrap", 
+        gap: "0.5rem", 
+        marginBottom: "1rem",
+        fontSize: "1rem"
+      }}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%",
+          justifyContent: "center"
+        }}>
+          <Link to="/projects" style={{ textDecoration: "none" }}>🎨 Projects</Link>
+          <span>|</span>
+          <Link to="/explorer" style={{ textDecoration: "none" }}>🔍 Explorer</Link>
+        </div>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          width: "100%",
+          justifyContent: "center"
+        }}>
+          <Link to="/forum" style={{ textDecoration: "none" }}>💬 Forum</Link>
+        </div>
+      </div>
 
       {!wallet ? (
         <button onClick={connectWallet}>Connect Wallet</button>

@@ -159,7 +159,27 @@ export default function ForumPage() {
   return (
     <div style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
       <h1>💬 CritCoin Forum</h1>
-      <p><Link to="/profiles">👤 Go to Profiles</Link></p>
+      <div style={{ 
+        display: "flex", 
+        flexWrap: "wrap", 
+        gap: "0.5rem", 
+        marginBottom: "1rem",
+        fontSize: "1rem"
+      }}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%",
+          justifyContent: "center"
+        }}>
+          <Link to="/profiles" style={{ textDecoration: "none" }}>👤 Profiles</Link>
+          <span>|</span>
+          <Link to="/projects" style={{ textDecoration: "none" }}>🎨 Projects</Link>
+          <span>|</span>
+          <Link to="/explorer" style={{ textDecoration: "none" }}>🔍 Explorer</Link>
+        </div>
+      </div>
 
       {!wallet ? (
         <button onClick={connectWallet}>Connect Wallet</button>
