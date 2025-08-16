@@ -1,90 +1,254 @@
-# Hardhat Boilerplate
+# CritCoin - Blockchain Social Platform
 
-This repository contains a sample project that you can use as the starting point
-for your Ethereum project. It's also a great fit for learning the basics of
-smart contract development.
+A full-stack social platform built on Ethereum using React, Node.js, and MongoDB. Features user profiles, project showcases, forum discussions, bounty system, and a custom ERC-20 token (CritCoin) for transactions.
 
-This project is intended to be used with the
-[Hardhat Beginners Tutorial](https://hardhat.org/tutorial), but you should be
-able to follow it by yourself by reading the README and exploring its
-`contracts`, `tests`, `scripts` and `frontend` directories.
+## 🚀 Features
 
-## Quick start
+### User System
+- **Profiles**: Create profiles with photos, bios, and astrological signs
+- **Wallet Integration**: MetaMask wallet connection and authentication
+- **CritCoin Balance**: View and manage your CritCoin (ERC-20 token) balance
 
-The first things you need to do are cloning this repository and installing its
-dependencies:
+### Project Showcase
+- **Project Submissions**: Upload and showcase 4 different projects per user
+- **Image Uploads**: High-quality project images with automatic optimization
+- **Tipping System**: Send CritCoin to project creators
+- **Project Discovery**: Browse all projects with author information
 
-```sh
-git clone https://github.com/NomicFoundation/hardhat-boilerplate.git
+### Social Features
+- **Forum**: Create and view posts in a community forum
+- **Bounty System**: View and complete bounties for CritCoin rewards
+- **Explorer**: Discover users and their work
+
+### Admin Panel
+- **Dashboard**: Overview of users, posts, projects, and bounties
+- **User Management**: Archive/restore user profiles
+- **Content Moderation**: Hide/show posts and archive projects
+- **Bounty Management**: Create, edit, and manage bounties
+- **CritCoin Distribution**: Deploy CritCoin to all active users
+
+## 🛠 Tech Stack
+
+### Frontend
+- **React 18** with React Router for navigation
+- **Bootstrap 4** for responsive UI
+- **Ethers.js** for blockchain interactions
+
+### Backend
+- **Node.js** with Express server
+- **MongoDB** with Mongoose ODM
+- **Multer** for file uploads
+- **Sharp** for image processing
+- **CORS** enabled for cross-origin requests
+
+### Blockchain
+- **Hardhat** development environment
+- **ERC-20 Token** (CritCoin) contract
+- **Sepolia Testnet** deployment
+- **MetaMask** wallet integration
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js (v16 or higher)
+- MongoDB (local or cloud)
+- MetaMask browser extension
+- Git
+
+### 1. Clone Repository
+```bash
+git clone <your-repo-url>
 cd hardhat-boilerplate
+```
+
+### 2. Install Dependencies
+```bash
+# Install root dependencies (Hardhat)
+npm install
+
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
 npm install
 ```
 
-Once installed, let's run Hardhat's testing network:
+### 3. Environment Setup
 
-```sh
+**Backend Environment** (`backend/.env`):
+```env
+MONGODB_URI=mongodb://localhost:27017/critcoin
+ADMIN_WALLET=0x_your_admin_wallet_address
+PORT=3001
+```
+
+**Frontend Environment** (`frontend/.env`):
+```env
+REACT_APP_API_URL=http://localhost:3001
+REACT_APP_ADMIN_WALLET=0x_your_admin_wallet_address
+```
+
+### 4. Database Setup
+Start MongoDB service:
+```bash
+# macOS
+brew services start mongodb-community
+
+# Windows
+net start MongoDB
+
+# Linux
+sudo systemctl start mongod
+```
+
+## 🚀 Running the Application
+
+### 1. Start Hardhat Network (Development)
+```bash
 npx hardhat node
 ```
 
-Then, on a new terminal, go to the repository's root folder and run this to
-deploy your contract:
-
-```sh
+### 2. Deploy Smart Contract
+```bash
 npx hardhat run scripts/deploy.js --network localhost
 ```
 
-Finally, we can run the frontend with:
+### 3. Start Backend Server
+```bash
+cd backend
+npm run dev  # or npm start for production
+```
 
-```sh
+### 4. Start Frontend
+```bash
 cd frontend
-npm install
 npm start
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/) to see your Dapp. You will
-need to have [Coinbase Wallet](https://www.coinbase.com/wallet) or [Metamask](https://metamask.io) installed and listening to
-`localhost 8545`.
+Visit `http://localhost:3000` to see the application.
 
-## User Guide
+## 🔧 Configuration
 
-You can find detailed instructions on using this repository and many tips in [its documentation](https://hardhat.org/tutorial).
+### MetaMask Setup
+1. Install MetaMask browser extension
+2. Add Hardhat network:
+   - Network Name: Hardhat
+   - RPC URL: http://localhost:8545
+   - Chain ID: 31337
+   - Currency Symbol: ETH
 
-- [Writing and compiling contracts](https://hardhat.org/tutorial/writing-and-compiling-contracts/)
-- [Setting up the environment](https://hardhat.org/tutorial/setting-up-the-environment/)
-- [Testing Contracts](https://hardhat.org/tutorial/testing-contracts/)
-- [Setting up your wallet](https://hardhat.org/tutorial/boilerplate-project#how-to-use-it)
-- [Hardhat's full documentation](https://hardhat.org/docs/)
+### Admin Setup
+1. Set your wallet address in environment variables
+2. Access admin panel at `/admin`
+3. Admin functions require wallet authentication
 
-For a complete introduction to Hardhat, refer to [this guide](https://hardhat.org/getting-started/#overview).
+## 📁 Project Structure
 
-## What's Included?
+```
+├── backend/                 # Node.js API server
+│   ├── models/             # MongoDB schemas
+│   │   ├── Profiles.js     # User profiles
+│   │   ├── Project.js      # Project submissions
+│   │   ├── Post.js         # Forum posts
+│   │   ├── Bounty.js       # Bounty system
+│   │   └── Transaction.js  # CritCoin transactions
+│   ├── routes/             # API endpoints
+│   │   ├── profiles.js     # Profile management
+│   │   ├── projects.js     # Project CRUD
+│   │   ├── posts.js        # Forum posts
+│   │   ├── admin.js        # Admin functions
+│   │   └── explorer.js     # Discovery features
+│   ├── uploads/            # File storage
+│   └── server.js           # Express server
+├── frontend/               # React application
+│   ├── src/
+│   │   ├── components/     # Reusable components
+│   │   ├── pages/          # Main pages
+│   │   │   ├── Profiles.js # User profiles
+│   │   │   ├── Projects.js # Project showcase
+│   │   │   ├── FormPage.js # Forum/posts
+│   │   │   ├── Bounties.js # Bounty system
+│   │   │   ├── Explorer.js # User discovery
+│   │   │   └── Admin.js    # Admin panel
+│   │   └── contracts/      # Contract ABIs
+│   └── public/
+├── contracts/              # Solidity smart contracts
+│   └── Token.sol          # CritCoin ERC-20 token
+├── scripts/               # Deployment scripts
+└── test/                  # Contract tests
+```
 
-This repository uses our recommended hardhat setup, by using our [`@nomicfoundation/hardhat-toolbox`](https://hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-toolbox). When you use this plugin, you'll be able to:
+## 🌐 Deployment
 
-- Deploy and interact with your contracts using [ethers.js](https://docs.ethers.io/v5/) and the [`hardhat-ethers`](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-ethers) plugin.
-- Test your contracts with [Mocha](https://mochajs.org/), [Chai](https://chaijs.com/) and our own [Hardhat Chai Matchers](https://hardhat.org/hardhat-chai-matchers) plugin.
-- Interact with Hardhat Network with our [Hardhat Network Helpers](https://hardhat.org/hardhat-network-helpers).
-- Verify the source code of your contracts with the [hardhat-etherscan](https://hardhat.org/hardhat-runner/plugins/nomiclabs-hardhat-etherscan) plugin.
-- Get metrics on the gas used by your contracts with the [hardhat-gas-reporter](https://github.com/cgewecke/hardhat-gas-reporter) plugin.
-- Measure your tests coverage with [solidity-coverage](https://github.com/sc-forks/solidity-coverage).
+### Backend (Railway/Heroku)
+1. Set environment variables in hosting platform
+2. Configure MongoDB connection string
+3. Deploy backend code
 
-This project also includes [a sample frontend/Dapp](./frontend), which uses [Create React App](https://github.com/facebook/create-react-app).
+### Frontend (Vercel/Netlify)
+1. Build the React app: `npm run build`
+2. Deploy the `build` folder
+3. Set environment variables for production API URL
 
-## Troubleshooting
+### Smart Contract (Mainnet/Testnets)
+```bash
+# Deploy to Sepolia testnet
+npx hardhat run scripts/deploy.js --network sepolia
 
-- `Invalid nonce` errors: if you are seeing this error on the `npx hardhat node`
-  console, try resetting your Metamask account. This will reset the account's
-  transaction history and also the nonce. Open Metamask, click on your account
-  followed by `Settings > Advanced > Clear activity tab data`.
+# Update contract addresses in frontend
+```
 
-## Setting up your editor
+## 🛡 Admin Features
 
-[Hardhat for Visual Studio Code](https://hardhat.org/hardhat-vscode) is the official Hardhat extension that adds advanced support for Solidity to VSCode. If you use Visual Studio Code, give it a try!
+Access the admin panel at `/admin` with admin wallet:
 
-## Getting help and updates
+- **Dashboard**: System overview and statistics
+- **Profile Management**: Archive/restore user accounts
+- **Content Moderation**: Hide inappropriate posts
+- **Project Management**: Archive/restore projects
+- **Bounty System**: Create and manage bounties
+- **CritCoin Distribution**: Mass distribution to users
 
-If you need help with this project, or with Hardhat in general, please read [this guide](https://hardhat.org/hardhat-runner/docs/guides/getting-help) to learn where and how to get it.
+## 🤝 Contributing
 
-For the latest news about Hardhat, [follow us on Twitter](https://twitter.com/HardhatHQ), and don't forget to star [our GitHub repository](https://github.com/NomicFoundation/hardhat)!
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit pull request
 
-**Happy _building_!**
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**MetaMask Connection Issues:**
+- Ensure MetaMask is unlocked
+- Check network configuration
+- Clear MetaMask activity data if nonce errors occur
+
+**Database Connection:**
+- Verify MongoDB is running
+- Check connection string in environment variables
+- Ensure database permissions are correct
+
+**File Upload Issues:**
+- Check upload directory permissions
+- Verify file size limits (10MB max)
+- Ensure Sharp image processing is working
+
+**API Errors:**
+- Check CORS configuration
+- Verify API URLs in frontend environment
+- Check backend server logs
+
+For additional help, check the [deployment checklist](deployment-checklist.md) or create an issue in this repository.
+
+---
+
+**Happy Building! 🎉**

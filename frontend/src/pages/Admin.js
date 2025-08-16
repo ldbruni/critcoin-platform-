@@ -20,6 +20,7 @@ export default function Admin() {
   const [profiles, setProfiles] = useState([]);
   const [posts, setPosts] = useState([]);
   const [bounties, setBounties] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   
   // Deploy CritCoin confirmation
@@ -40,6 +41,7 @@ export default function Admin() {
       if (activeTab === "profiles") fetchProfiles();
       if (activeTab === "posts") fetchPosts();
       if (activeTab === "bounties") fetchBounties();
+      if (activeTab === "projects") fetchProjects();
     }
   }, [isAdmin, activeTab]);
 
@@ -110,6 +112,21 @@ export default function Admin() {
     }
   };
 
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API.admin}/projects/${wallet}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error("Projects fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleArchiveProfile = async (profileWallet, archive) => {
     try {
       const res = await fetch(`${API.admin}/profiles/archive`, {
@@ -159,6 +176,32 @@ export default function Admin() {
     } catch (err) {
       console.error("Hide post error:", err);
       alert("Error hiding post");
+    }
+  };
+
+  const handleArchiveProject = async (projectId, archive) => {
+    try {
+      const res = await fetch(`${API.admin}/projects/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminWallet: wallet,
+          projectId,
+          archive
+        })
+      });
+
+      if (res.ok) {
+        alert(`Project ${archive ? 'archived' : 'unarchived'} successfully`);
+        fetchProjects();
+        fetchDashboard();
+      } else {
+        const errorText = await res.text();
+        alert("Error: " + errorText);
+      }
+    } catch (err) {
+      console.error("Archive project error:", err);
+      alert("Error archiving project");
     }
   };
 
@@ -302,7 +345,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "bounties", "deploy"].map(tab => (
+        {["dashboard", "profiles", "posts", "projects", "bounties", "deploy"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -345,6 +388,11 @@ export default function Admin() {
               <h4>Bounties</h4>
               <p>Total: {dashboard.bounties?.total || 0}</p>
               <p>Active: {dashboard.bounties?.active || 0}</p>
+            </div>
+            <div style={{ backgroundColor: "#f8f9fa", padding: "1rem", borderRadius: "8px" }}>
+              <h4>Projects</h4>
+              <p>Total: {dashboard.projects?.total || 0}</p>
+              <p>Archived: {dashboard.projects?.archived || 0}</p>
             </div>
           </div>
         </div>
@@ -492,6 +540,85 @@ export default function Admin() {
                       }}
                     >
                       {post.hidden ? "Show" : "Hide"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Projects Tab */}
+      {activeTab === "projects" && (
+        <div>
+          <h2>🎨 Project Management</h2>
+          {loading ? (
+            <p>Loading projects...</p>
+          ) : (
+            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+              <div style={{ 
+                padding: "1rem", 
+                borderBottom: "1px solid #ddd",
+                backgroundColor: "#f8f9fa",
+                fontWeight: "bold"
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px 120px", gap: "1rem" }}>
+                  <span>Author</span>
+                  <span>Project</span>
+                  <span>Number</span>
+                  <span>Status</span>
+                  <span>Actions</span>
+                </div>
+              </div>
+              {projects.map((project, index) => (
+                <div 
+                  key={project._id}
+                  style={{ 
+                    padding: "1rem", 
+                    borderBottom: index < projects.length - 1 ? "1px solid #e9ecef" : "none",
+                    backgroundColor: project.archived ? "#fff3cd" : "white"
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px 120px", gap: "1rem", alignItems: "center" }}>
+                    <div>
+                      <strong>{project.authorName}</strong>
+                      <div style={{ fontSize: "0.7rem", color: "#666" }}>
+                        {new Date(project.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div style={{ 
+                      textDecoration: project.archived ? "line-through" : "none",
+                      color: project.archived ? "#856404" : "inherit"
+                    }}>
+                      <div><strong>{project.title}</strong></div>
+                      <div style={{ fontSize: "0.8rem", color: "#666" }}>{project.description}</div>
+                      <div style={{ fontSize: "0.7rem", color: "#28a745", marginTop: "0.25rem" }}>
+                        {project.totalReceived} CC received
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: "bold" }}>
+                      Project {project.projectNumber}
+                    </span>
+                    <span style={{ 
+                      color: project.archived ? "#856404" : "#155724",
+                      fontWeight: "bold"
+                    }}>
+                      {project.archived ? "Archived" : "Active"}
+                    </span>
+                    <button
+                      onClick={() => handleArchiveProject(project._id, !project.archived)}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        backgroundColor: project.archived ? "#28a745" : "#dc3545",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem"
+                      }}
+                    >
+                      {project.archived ? "Restore" : "Archive"}
                     </button>
                   </div>
                 </div>

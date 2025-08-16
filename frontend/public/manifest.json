@@ -1,6 +1,7 @@
 {
-  "short_name": "Hardhat React Dapp",
-  "name": "Hardhat Create React Dapp Sample",
+  "short_name": "CritCoin",
+  "name": "CritCoin - Blockchain Social Platform",
+  "description": "A social platform for showcasing projects and earning CritCoin tokens",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,34 @@
       "type": "image/x-icon"
     },
     {
+      "src": "favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo310.png",
+      "src": "logo512.png",
       "type": "image/png",
-      "sizes": "310x310"
+      "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#007bff",
+  "background_color": "#ffffff",
+  "categories": ["social", "finance", "productivity"]
 }

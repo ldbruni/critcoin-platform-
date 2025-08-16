@@ -4,6 +4,7 @@ const router = express.Router();
 const Profile = require("../models/Profiles");
 const Post = require("../models/Post");
 const Bounty = require("../models/Bounty");
+const Project = require("../models/Project");
 const Transaction = require("../models/Transaction");
 
 // Admin authentication middleware
@@ -39,6 +40,8 @@ router.get("/dashboard/:adminWallet", async (req, res) => {
     const hiddenPosts = await Post.countDocuments({ hidden: true });
     const totalBounties = await Bounty.countDocuments();
     const activeBounties = await Bounty.countDocuments({ status: 'active' });
+    const totalProjects = await Project.countDocuments();
+    const archivedProjects = await Project.countDocuments({ archived: true });
 
     res.json({
       profiles: { 
@@ -47,7 +50,8 @@ router.get("/dashboard/:adminWallet", async (req, res) => {
         archived: archivedProfiles 
       },
       posts: { total: totalPosts, hidden: hiddenPosts },
-      bounties: { total: totalBounties, active: activeBounties }
+      bounties: { total: totalBounties, active: activeBounties },
+      projects: { total: totalProjects, archived: archivedProjects }
     });
   } catch (err) {
     console.error("Dashboard fetch error:", err);
@@ -330,6 +334,68 @@ router.post("/deploy-critcoin", authenticateAdmin, async (req, res) => {
   } catch (err) {
     console.error("Deploy CritCoin error:", err);
     res.status(500).send("Failed to deploy CritCoin");
+  }
+});
+
+// GET all projects for admin management
+router.get("/projects/:adminWallet", async (req, res) => {
+  const adminWallet = req.params.adminWallet.toLowerCase();
+  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
+  
+  if (adminWallet !== ADMIN_WALLET) {
+    return res.status(403).send("Unauthorized");
+  }
+
+  try {
+    const projects = await Project.find().sort({ createdAt: -1 });
+    
+    // Enrich with profile data
+    const profiles = await Profile.find();
+    const profileMap = Object.fromEntries(
+      profiles.map(p => [p.wallet.toLowerCase(), p])
+    );
+
+    const enrichedProjects = projects.map(project => {
+      const profile = profileMap[project.authorWallet?.toLowerCase()];
+      return {
+        ...project.toObject(),
+        authorName: profile?.name || project.authorWallet || "Unknown"
+      };
+    });
+
+    res.json(enrichedProjects);
+  } catch (err) {
+    console.error("Projects fetch error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// POST archive/unarchive project
+router.post("/projects/archive", authenticateAdmin, async (req, res) => {
+  const { projectId, archive } = req.body;
+  
+  if (!projectId) {
+    return res.status(400).send("Project ID required");
+  }
+
+  try {
+    const project = await Project.findByIdAndUpdate(
+      projectId,
+      { archived: archive },
+      { new: true }
+    );
+    
+    if (!project) {
+      return res.status(404).send("Project not found");
+    }
+
+    res.json({ 
+      message: `Project ${archive ? 'archived' : 'unarchived'} successfully`,
+      project 
+    });
+  } catch (err) {
+    console.error("Archive project error:", err);
+    res.status(500).send("Database error");
   }
 });
 

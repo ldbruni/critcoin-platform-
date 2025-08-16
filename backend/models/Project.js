@@ -7,6 +7,7 @@ const projectSchema = new mongoose.Schema({
   description: { type: String },
   image: { type: String, required: true }, // filename of uploaded image
   totalReceived: { type: Number, default: 0 }, // total CritCoin received
+  archived: { type: Boolean, default: false }, // admin can archive projects
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

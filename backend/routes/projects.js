@@ -40,7 +40,11 @@ router.get("/:projectNumber", async (req, res) => {
   }
 
   try {
-    const projects = await Project.find({ projectNumber }).sort({ createdAt: -1 });
+    // Only show non-archived projects to the public
+    const projects = await Project.find({ 
+      projectNumber, 
+      archived: { $ne: true } 
+    }).sort({ createdAt: -1 });
     
     // Enrich with profile data
     const profiles = await Profile.find({ archived: { $ne: true } });
@@ -74,7 +78,12 @@ router.get("/:projectNumber/:wallet", async (req, res) => {
   const wallet = req.params.wallet.toLowerCase();
 
   try {
-    const project = await Project.findOne({ projectNumber, authorWallet: wallet });
+    // Only return non-archived projects
+    const project = await Project.findOne({ 
+      projectNumber, 
+      authorWallet: wallet,
+      archived: { $ne: true }
+    });
     if (!project) return res.status(404).send("Project not found");
     res.json(project);
   } catch (err) {
