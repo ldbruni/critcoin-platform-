@@ -71,7 +71,19 @@ router.get("/", async (req, res) => {
 router.post("/", upload.single('photo'), async (req, res) => {
   const { wallet, name, birthday, starSign, balance } = req.body;
   
-  console.log("Profile create request:", { wallet, name, birthday, starSign, balance });
+  console.log("Profile create request:", { 
+    wallet, 
+    name, 
+    birthday, 
+    starSign, 
+    balance,
+    hasPhoto: !!req.file,
+    photoInfo: req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : null
+  });
   
   if (!wallet || !name || !birthday || !starSign)
     return res.status(400).send("Missing fields");
@@ -101,11 +113,21 @@ router.post("/", upload.single('photo'), async (req, res) => {
     // Process uploaded photo if provided
     if (req.file) {
       try {
+        console.log("📸 Processing photo upload...");
+        
+        // Validate file size (max 10MB)
+        if (req.file.size > 10 * 1024 * 1024) {
+          console.log("❌ Photo too large:", req.file.size);
+          return res.status(400).send("Photo file is too large (max 10MB)");
+        }
+        
         // Generate unique filename
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 15);
         photoFilename = `profile_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
         const photoPath = path.join(uploadsDir, photoFilename);
+        
+        console.log("📸 Saving photo to:", photoPath);
         
         // Process and save image using Sharp (resize to 300x300, compress)
         await sharp(req.file.buffer)
@@ -113,12 +135,13 @@ router.post("/", upload.single('photo'), async (req, res) => {
           .jpeg({ quality: 85 })
           .toFile(photoPath);
           
-        console.log("Photo saved successfully:", photoFilename);
+        console.log("✅ Photo saved successfully:", photoFilename);
       } catch (photoError) {
-        console.error("Photo processing error:", photoError);
-        // Continue without photo if processing fails
-        photoFilename = null;
+        console.error("❌ Photo processing error:", photoError);
+        return res.status(500).send(`Photo processing failed: ${photoError.message}`);
       }
+    } else {
+      console.log("📸 No photo provided");
     }
 
     const profile = new Profile({ 

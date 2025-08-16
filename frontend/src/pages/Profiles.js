@@ -94,17 +94,41 @@ export default function Profiles() {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      console.log("📸 Photo selected:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
+      // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        alert('Please select an image file (JPG, PNG, etc.)');
+        return;
+      }
+      
+      // Check file size (limit to 10MB for mobile compatibility)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        alert('Photo file is too large. Please select a file smaller than 10MB.');
         return;
       }
       
       setSelectedPhoto(file);
       
-      // Create preview
+      // Create preview with error handling
       const reader = new FileReader();
-      reader.onload = (e) => setPhotoPreview(e.target.result);
+      reader.onload = (e) => {
+        console.log("📸 Photo preview loaded successfully");
+        setPhotoPreview(e.target.result);
+      };
+      reader.onerror = (e) => {
+        console.error("❌ Photo preview failed:", e);
+        alert("Failed to load photo preview. You can still submit the form.");
+      };
       reader.readAsDataURL(file);
+    } else {
+      console.log("📸 No photo selected");
     }
   };
 
@@ -121,6 +145,16 @@ export default function Profiles() {
     const endpoint = profile ? `${API.profiles}/update` : API.profiles;
 
     try {
+      console.log("🚀 Submitting profile form:", {
+        endpoint,
+        hasPhoto: !!selectedPhoto,
+        photoInfo: selectedPhoto ? {
+          name: selectedPhoto.name,
+          size: selectedPhoto.size,
+          type: selectedPhoto.type
+        } : null
+      });
+      
       const formData = new FormData();
       formData.append('wallet', wallet);
       formData.append('name', form.name);
@@ -129,7 +163,17 @@ export default function Profiles() {
       formData.append('balance', balance); // Pass current balance for backend validation
       
       if (selectedPhoto) {
+        console.log("📸 Adding photo to form data");
         formData.append('photo', selectedPhoto);
+        
+        // Log FormData contents (for debugging)
+        for (let pair of formData.entries()) {
+          if (pair[0] === 'photo') {
+            console.log("📸 FormData photo:", pair[1].name, pair[1].size, "bytes");
+          } else {
+            console.log("📝 FormData field:", pair[0], pair[1]);
+          }
+        }
       }
 
       const res = await fetch(endpoint, {
@@ -384,14 +428,25 @@ export default function Profiles() {
           )}
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: "1rem" }}>
-              <label>Profile Photo (1080x1080):</label><br />
+              <label>Profile Photo:</label><br />
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.jpg,.jpeg,.png,.gif,.webp"
+                capture="environment"
                 onChange={handlePhotoChange}
-                style={{ marginTop: "0.5rem" }}
+                style={{ 
+                  marginTop: "0.5rem",
+                  width: "100%",
+                  padding: "0.5rem",
+                  border: "2px dashed #ccc",
+                  borderRadius: "4px",
+                  backgroundColor: "#f9f9f9"
+                }}
                 disabled={!profile && Number(balance) < 1}
               />
+              <small style={{ display: "block", marginTop: "0.25rem", color: "#666" }}>
+                📱 Tap to select or take a photo (max 10MB)
+              </small>
               {(photoPreview || (profile?.photo && !selectedPhoto)) && (
                 <div style={{ marginTop: "0.5rem" }}>
                   <img 
