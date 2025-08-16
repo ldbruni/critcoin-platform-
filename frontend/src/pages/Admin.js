@@ -138,10 +138,14 @@ export default function Admin() {
 
   const fetchSettings = async () => {
     try {
+      console.log("Fetching settings for wallet:", wallet);
       const res = await fetch(`${API.admin}/settings/${wallet}`);
       if (res.ok) {
         const data = await res.json();
+        console.log("Settings fetched:", data);
         setSettings(data);
+      } else {
+        console.error("Settings fetch failed:", res.status, await res.text());
       }
     } catch (err) {
       console.error("Settings fetch error:", err);
@@ -476,7 +480,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-            {tab === "deploy" ? "Deploy CritCoin" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab}
           </button>
         ))}
       </div>
@@ -914,6 +918,7 @@ export default function Admin() {
       {activeTab === "whitelist" && (
         <div>
           <h2>🔐 Whitelist Management</h2>
+          {console.log("Rendering whitelist tab. Settings:", settings, "Whitelist:", whitelist)}
           
           {/* Whitelist Mode Toggle */}
           <div style={{ 
