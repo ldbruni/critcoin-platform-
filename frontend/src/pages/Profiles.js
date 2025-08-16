@@ -7,12 +7,18 @@ import deployed from "../contracts/sepolia.json";
 // Debug environment variables
 console.log("🔍 Environment debug:");
 console.log("REACT_APP_API_URL:", process.env.REACT_APP_API_URL);
+console.log("📱 User Agent:", navigator.userAgent);
+console.log("📱 Is Mobile:", /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 
 const API = {
   profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
 };
 
 console.log("🔍 Final API.profiles URL:", API.profiles);
+
+// Test photo URL construction
+const testPhotoUrl = `${API.profiles}/photo/test123.jpg`;
+console.log("🔍 Test photo URL would be:", testPhotoUrl);
 
 export default function Profiles() {
   const [wallet, setWallet] = useState(null);
@@ -432,7 +438,6 @@ export default function Profiles() {
               <input
                 type="file"
                 accept="image/*,.jpg,.jpeg,.png,.gif,.webp"
-                capture="environment"
                 onChange={handlePhotoChange}
                 style={{ 
                   marginTop: "0.5rem",
@@ -451,13 +456,34 @@ export default function Profiles() {
                 <div style={{ marginTop: "0.5rem" }}>
                   <img 
                     src={photoPreview || `${API.profiles}/photo/${profile.photo}`}
-                    alt="Preview"
+                    alt="Profile Preview"
                     style={{ 
                       width: "150px", 
                       height: "150px", 
                       objectFit: "cover",
                       borderRadius: "8px",
-                      border: "2px solid #ddd"
+                      border: "2px solid #ddd",
+                      backgroundColor: "#f0f0f0"
+                    }}
+                    onLoad={() => console.log("✅ Profile photo loaded successfully")}
+                    onError={(e) => {
+                      console.error("❌ Profile photo failed to load:", e.target.src);
+                      e.target.style.display = 'none';
+                      const fallback = document.createElement('div');
+                      fallback.style.cssText = `
+                        width: 150px; 
+                        height: 150px; 
+                        border-radius: 8px; 
+                        border: 2px solid #ddd; 
+                        background-color: #f0f0f0; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-size: 3rem;
+                        color: #999;
+                      `;
+                      fallback.textContent = '👤';
+                      e.target.parentNode.appendChild(fallback);
                     }}
                   />
                 </div>

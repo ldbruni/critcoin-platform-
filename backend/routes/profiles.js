@@ -255,18 +255,36 @@ router.post("/archive", async (req, res) => {
 router.get("/photo/:filename", (req, res) => {
   const filename = req.params.filename;
   
+  console.log("📸 Photo request:", filename, "from:", req.get('User-Agent')?.includes('Mobile') ? 'Mobile' : 'Desktop');
+  
   // Basic security: only allow certain file extensions and prevent path traversal
   if (!filename.match(/^profile_[a-zA-Z0-9_]+\.(jpg|jpeg|png)$/i)) {
+    console.log("❌ Invalid filename:", filename);
     return res.status(400).send("Invalid filename");
   }
   
   const photoPath = path.join(uploadsDir, filename);
   
   if (fs.existsSync(photoPath)) {
-    // Set appropriate content type
+    console.log("✅ Serving photo:", photoPath);
+    
+    // Set headers for better mobile compatibility
     res.setHeader('Content-Type', 'image/jpeg');
-    res.sendFile(photoPath);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-origin requests
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Use res.sendFile with absolute path for better compatibility
+    const absolutePath = path.resolve(photoPath);
+    res.sendFile(absolutePath, (err) => {
+      if (err) {
+        console.error("❌ Error serving photo:", err);
+        res.status(500).send("Error serving photo");
+      }
+    });
   } else {
+    console.log("❌ Photo not found:", photoPath);
     res.status(404).send("Photo not found");
   }
 });
