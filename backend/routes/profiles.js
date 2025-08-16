@@ -98,9 +98,28 @@ router.post("/", upload.single('photo'), async (req, res) => {
 
     let photoFilename = null;
     
-    // Skip photo processing for now due to Railway storage limitations
-    // TODO: Implement cloud storage (AWS S3, Cloudinary, etc.) for production
-    console.log("Photo upload skipped - implement cloud storage for production");
+    // Process uploaded photo if provided
+    if (req.file) {
+      try {
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        photoFilename = `profile_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
+        const photoPath = path.join(uploadsDir, photoFilename);
+        
+        // Process and save image using Sharp (resize to 300x300, compress)
+        await sharp(req.file.buffer)
+          .resize(300, 300, { fit: 'cover' })
+          .jpeg({ quality: 85 })
+          .toFile(photoPath);
+          
+        console.log("Photo saved successfully:", photoFilename);
+      } catch (photoError) {
+        console.error("Photo processing error:", photoError);
+        // Continue without photo if processing fails
+        photoFilename = null;
+      }
+    }
 
     const profile = new Profile({ 
       wallet: wallet.toLowerCase(), 
@@ -132,8 +151,43 @@ router.post("/update", upload.single('photo'), async (req, res) => {
   try {
     const updateData = { name, birthday, starSign };
     
-    // Skip photo processing for now due to Railway storage limitations
-    console.log("Photo upload skipped - implement cloud storage for production");
+    // Process uploaded photo if provided
+    if (req.file) {
+      try {
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const photoFilename = `profile_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
+        const photoPath = path.join(uploadsDir, photoFilename);
+        
+        // Process and save image using Sharp (resize to 300x300, compress)
+        await sharp(req.file.buffer)
+          .resize(300, 300, { fit: 'cover' })
+          .jpeg({ quality: 85 })
+          .toFile(photoPath);
+          
+        // Add photo to update data
+        updateData.photo = photoFilename;
+        console.log("Photo saved successfully:", photoFilename);
+        
+        // Optional: Delete old photo file if it exists
+        const existingProfile = await Profile.findOne({ wallet: wallet.toLowerCase() });
+        if (existingProfile?.photo) {
+          const oldPhotoPath = path.join(uploadsDir, existingProfile.photo);
+          try {
+            if (fs.existsSync(oldPhotoPath)) {
+              fs.unlinkSync(oldPhotoPath);
+              console.log("Old photo deleted:", existingProfile.photo);
+            }
+          } catch (deleteError) {
+            console.warn("Could not delete old photo:", deleteError.message);
+          }
+        }
+      } catch (photoError) {
+        console.error("Photo processing error:", photoError);
+        // Continue without updating photo if processing fails
+      }
+    }
 
     const updated = await Profile.findOneAndUpdate(
       { wallet: wallet.toLowerCase() },
@@ -177,9 +231,17 @@ router.post("/archive", async (req, res) => {
 // Serve profile photos
 router.get("/photo/:filename", (req, res) => {
   const filename = req.params.filename;
+  
+  // Basic security: only allow certain file extensions and prevent path traversal
+  if (!filename.match(/^profile_[a-zA-Z0-9_]+\.(jpg|jpeg|png)$/i)) {
+    return res.status(400).send("Invalid filename");
+  }
+  
   const photoPath = path.join(uploadsDir, filename);
   
   if (fs.existsSync(photoPath)) {
+    // Set appropriate content type
+    res.setHeader('Content-Type', 'image/jpeg');
     res.sendFile(photoPath);
   } else {
     res.status(404).send("Photo not found");
