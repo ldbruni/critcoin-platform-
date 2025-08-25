@@ -90,19 +90,86 @@ const adminRateLimit = rateLimit({
   legacyHeaders: false
 });
 
+// Admin authentication for GET routes (uses query parameters)
+const authenticateAdminGET = async (req, res, next) => {
+  const { signature, message } = req.query;
+  const adminWallet = req.params.adminWallet?.toLowerCase();
+  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
+  
+  if (!ADMIN_WALLET) {
+    console.error('ADMIN_WALLET environment variable not set');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+  
+  // Verify wallet matches admin wallet first
+  if (adminWallet !== ADMIN_WALLET) {
+    return res.status(403).json({ error: 'Unauthorized wallet address' });
+  }
+  
+  // For backward compatibility in development only
+  if (process.env.NODE_ENV !== 'production' && !signature) {
+    console.warn('⚠️ Using insecure admin auth in development mode');
+    return next();
+  }
+  
+  if (!signature || !message) {
+    return res.status(403).json({ 
+      error: 'Admin GET routes require signature and message query parameters',
+      required: 'Add ?signature=SIGNATURE&message=MESSAGE to your request'
+    });
+  }
+  
+  try {
+    // Parse and validate message
+    let messageData;
+    try {
+      messageData = JSON.parse(decodeURIComponent(message));
+    } catch (e) {
+      return res.status(403).json({ error: 'Invalid message format' });
+    }
+    
+    // Check message timestamp (5 minutes expiry)
+    if (!messageData.timestamp || Date.now() - messageData.timestamp > 300000) {
+      return res.status(403).json({ error: 'Message expired or invalid timestamp' });
+    }
+    
+    // Verify signature
+    const recoveredAddress = ethers.utils.verifyMessage(
+      JSON.stringify(messageData), 
+      signature
+    );
+    
+    if (recoveredAddress.toLowerCase() !== ADMIN_WALLET) {
+      console.warn('❌ Invalid admin signature attempt (GET):', {
+        recovered: recoveredAddress,
+        expected: ADMIN_WALLET,
+        ip: req.ip,
+        route: req.route.path
+      });
+      return res.status(403).json({ error: 'Invalid admin signature' });
+    }
+    
+    // Log successful admin action
+    console.log('✅ Admin authenticated (GET):', {
+      route: req.route.path,
+      timestamp: new Date().toISOString(),
+      ip: req.ip
+    });
+    
+    next();
+  } catch (error) {
+    console.error('Admin GET authentication error:', error);
+    return res.status(403).json({ error: 'Authentication failed' });
+  }
+};
+
 // GET admin dashboard data
 router.get("/dashboard/:adminWallet", adminRateLimit, [
   param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
-], async (req, res) => {
+], authenticateAdminGET, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
-  }
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
   }
 
   try {
@@ -132,17 +199,20 @@ router.get("/dashboard/:adminWallet", adminRateLimit, [
     });
   } catch (err) {
     console.error("Dashboard fetch error:", err);
-    res.status(500).send("Server error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Server error' 
+    });
   }
 });
 
 // GET all profiles for admin management
-router.get("/profiles/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/profiles/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
@@ -150,7 +220,10 @@ router.get("/profiles/:adminWallet", async (req, res) => {
     res.json(profiles);
   } catch (err) {
     console.error("Profiles fetch error:", err);
-    res.status(500).send("Server error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Server error' 
+    });
   }
 });
 
@@ -179,17 +252,20 @@ router.post("/profiles/archive", authenticateAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Archive profile error:", err);
-    res.status(500).send("Database error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Database error' 
+    });
   }
 });
 
 // GET all posts for admin management
-router.get("/posts/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/posts/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
@@ -212,7 +288,10 @@ router.get("/posts/:adminWallet", async (req, res) => {
     res.json(enrichedPosts);
   } catch (err) {
     console.error("Posts fetch error:", err);
-    res.status(500).send("Server error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Server error' 
+    });
   }
 });
 
@@ -241,17 +320,20 @@ router.post("/posts/hide", authenticateAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Hide post error:", err);
-    res.status(500).send("Database error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Database error' 
+    });
   }
 });
 
 // GET all bounties
-router.get("/bounties/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/bounties/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
@@ -415,12 +497,12 @@ router.post("/deploy-critcoin", authenticateAdmin, async (req, res) => {
 });
 
 // GET all projects for admin management
-router.get("/projects/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/projects/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
@@ -477,12 +559,12 @@ router.post("/projects/archive", authenticateAdmin, async (req, res) => {
 });
 
 // GET system settings
-router.get("/settings/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/settings/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {
@@ -531,12 +613,12 @@ router.post("/settings", authenticateAdmin, async (req, res) => {
 });
 
 // GET whitelist
-router.get("/whitelist/:adminWallet", async (req, res) => {
-  const adminWallet = req.params.adminWallet.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-  
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized");
+router.get("/whitelist/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
   try {

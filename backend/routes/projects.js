@@ -201,15 +201,59 @@ router.post("/send-coin", async (req, res) => {
   }
 });
 
+// Secure file name sanitization for project images
+const sanitizeProjectFilename = (filename) => {
+  // Remove any path traversal attempts and normalize
+  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '');
+  
+  // Only allow specific pattern for project images
+  if (!sanitized.match(/^project_[a-fA-F0-9]{8,}_[0-9]{13}_[a-z0-9]{13}\.(jpg|jpeg|png|gif|webp)$/i)) {
+    throw new Error('Invalid project image filename format');
+  }
+  
+  return sanitized;
+};
+
 // Serve project images
 router.get("/image/:filename", (req, res) => {
   const filename = req.params.filename;
-  const imagePath = path.join(uploadsDir, filename);
   
-  if (fs.existsSync(imagePath)) {
-    res.sendFile(imagePath);
-  } else {
-    res.status(404).send("Image not found");
+  console.log("🖼️ Project image request:", filename);
+  
+  try {
+    // Secure filename validation
+    const safeFilename = sanitizeProjectFilename(filename);
+    const imagePath = path.resolve(uploadsDir, safeFilename);
+    
+    // Double-check that resolved path is within uploads directory
+    if (!imagePath.startsWith(path.resolve(uploadsDir))) {
+      console.log("❌ Path traversal attempt blocked:", filename);
+      return res.status(400).json({ error: "Invalid file path" });
+    }
+    
+    if (fs.existsSync(imagePath)) {
+      console.log("✅ Serving project image:", imagePath);
+      
+      // Set security headers for image serving
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      
+      // Use absolute path for sendFile
+      const absolutePath = path.resolve(imagePath);
+      res.sendFile(absolutePath, (err) => {
+        if (err) {
+          console.error("❌ Error serving project image:", err);
+          res.status(500).json({ error: "Error serving image" });
+        }
+      });
+    } else {
+      console.log("❌ Project image not found:", imagePath);
+      res.status(404).json({ error: "Image not found" });
+    }
+  } catch (error) {
+    console.log("❌ Invalid project image filename:", filename, error.message);
+    return res.status(400).json({ error: "Invalid filename" });
   }
 });
 

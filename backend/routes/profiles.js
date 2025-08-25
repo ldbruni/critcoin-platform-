@@ -27,17 +27,53 @@ async function checkCritCoinBalance(walletAddress) {
   }
 }
 
-// Configure multer for file uploads
+// File type validation with magic number checking
+const validateImageType = (buffer) => {
+  // Check file signatures (magic numbers) for common image formats
+  const signatures = {
+    'jpg': [0xFF, 0xD8, 0xFF],
+    'png': [0x89, 0x50, 0x4E, 0x47],
+    'gif': [0x47, 0x49, 0x46],
+    'webp': [0x52, 0x49, 0x46, 0x46] // RIFF (WebP starts with RIFF)
+  };
+  
+  for (const [type, sig] of Object.entries(signatures)) {
+    if (sig.every((byte, index) => buffer[index] === byte)) {
+      return type;
+    }
+  }
+  
+  return null;
+};
+
+// Configure multer for file uploads with enhanced security
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { 
+    fileSize: 5 * 1024 * 1024, // Reduced to 5MB limit
+    files: 1 // Only allow 1 file at a time
+  },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
+    // Check MIME type
+    const allowedMimes = [
+      'image/jpeg', 'image/jpg', 'image/png', 
+      'image/gif', 'image/webp'
+    ];
+    
+    if (!allowedMimes.includes(file.mimetype)) {
+      return cb(new Error(`Invalid file type. Allowed: ${allowedMimes.join(', ')}`));
     }
+    
+    // Check file extension
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    if (!allowedExtensions.includes(fileExtension)) {
+      return cb(new Error(`Invalid file extension. Allowed: ${allowedExtensions.join(', ')}`));
+    }
+    
+    cb(null, true);
   }
 });
 
@@ -149,10 +185,30 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
       try {
         console.log("📸 Processing photo upload...");
         
-        // Validate file size (max 10MB)
-        if (req.file.size > 10 * 1024 * 1024) {
+        // Validate file size (already checked by multer, but double-check)
+        if (req.file.size > 5 * 1024 * 1024) {
           console.log("❌ Photo too large:", req.file.size);
-          return res.status(400).send("Photo file is too large (max 10MB)");
+          return res.status(400).json({ error: "Photo file is too large (max 5MB)" });
+        }
+        
+        // Validate file type using magic numbers
+        const detectedType = validateImageType(req.file.buffer);
+        if (!detectedType) {
+          console.log("❌ Invalid image file signature");
+          return res.status(400).json({ error: "Invalid image file format" });
+        }
+        
+        // Verify the detected type matches the claimed MIME type
+        const mimeTypeMap = {
+          'jpg': ['image/jpeg', 'image/jpg'],
+          'png': ['image/png'],
+          'gif': ['image/gif'],
+          'webp': ['image/webp']
+        };
+        
+        if (!mimeTypeMap[detectedType] || !mimeTypeMap[detectedType].includes(req.file.mimetype)) {
+          console.log("❌ File signature doesn't match MIME type:", detectedType, req.file.mimetype);
+          return res.status(400).json({ error: "File type mismatch detected" });
         }
         
         // Generate unique filename
@@ -163,16 +219,26 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
         
         console.log("📸 Saving photo to:", photoPath);
         
-        // Process and save image using Sharp (resize to 300x300, compress)
+        // Process and save image using Sharp with security settings
         await sharp(req.file.buffer)
-          .resize(300, 300, { fit: 'cover' })
-          .jpeg({ quality: 85 })
+          .resize(300, 300, { 
+            fit: 'cover',
+            withoutEnlargement: true // Don't upscale small images
+          })
+          .jpeg({ 
+            quality: 85,
+            mozjpeg: true // Use mozjpeg encoder for better compression
+          })
+          .removeAlpha() // Remove alpha channel for security
           .toFile(photoPath);
           
         console.log("✅ Photo saved successfully:", photoFilename);
       } catch (photoError) {
         console.error("❌ Photo processing error:", photoError);
-        return res.status(500).send(`Photo processing failed: ${photoError.message}`);
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        return res.status(500).json({ 
+          error: isDevelopment ? photoError.message : 'Photo processing failed'
+        });
       }
     } else {
       console.log("📸 No photo provided");
@@ -193,7 +259,10 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
     res.status(201).json(profile);
   } catch (err) {
     console.error("Profile create error:", err);
-    res.status(500).send(`Database error: ${err.message}`);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Failed to create profile' 
+    });
   }
 });
 
@@ -257,7 +326,10 @@ router.post("/update", upload.single('photo'), async (req, res) => {
     res.json(updated);
   } catch (err) {
     console.error("Profile update error:", err);
-    res.status(500).send(`Database error: ${err.message}`);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Failed to update profile' 
+    });
   }
 });
 
@@ -281,7 +353,10 @@ router.post("/archive", async (req, res) => {
     res.json({ message: "Profile archived", profile });
   } catch (err) {
     console.error("Archive error:", err);
-    res.status(500).send("Database error");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Database error' 
+    });
   }
 });
 

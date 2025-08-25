@@ -121,11 +121,23 @@ console.log("MONGO_URI preview:", process.env.MONGO_URI ? process.env.MONGO_URI.
 console.log("ADMIN_WALLET:", process.env.ADMIN_WALLET);
 console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 
-// Connect to MongoDB
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI environment variable is not set!");
+// Validate critical environment variables
+const requiredEnvVars = ['MONGO_URI', 'ADMIN_WALLET'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('Create a .env file based on .env.example');
   process.exit(1);
 }
+
+// Validate admin wallet format
+if (!/^0x[a-fA-F0-9]{40}$/.test(process.env.ADMIN_WALLET)) {
+  console.error('❌ ADMIN_WALLET must be a valid Ethereum address');
+  process.exit(1);
+}
+
+// Connect to MongoDB
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,

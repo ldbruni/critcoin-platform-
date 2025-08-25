@@ -1,32 +1,79 @@
 // backend/routes/posts.js
 const express = require("express");
 const router = express.Router();
+const { body, param, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const Post = require("../models/Post");
+const Profile = require("../models/Profiles");
 
 
-// GET all non-archived profiles
-router.get("/all", async (req, res) => {
-  try {
-    const profiles = await Profile.find({ archived: { $ne: true } });
-    res.json(profiles);
-  } catch (err) {
-    console.error("Failed to fetch profiles:", err);
-    res.status(500).send("Failed to fetch profiles");
-  }
+// Rate limiting for posts
+const postLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 posts per windowMs
+  message: { error: 'Too many posts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
+const voteLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // limit each IP to 30 votes per minute
+  message: { error: 'Too many votes, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Input validation middleware
+const validatePost = [
+  body('authorWallet').isEthereumAddress().withMessage('Invalid wallet address'),
+  body('content')
+    .isLength({ min: 1, max: 2000 })
+    .withMessage('Content must be 1-2000 characters')
+    .trim()
+    .escape()
+];
+
+const validateVote = [
+  body('postId').isMongoId().withMessage('Invalid post ID'),
+  body('type').isIn(['up', 'down']).withMessage('Vote type must be "up" or "down"'),
+  body('voterWallet').isEthereumAddress().withMessage('Invalid voter wallet address')
+];
+
 // Create a new post
-router.post("/", async (req, res) => {
+router.post("/", postLimiter, validatePost, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { authorWallet, content } = req.body;
-  if (!authorWallet || !content) return res.status(400).send("Missing fields");
 
   try {
-    const post = new Post({ authorWallet, content });
+    // Verify user has a profile (business logic validation)
+    const profile = await Profile.findOne({ 
+      wallet: { $eq: authorWallet.toLowerCase() },
+      archived: { $ne: true }
+    });
+    
+    if (!profile) {
+      return res.status(403).json({ error: "Must have an active profile to post" });
+    }
+
+    const post = new Post({ 
+      authorWallet: authorWallet.toLowerCase(),
+      content: content.trim()
+    });
+    
     await post.save();
+    console.log(`✅ New post created by ${profile.name} (${authorWallet})`);
     res.status(201).json(post);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Database error");
+    console.error('Post creation error:', err);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Failed to create post' 
+    });
   }
 });
 
@@ -40,25 +87,45 @@ router.get("/", async (req, res) => {
     res.json(posts);
   } catch (err) {
     console.error("❌ Get posts error:", err);
-    res.status(500).send("Failed to fetch posts");
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Failed to fetch posts' 
+    });
   }
 });
 
 // Upvote or downvote a post
-router.post("/vote", async (req, res) => {
-  const { postId, type, voterWallet } = req.body;
-  if (!postId || !["up", "down"].includes(type) || !voterWallet) {
-    return res.status(400).send("Invalid vote request");
+router.post("/vote", voteLimiter, validateVote, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
 
-  try {
-    const post = await Post.findById(postId);
-    if (!post) return res.status(404).send("Post not found");
+  const { postId, type, voterWallet } = req.body;
 
-    const existingVote = post.votes.get(voterWallet);
+  try {
+    // Verify voter has a profile
+    const voterProfile = await Profile.findOne({ 
+      wallet: { $eq: voterWallet.toLowerCase() },
+      archived: { $ne: true }
+    });
+    
+    if (!voterProfile) {
+      return res.status(403).json({ error: "Must have an active profile to vote" });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    
+    if (post.hidden) {
+      return res.status(403).json({ error: "Cannot vote on hidden post" });
+    }
+
+    const voterKey = voterWallet.toLowerCase();
+    const existingVote = post.votes.get(voterKey);
     
     if (existingVote === type) {
-      return res.status(400).send("You have already voted this way on this post");
+      return res.status(400).json({ error: "You have already voted this way on this post" });
     }
 
     // Remove previous vote if exists
@@ -71,7 +138,7 @@ router.post("/vote", async (req, res) => {
     }
 
     // Add new vote
-    post.votes.set(voterWallet, type);
+    post.votes.set(voterKey, type);
     if (type === "up") {
       post.upvotes += 1;
     } else {
@@ -79,10 +146,14 @@ router.post("/vote", async (req, res) => {
     }
 
     await post.save();
+    console.log(`✅ Vote recorded: ${voterProfile.name} ${type}voted post ${postId}`);
     res.json(post);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Vote failed");
+    console.error('Vote error:', err);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Vote failed' 
+    });
   }
 });
 
