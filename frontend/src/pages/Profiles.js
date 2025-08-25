@@ -289,40 +289,30 @@ export default function Profiles() {
   }, []);
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>🪪 CritCoin Profile</h1>
+    <div className="artistic-container" style={{ padding: "2rem" }}>
+      <h1 className="glitch neon-text" data-text="🪪 IDENTITY MATRIX">🪪 IDENTITY MATRIX</h1>
 
       {!wallet ? (
         <div>
-          <div style={{ 
-            backgroundColor: "#f8f9fa", 
-            padding: "1.5rem", 
-            borderRadius: "8px", 
-            marginBottom: "2rem",
-            textAlign: "center"
+          <div className="artistic-card" style={{ 
+            textAlign: "center",
+            padding: "2rem",
+            background: 'rgba(0, 128, 255, 0.05)',
+            border: '2px solid var(--neon-blue)'
           }}>
-            <h3>🔗 Connect Your Wallet</h3>
-            <p>Connect your wallet to create or edit your profile</p>
-            <button 
-              onClick={connectWallet}
-              style={{
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "1rem"
-              }}
-            >
-              Connect Wallet
+            <h3 className="neon-blue-text" style={{ fontFamily: 'Orbitron, monospace' }}>🔗 NEURAL INTERFACE REQUIRED</h3>
+            <p style={{ fontFamily: 'Fira Code, monospace', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem' }}>// Initialize quantum wallet to access identity protocols</p>
+            <button onClick={connectWallet} className="artistic-btn">
+              ESTABLISH CONNECTION
             </button>
           </div>
 
-          <h2>👥 Community Profiles</h2>
-          <p style={{ marginBottom: "2rem", color: "#666" }}>
-            Discover the CritCoin community members and their profiles
-          </p>
+          <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'rgba(57, 255, 20, 0.05)', border: '2px solid var(--neon-green)' }}>
+            <h2 className="neon-green-text" style={{ fontFamily: 'Orbitron, monospace' }}>👥 COMMUNITY MATRIX</h2>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'Space Mono, monospace' }}>
+              // Scanning registered identities in the CritCoin network...
+            </p>
+          </div>
 
 
           {loadingProfiles ? (
@@ -432,9 +422,15 @@ export default function Profiles() {
         </div>
       ) : profile && !editing ? (
         <>
-          <p><strong>Wallet:</strong> {wallet}</p>
-          <p><strong>Balance:</strong> {balance} CritCoin</p>
-          <h3>Your Profile</h3>
+          <div className="artistic-card" style={{ background: 'rgba(0, 255, 255, 0.05)', border: '2px solid var(--neon-cyan)', marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
+              <span className="neon-green-text">WALLET:</span> <code style={{ color: 'var(--neon-pink)', fontSize: '0.9rem' }}>{wallet}</code>
+            </p>
+            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
+              <span className="neon-cyan-text">CREDITS:</span> <span style={{ color: 'var(--neon-orange)', fontWeight: 'bold' }}>{balance}</span> <span className="neon-green-text">CritCoin</span>
+            </p>
+          </div>
+          <h3 className="neon-purple-text" style={{ fontFamily: 'Orbitron, monospace', textAlign: 'center', marginBottom: '1.5rem' }}>YOUR DIGITAL IDENTITY</h3>
           {profile.photo && (
             <div style={{ marginBottom: "1rem" }}>
               <img 

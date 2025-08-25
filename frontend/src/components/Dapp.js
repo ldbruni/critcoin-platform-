@@ -47,46 +47,54 @@ export class Dapp extends React.Component {
     }
 
     return (
-      <div className="container p-4">
-        <div className="row">
-          <div className="col-12">
-            <h1>{this.state.tokenData.name} ({this.state.tokenData.symbol})</h1>
-            <p>
-              Welcome <b>{this.state.selectedAddress}</b>, you have <b>{this.state.balance.toString()} {this.state.tokenData.symbol}</b>.
+      <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="artistic-card">
+          <h1 
+            className="glitch neon-text" 
+            data-text={`${this.state.tokenData.name} (${this.state.tokenData.symbol})`}
+          >
+            {this.state.tokenData.name} ({this.state.tokenData.symbol})
+          </h1>
+          <div style={{ 
+            background: 'rgba(0, 255, 255, 0.1)', 
+            border: '2px solid var(--neon-cyan)', 
+            borderRadius: '12px', 
+            padding: '1.5rem',
+            margin: '1rem 0'
+          }}>
+            <p style={{ fontSize: '1.2rem', fontFamily: 'Orbitron, monospace' }}>
+              <span className="neon-green-text">CONNECTED:</span> <code>{this.state.selectedAddress}</code>
             </p>
-            
-            {/* Sepolia ETH Faucet Button */}
-            <div style={{ marginBottom: "1rem" }}>
-              <a
-                href="https://sepoliafaucet.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-block",
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  textDecoration: "none",
-                  borderRadius: "0.375rem",
-                  fontWeight: "500",
-                  fontSize: "1rem",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s ease-in-out",
-                  marginRight: "1rem"
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = "#0056b3"}
-                onMouseOut={(e) => e.target.style.backgroundColor = "#007bff"}
-              >
-                🚰 Get Sepolia ETH
-              </a>
-              <small style={{ color: "#6c757d" }}>
-                Need test ETH for gas fees? Use the Sepolia faucet!
-              </small>
-            </div>
+            <p style={{ fontSize: '1.5rem', fontFamily: 'Orbitron, monospace' }}>
+              <span className="neon-pink-text">BALANCE:</span> <span className="neon-text" style={{ fontSize: '2rem', fontWeight: 'bold' }}>{this.state.balance.toString()}</span> <span className="neon-green-text">{this.state.tokenData.symbol}</span>
+            </p>
+          </div>
+          
+          {/* Artistic Faucet Button */}
+          <div style={{ margin: "2rem 0", textAlign: "center" }}>
+            <a
+              href="https://sepoliafaucet.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="artistic-btn"
+              style={{ 
+                textDecoration: "none",
+                display: "inline-block",
+                margin: "1rem"
+              }}
+            >
+              🚰 GET SEPOLIA ETH
+            </a>
+            <p style={{ 
+              color: "rgba(255, 255, 255, 0.7)", 
+              fontFamily: 'Fira Code, monospace',
+              fontSize: '0.9rem',
+              fontStyle: 'italic'
+            }}>
+              // Need test ETH for gas fees? Access the Sepolia faucet protocol
+            </p>
           </div>
         </div>
-        <hr />
 
         <div className="row">
           <div className="col-12">

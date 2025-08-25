@@ -214,8 +214,8 @@ export default function Projects() {
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1>🎨 Class Projects</h1>
+    <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+      <h1 className="glitch neon-text" data-text="🎨 CREATIVE MATRIX">🎨 CREATIVE MATRIX</h1>
 
       {!wallet ? (
         <button onClick={connectWallet}>Connect Wallet</button>

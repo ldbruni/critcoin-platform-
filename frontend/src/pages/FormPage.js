@@ -187,141 +187,250 @@ export default function ForumPage() {
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
-      <h1>💬 CritCoin Forum</h1>
+    <div className="artistic-container" style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
+      <h1 className="glitch neon-text" data-text="💬 CRITCOIN FORUM">💬 CRITCOIN FORUM</h1>
 
       {!wallet ? (
-        <button onClick={connectWallet}>Connect Wallet</button>
+        <div className="artistic-card" style={{ textAlign: "center", padding: "2rem" }}>
+          <h3 className="neon-cyan-text">🔗 NEURAL LINK REQUIRED</h3>
+          <p style={{ marginBottom: "1.5rem", fontFamily: 'Fira Code, monospace' }}>// Initialize wallet connection to access the forum matrix</p>
+          <button onClick={connectWallet} className="artistic-btn">CONNECT WALLET</button>
+        </div>
       ) : (
         <>
-          <p><strong>{profile?.name || wallet}</strong> — {balance} CritCoin</p>
+          <div className="artistic-card" style={{ marginBottom: "1.5rem", background: 'rgba(0, 255, 255, 0.05)', border: '2px solid var(--neon-cyan)' }}>
+            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
+              <span className="neon-green-text">USER:</span> <code style={{ color: 'var(--neon-pink)' }}>{profile?.name || wallet}</code> 
+              <span style={{ margin: '0 1rem', color: 'rgba(255,255,255,0.5)' }}>|</span>
+              <span className="neon-cyan-text">CREDITS:</span> <span style={{ color: 'var(--neon-orange)', fontWeight: 'bold' }}>{balance}</span>
+            </p>
+          </div>
 
           {profile && Number(balance) >= 1 ? (
-            <form onSubmit={submitPost}>
+            <div className="artistic-form">
+              <h3 className="neon-purple-text" style={{ marginBottom: '1rem', fontFamily: 'Orbitron, monospace' }}>BROADCAST MESSAGE</h3>
               <textarea
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
                 rows={4}
-                placeholder="Write something… (max 2000 characters)"
+                placeholder="// Enter your transmission... (max 2000 characters)"
                 maxLength="2000"
                 required
+                className="artistic-input"
+                style={{ fontFamily: 'Fira Code, monospace', minHeight: '120px', resize: 'vertical' }}
               />
-              <div style={{ fontSize: "0.8em", color: "#666", textAlign: "right" }}>
-                {newPost.length}/2000 characters
+              <div style={{ 
+                fontSize: "0.8em", 
+                color: newPost.length > 1800 ? "var(--neon-orange)" : "rgba(255,255,255,0.6)", 
+                textAlign: "right",
+                fontFamily: 'Fira Code, monospace',
+                marginTop: '0.5rem'
+              }}>
+                [{newPost.length}/2000] CHARS
               </div>
-              <br />
-              <button type="submit">Post</button>
-            </form>
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button type="submit" onClick={submitPost} className="artistic-btn">TRANSMIT 📡</button>
+              </div>
+            </div>
           ) : (
-            <p style={{ color: "red" }}>
-              { !profile
-                ? <>No profile found. <Link to="/profiles">Create your profile</Link> to post.</>
-                : "You need ≥1 CritCoin to post." }
-            </p>
+            <div className="artistic-card" style={{ 
+              border: '2px solid var(--neon-orange)', 
+              background: 'rgba(255, 102, 0, 0.1)',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: "var(--neon-orange)", fontFamily: 'Orbitron, monospace', fontWeight: 'bold' }}>
+                { !profile
+                  ? <>⚠️ PROFILE REQUIRED — <Link to="/profiles" style={{ color: 'var(--neon-pink)' }}>Initialize Identity Matrix</Link> to broadcast</>
+                  : "⚠️ INSUFFICIENT CREDITS — Need ≥1 CritCoin to transmit" }
+              </p>
+            </div>
           )}
         </>
       )}
 
-      <hr />
+      <div style={{ height: '2px', background: 'var(--gradient-primary)', margin: '2rem 0', borderRadius: '1px' }}></div>
+      <div className="artistic-card" style={{ background: 'rgba(26, 26, 26, 0.6)', padding: '1rem' }}>
+        <h2 className="neon-green-text" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>📡 TRANSMISSION LOG</h2>
+      </div>
+      
       {posts.map((p) => (
-        <div key={p._id} style={{ marginBottom: "1.5rem", borderBottom: "1px solid #ccc" }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
-            {p.authorPhoto && (
+        <div key={p._id} className="artistic-card" style={{ 
+          marginBottom: "1.5rem", 
+          background: 'rgba(42, 42, 42, 0.8)',
+          border: '1px solid var(--dark-border)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {/* Glowing border animation */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'var(--gradient-accent)',
+            animation: 'pulse 3s ease-in-out infinite'
+          }}></div>
+          
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+            {p.authorPhoto ? (
               <img
                 src={`${API.profiles}/photo/${p.authorPhoto}`}
                 alt="Profile"
+                className="artistic-profile-img"
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  marginRight: "0.5rem",
-                  border: "1px solid #ddd"
+                  width: "50px",
+                  height: "50px",
+                  marginRight: "1rem"
                 }}
               />
+            ) : (
+              <div style={{
+                width: "50px",
+                height: "50px",
+                borderRadius: "50%",
+                background: 'var(--gradient-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: "1rem",
+                fontSize: '1.5rem'
+              }}>👤</div>
             )}
-            <div>
-              <strong>{p.authorName}</strong>{" "}
-              <small style={{ color: "#777" }}>
-                ({new Date(p.createdAt).toLocaleString()})
-              </small>
+            <div style={{ flex: 1 }}>
+              <div style={{ 
+                fontFamily: 'Orbitron, monospace', 
+                color: 'var(--neon-cyan)',
+                fontWeight: 'bold',
+                marginBottom: '0.25rem'
+              }}>
+                {p.authorName}
+              </div>
+              <div style={{ 
+                fontSize: "0.8rem",
+                color: "rgba(255,255,255,0.5)",
+                fontFamily: 'Fira Code, monospace'
+              }}>
+                // {new Date(p.createdAt).toLocaleString()}
+              </div>
             </div>
           </div>
-          <p>{p.content}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "0.5rem" }}>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid var(--dark-elevated)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+            fontFamily: 'Space Mono, monospace',
+            lineHeight: '1.6'
+          }}>
+            {p.content}
+          </div>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            padding: '0.75rem',
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '6px',
+            border: '1px solid var(--dark-elevated)'
+          }}>
             {/* Vote counts always visible */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ 
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ 
                 display: "flex", 
                 alignItems: "center", 
-                color: "#28a745",
-                fontWeight: "bold",
-                fontSize: "0.9rem",
-                gap: "0.25rem"
+                gap: "0.5rem",
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(40, 167, 69, 0.1)',
+                border: '1px solid var(--neon-green)',
+                borderRadius: '20px'
               }}>
-                <UpvoteEmoji size="1em" /> {p.upvotes || 0}
-              </span>
-              <span style={{ 
+                <UpvoteEmoji size="1.2em" /> 
+                <span style={{
+                  color: "var(--neon-green)",
+                  fontWeight: "bold",
+                  fontFamily: 'Orbitron, monospace'
+                }}>{p.upvotes || 0}</span>
+              </div>
+              <div style={{ 
                 display: "flex", 
                 alignItems: "center", 
-                color: "#dc3545",
-                fontWeight: "bold",
-                fontSize: "0.9rem",
-                gap: "0.25rem"
+                gap: "0.5rem",
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(220, 53, 69, 0.1)',
+                border: '1px solid var(--neon-pink)',
+                borderRadius: '20px'
               }}>
-                <DownvoteEmoji size="1em" /> {p.downvotes || 0}
-              </span>
+                <DownvoteEmoji size="1.2em" /> 
+                <span style={{
+                  color: "var(--neon-pink)",
+                  fontWeight: "bold",
+                  fontFamily: 'Orbitron, monospace'
+                }}>{p.downvotes || 0}</span>
+              </div>
             </div>
             
             {/* Voting buttons only for connected users */}
             {wallet && (
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button 
                   onClick={() => vote(p._id, "up")}
                   disabled={p.votes && p.votes[wallet?.toLowerCase()] === "up"}
+                  className="artistic-btn"
                   style={{ 
-                    backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "#90EE90" : "#f8f9fa",
-                    border: "1px solid #28a745",
-                    color: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "#155724" : "#28a745",
-                    borderRadius: "4px",
-                    padding: "0.25rem 0.5rem",
+                    background: p.votes && p.votes[wallet?.toLowerCase()] === "up" 
+                      ? 'var(--gradient-accent)' 
+                      : 'rgba(57, 255, 20, 0.1)',
+                    border: "2px solid var(--neon-green)",
+                    color: "white",
+                    padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontWeight: "bold"
+                    fontFamily: 'Orbitron, monospace',
+                    opacity: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "You upvoted this" : "Upvote"}
                 >
-                  <UpvoteEmoji size="0.8em" /> Upvote
+                  <UpvoteEmoji size="0.9em" /> BOOST
                 </button>
                 <button 
                   onClick={() => vote(p._id, "down")}
                   disabled={p.votes && p.votes[wallet?.toLowerCase()] === "down"}
+                  className="artistic-btn"
                   style={{ 
-                    backgroundColor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "#FFB6C1" : "#f8f9fa",
-                    border: "1px solid #dc3545",
-                    color: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "#721c24" : "#dc3545",
-                    borderRadius: "4px",
-                    padding: "0.25rem 0.5rem",
+                    background: p.votes && p.votes[wallet?.toLowerCase()] === "down" 
+                      ? 'var(--gradient-primary)' 
+                      : 'rgba(255, 0, 128, 0.1)',
+                    border: "2px solid var(--neon-pink)",
+                    color: "white",
+                    padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontWeight: "bold"
+                    fontFamily: 'Orbitron, monospace',
+                    opacity: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "You downvoted this" : "Downvote"}
                 >
-                  <DownvoteEmoji size="0.8em" /> Downvote
+                  <DownvoteEmoji size="0.9em" /> DECAY
                 </button>
               </div>
             )}
             
             {/* Message for non-connected users */}
             {!wallet && (
-              <span style={{ 
-                fontSize: "0.8rem", 
-                color: "#6c757d",
+              <div style={{
+                padding: '0.5rem 1rem',
+                background: 'rgba(108, 117, 125, 0.1)',
+                border: '1px solid rgba(108, 117, 125, 0.3)',
+                borderRadius: '20px',
+                fontSize: "0.8rem",
+                color: "rgba(255,255,255,0.6)",
+                fontFamily: 'Fira Code, monospace',
                 fontStyle: "italic"
               }}>
-                Connect wallet to vote
-              </span>
+                // neural_link_required_to_vote
+              </div>
             )}
           </div>
         </div>

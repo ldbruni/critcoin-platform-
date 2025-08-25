@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from "react-router-dom";
 import { Dapp } from "./components/Dapp";
 import Bounties from "./pages/Bounties";
 import Profiles from "./pages/Profiles";
@@ -7,9 +7,44 @@ import FormPage from "./pages/FormPage";
 import Projects from "./pages/Projects";
 import Explorer from "./pages/Explorer";
 import Admin from "./pages/Admin";
+import './styles/artistic.css';
 
 // Replace with your actual admin wallet address
 const ADMIN_WALLET = process.env.REACT_APP_ADMIN_WALLET?.toLowerCase() || "0xc69c361d300aeaad0aee95bd1c753e62298f92e9";
+
+function Navigation({ isAdmin }) {
+  const location = useLocation();
+  
+  const isActive = (path) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+  
+  return (
+    <nav className="artistic-nav">
+      <div className="nav-row">
+        <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>🏠 Home</Link>
+        <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'active' : ''}`}>👤 Profiles</Link>
+        <Link to="/projects" className={`nav-link ${isActive('/projects') ? 'active' : ''}`}>🎨 Projects</Link>
+        <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>🔍 Explorer</Link>
+      </div>
+      <div className="nav-row">
+        <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>💬 Forum</Link>
+        <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>🎯 Bounties</Link>
+        {isAdmin && (
+          <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`} style={{
+            background: 'linear-gradient(135deg, #ff6600, #ff0080)',
+            color: 'white',
+            fontWeight: 'bold'
+          }}>
+            🛡️ Admin
+          </Link>
+        )}
+      </div>
+    </nav>
+  );
+}
 
 export default function App() {
   const [wallet, setWallet] = useState(null);
@@ -58,68 +93,7 @@ export default function App() {
 
   return (
     <Router>
-      <nav style={{ 
-        padding: "1rem", 
-        borderBottom: "1px solid #ccc",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "0.5rem"
-      }}>
-        <div style={{ 
-          display: "flex", 
-          flexWrap: "wrap", 
-          justifyContent: "center",
-          alignItems: "center", 
-          gap: "0.5rem",
-          width: "100%"
-        }}>
-          {/* First row - main navigation */}
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "0.5rem",
-            justifyContent: "center",
-            flexWrap: "wrap"
-          }}>
-            <Link to="/" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🏠 Home</Link>
-            <span>|</span>
-            <Link to="/profiles" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>👤 Profiles</Link>
-            <span>|</span>
-            <Link to="/projects" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🎨 Projects</Link>
-            <span>|</span>
-            <Link to="/explorer" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🔍 Explorer</Link>
-          </div>
-          
-          {/* Second row - secondary navigation */}
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "0.5rem",
-            justifyContent: "center",
-            width: "100%",
-            marginTop: "0.25rem"
-          }}>
-            <Link to="/forum" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>💬 Forum</Link>
-            <span>|</span>
-            <Link to="/bounties" style={{ textDecoration: "none", padding: "0.25rem 0.5rem" }}>🎯 Bounties</Link>
-            {isAdmin && (
-              <>
-                <span>|</span>
-                <Link to="/admin" style={{ 
-                  color: "#dc3545", 
-                  fontWeight: "bold", 
-                  textDecoration: "none", 
-                  padding: "0.25rem 0.5rem" 
-                }}>
-                  🛡️ Admin
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
+      <Navigation isAdmin={isAdmin} />
       <Routes>
         <Route path="/" element={<Dapp />} />
         <Route path="/bounties" element={<Bounties />} />
