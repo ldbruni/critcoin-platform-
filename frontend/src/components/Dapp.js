@@ -80,7 +80,7 @@ export class Dapp extends React.Component {
                 margin: "1rem"
               }}
             >
-              🚰 GET SEPOLIA ETH
+              GET SEPOLIA ETH
             </a>
             <p style={{ 
               color: "rgba(255, 255, 255, 0.6)", 

@@ -24,21 +24,21 @@ function Navigation({ isAdmin }) {
   return (
     <nav className="artistic-nav">
       <div className="nav-row">
-        <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>🏠 Home</Link>
-        <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'active' : ''}`}>👤 Profiles</Link>
-        <Link to="/projects" className={`nav-link ${isActive('/projects') ? 'active' : ''}`}>🎨 Projects</Link>
-        <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>🔍 Explorer</Link>
+        <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>Home</Link>
+        <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'active' : ''}`}>Profiles</Link>
+        <Link to="/projects" className={`nav-link ${isActive('/projects') ? 'active' : ''}`}>Projects</Link>
+        <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>Explorer</Link>
       </div>
       <div className="nav-row">
-        <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>💬 Forum</Link>
-        <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>🎯 Bounties</Link>
+        <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>Forum</Link>
+        <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>Bounties</Link>
         {isAdmin && (
           <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`} style={{
             background: 'linear-gradient(135deg, #ff6600, #ff0080)',
             color: 'white',
             fontWeight: 'bold'
           }}>
-            🛡️ Admin
+            Admin
           </Link>
         )}
       </div>

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
-import { UpvoteEmoji, DownvoteEmoji } from "../components/Emoji";
+// import { UpvoteEmoji, DownvoteEmoji } from "../components/Emoji";
 
 export default function ForumPage() {
   const [wallet, setWallet] = useState(null);
@@ -188,11 +188,11 @@ export default function ForumPage() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text">💬 CritCoin Forum</h1>
+      <h1 className="gothic-title gothic-text">CritCoin Forum</h1>
 
       {!wallet ? (
         <div className="artistic-card" style={{ textAlign: "center", padding: "2rem" }}>
-          <h3 className="royal-text">🔗 Wallet Connection Required</h3>
+          <h3 className="royal-text">Wallet Connection Required</h3>
           <p style={{ marginBottom: "1.5rem", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>Connect your wallet to access the forum</p>
           <button onClick={connectWallet} className="artistic-btn">Connect Wallet</button>
         </div>
@@ -250,7 +250,7 @@ export default function ForumPage() {
 
       <div style={{ height: '2px', background: 'var(--gradient-primary)', margin: '2rem 0', borderRadius: '1px' }}></div>
       <div className="artistic-card" style={{ background: 'rgba(26, 26, 26, 0.6)', padding: '1rem' }}>
-        <h2 className="sage-text" style={{ marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'Cinzel, serif' }}>💬 Forum Posts</h2>
+        <h2 className="sage-text" style={{ marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'Cinzel, serif' }}>Forum Posts</h2>
       </div>
       
       {posts.map((p) => (
@@ -295,13 +295,13 @@ export default function ForumPage() {
                 justifyContent: 'center',
                 marginRight: "1rem",
                 fontSize: '1.5rem'
-              }}>👤</div>
+              }}>P</div>
             )}
             <div style={{ flex: 1 }}>
               <div style={{ 
-                fontFamily: 'Orbitron, monospace', 
-                color: 'var(--neon-cyan)',
-                fontWeight: 'bold',
+                fontFamily: 'Cinzel, serif', 
+                color: 'var(--accent-gold)',
+                fontWeight: '600',
                 marginBottom: '0.25rem'
               }}>
                 {p.authorName}
@@ -309,9 +309,10 @@ export default function ForumPage() {
               <div style={{ 
                 fontSize: "0.8rem",
                 color: "rgba(255,255,255,0.5)",
-                fontFamily: 'Fira Code, monospace'
+                fontFamily: 'Crimson Text, serif',
+                fontStyle: 'italic'
               }}>
-                // {new Date(p.createdAt).toLocaleString()}
+                {new Date(p.createdAt).toLocaleString()}
               </div>
             </div>
           </div>
@@ -342,15 +343,16 @@ export default function ForumPage() {
                 alignItems: "center", 
                 gap: "0.5rem",
                 padding: '0.5rem 0.75rem',
-                background: 'rgba(40, 167, 69, 0.1)',
-                border: '1px solid var(--neon-green)',
+                background: 'rgba(22, 163, 74, 0.1)',
+                border: '1px solid var(--complement-green)',
                 borderRadius: '20px'
               }}>
-                <UpvoteEmoji size="1.2em" /> 
+                ↑
                 <span style={{
-                  color: "var(--neon-green)",
+                  color: "var(--complement-green)",
                   fontWeight: "bold",
-                  fontFamily: 'Orbitron, monospace'
+                  fontFamily: 'Cinzel, serif',
+                  marginLeft: '0.5rem'
                 }}>{p.upvotes || 0}</span>
               </div>
               <div style={{ 
@@ -358,15 +360,16 @@ export default function ForumPage() {
                 alignItems: "center", 
                 gap: "0.5rem",
                 padding: '0.5rem 0.75rem',
-                background: 'rgba(220, 53, 69, 0.1)',
-                border: '1px solid var(--neon-pink)',
+                background: 'rgba(220, 38, 38, 0.1)',
+                border: '1px solid var(--primary-red)',
                 borderRadius: '20px'
               }}>
-                <DownvoteEmoji size="1.2em" /> 
+                ↓
                 <span style={{
-                  color: "var(--neon-pink)",
+                  color: "var(--primary-red)",
                   fontWeight: "bold",
-                  fontFamily: 'Orbitron, monospace'
+                  fontFamily: 'Cinzel, serif',
+                  marginLeft: '0.5rem'
                 }}>{p.downvotes || 0}</span>
               </div>
             </div>
@@ -380,19 +383,19 @@ export default function ForumPage() {
                   className="artistic-btn"
                   style={{ 
                     background: p.votes && p.votes[wallet?.toLowerCase()] === "up" 
-                      ? 'var(--gradient-accent)' 
-                      : 'rgba(57, 255, 20, 0.1)',
-                    border: "2px solid var(--neon-green)",
+                      ? 'var(--gradient-secondary)' 
+                      : 'rgba(22, 163, 74, 0.1)',
+                    border: "2px solid var(--complement-green)",
                     color: "white",
                     padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontFamily: 'Orbitron, monospace',
+                    fontFamily: 'Cinzel, serif',
                     opacity: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "You upvoted this" : "Upvote"}
                 >
-                  <UpvoteEmoji size="0.9em" /> BOOST
+                  ↑ Upvote
                 </button>
                 <button 
                   onClick={() => vote(p._id, "down")}
@@ -401,18 +404,18 @@ export default function ForumPage() {
                   style={{ 
                     background: p.votes && p.votes[wallet?.toLowerCase()] === "down" 
                       ? 'var(--gradient-primary)' 
-                      : 'rgba(255, 0, 128, 0.1)',
-                    border: "2px solid var(--neon-pink)",
+                      : 'rgba(220, 38, 38, 0.1)',
+                    border: "2px solid var(--primary-red)",
                     color: "white",
                     padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontFamily: 'Orbitron, monospace',
+                    fontFamily: 'Cinzel, serif',
                     opacity: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "You downvoted this" : "Downvote"}
                 >
-                  <DownvoteEmoji size="0.9em" /> DECAY
+                  ↓ Downvote
                 </button>
               </div>
             )}

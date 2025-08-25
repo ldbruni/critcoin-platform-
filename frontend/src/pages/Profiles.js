@@ -290,7 +290,7 @@ export default function Profiles() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem" }}>
-      <h1 className="gothic-title gothic-text">🪪 CritCoin Profiles</h1>
+      <h1 className="gothic-title gothic-text">CritCoin Profiles</h1>
 
       {!wallet ? (
         <div>
@@ -300,7 +300,7 @@ export default function Profiles() {
             background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(22, 163, 74, 0.03))',
             border: '2px solid var(--complement-blue)'
           }}>
-            <h3 className="royal-text" style={{ fontFamily: 'Cinzel, serif' }}>🔗 Wallet Connection Required</h3>
+            <h3 className="royal-text" style={{ fontFamily: 'Cinzel, serif' }}>Wallet Connection Required</h3>
             <p style={{ fontFamily: 'Crimson Text, serif', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem', fontStyle: 'italic' }}>Connect your wallet to create or edit your profile</p>
             <button onClick={connectWallet} className="artistic-btn">
               Connect Wallet
@@ -308,7 +308,7 @@ export default function Profiles() {
           </div>
 
           <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(245, 158, 11, 0.05))', border: '2px solid var(--complement-green)' }}>
-            <h2 className="sage-text" style={{ fontFamily: 'Cinzel, serif' }}>👥 Community Profiles</h2>
+            <h2 className="sage-text" style={{ fontFamily: 'Cinzel, serif' }}>Community Profiles</h2>
             <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>
               Discover the CritCoin community members
             </p>
@@ -374,7 +374,7 @@ export default function Profiles() {
                         margin: "0 auto"
                       }}
                     >
-                      👤
+                      P
                     </div>
                   </div>
                   <h4 style={{ 
@@ -517,7 +517,7 @@ export default function Profiles() {
                         font-size: 3rem;
                         color: #999;
                       `;
-                      fallback.textContent = '👤';
+                      fallback.textContent = 'P';
                       e.target.parentNode.appendChild(fallback);
                     }}
                   />
@@ -647,7 +647,7 @@ export default function Profiles() {
                         margin: "0 auto"
                       }}
                     >
-                      👤
+                      P
                     </div>
                   </div>
                   <h4 style={{ 
