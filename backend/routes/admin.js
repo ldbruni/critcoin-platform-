@@ -1,6 +1,8 @@
 // backend/routes/admin.js
 const express = require("express");
 const router = express.Router();
+const { param, body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const Profile = require("../models/Profiles");
 const Post = require("../models/Post");
 const Bounty = require("../models/Bounty");
@@ -8,21 +10,94 @@ const Project = require("../models/Project");
 const Transaction = require("../models/Transaction");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
+const { ethers } = require('ethers');
 
-// Admin authentication middleware
-const authenticateAdmin = (req, res, next) => {
-  const { adminWallet } = req.body;
+// Admin authentication middleware with signature verification
+const authenticateAdmin = async (req, res, next) => {
+  const { adminWallet, signature, message } = req.body;
   const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
   
-  if (!adminWallet || adminWallet.toLowerCase() !== ADMIN_WALLET) {
-    return res.status(403).send("Unauthorized: Admin access required");
+  if (!ADMIN_WALLET) {
+    console.error('ADMIN_WALLET environment variable not set');
+    return res.status(500).send('Server configuration error');
   }
   
-  next();
+  // For backward compatibility, allow old method in development only
+  if (process.env.NODE_ENV !== 'production' && adminWallet && !signature) {
+    if (adminWallet.toLowerCase() === ADMIN_WALLET) {
+      console.warn('⚠️ Using insecure admin auth in development mode');
+      return next();
+    }
+  }
+  
+  if (!signature || !message) {
+    return res.status(403).json({ error: 'Signature and message required for admin authentication' });
+  }
+  
+  try {
+    // Parse and validate message
+    let messageData;
+    try {
+      messageData = JSON.parse(message);
+    } catch (e) {
+      return res.status(403).json({ error: 'Invalid message format' });
+    }
+    
+    // Check message timestamp (5 minutes expiry)
+    if (!messageData.timestamp || Date.now() - messageData.timestamp > 300000) {
+      return res.status(403).json({ error: 'Message expired or invalid timestamp' });
+    }
+    
+    // Check action matches the request
+    const expectedAction = `admin_${req.method.toLowerCase()}_${req.route?.path?.replace(/[:*]/g, '') || 'unknown'}`;
+    if (messageData.action && messageData.action !== expectedAction) {
+      console.warn(`Action mismatch: expected ${expectedAction}, got ${messageData.action}`);
+    }
+    
+    // Verify signature
+    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
+    
+    if (recoveredAddress.toLowerCase() !== ADMIN_WALLET) {
+      console.warn('❌ Invalid admin signature attempt:', {
+        recovered: recoveredAddress,
+        expected: ADMIN_WALLET,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+      return res.status(403).json({ error: 'Invalid admin signature' });
+    }
+    
+    // Log successful admin action
+    console.log('✅ Admin authenticated:', {
+      action: expectedAction,
+      timestamp: new Date().toISOString(),
+      ip: req.ip
+    });
+    
+    next();
+  } catch (error) {
+    console.error('Admin authentication error:', error);
+    return res.status(403).json({ error: 'Authentication failed' });
+  }
 };
 
+// Rate limiting for admin endpoints
+const adminRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // limit each IP to 50 requests per windowMs
+  message: 'Too many admin requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // GET admin dashboard data
-router.get("/dashboard/:adminWallet", async (req, res) => {
+router.get("/dashboard/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   const adminWallet = req.params.adminWallet.toLowerCase();
   const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
   

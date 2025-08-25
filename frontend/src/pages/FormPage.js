@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
+import { UpvoteEmoji, DownvoteEmoji } from "../components/Emoji";
 
 export default function ForumPage() {
   const [wallet, setWallet] = useState(null);
@@ -222,18 +223,20 @@ export default function ForumPage() {
                 alignItems: "center", 
                 color: "#28a745",
                 fontWeight: "bold",
-                fontSize: "0.9rem"
+                fontSize: "0.9rem",
+                gap: "0.25rem"
               }}>
-                ⬆️ {p.upvotes || 0}
+                <UpvoteEmoji size="1em" /> {p.upvotes || 0}
               </span>
               <span style={{ 
                 display: "flex", 
                 alignItems: "center", 
                 color: "#dc3545",
                 fontWeight: "bold",
-                fontSize: "0.9rem"
+                fontSize: "0.9rem",
+                gap: "0.25rem"
               }}>
-                ⬇️ {p.downvotes || 0}
+                <DownvoteEmoji size="1em" /> {p.downvotes || 0}
               </span>
             </div>
             
@@ -255,7 +258,7 @@ export default function ForumPage() {
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "You upvoted this" : "Upvote"}
                 >
-                  ⬆️ Upvote
+                  <UpvoteEmoji size="0.8em" /> Upvote
                 </button>
                 <button 
                   onClick={() => vote(p._id, "down")}
@@ -272,7 +275,7 @@ export default function ForumPage() {
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "You downvoted this" : "Downvote"}
                 >
-                  ⬇️ Downvote
+                  <DownvoteEmoji size="0.8em" /> Downvote
                 </button>
               </div>
             )}

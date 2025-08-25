@@ -1,6 +1,8 @@
 // backend/routes/profiles.js
 const express = require("express");
 const router = express.Router();
+const { body, param, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const Profile = require("../models/Profiles");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
@@ -44,15 +46,43 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Rate limiting for file uploads
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 uploads per windowMs
+  message: { error: 'Too many uploads, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Validation middleware
+const validateProfileCreation = [
+  body('wallet').isEthereumAddress().withMessage('Invalid wallet address'),
+  body('name').isLength({ min: 1, max: 50 }).trim().escape().withMessage('Name must be 1-50 characters'),
+  body('birthday').matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Invalid date format (YYYY-MM-DD)'),
+  body('starSign').isIn([
+    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+  ]).withMessage('Invalid star sign'),
+  body('balance').isNumeric().isFloat({ min: 1 }).withMessage('Balance must be at least 1')
+];
+
 // GET profile by wallet
-router.get("/:wallet", async (req, res) => {
+router.get("/:wallet", [
+  param('wallet').isEthereumAddress().withMessage('Invalid wallet address')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   try {
-    const profile = await Profile.findOne({ wallet: req.params.wallet.toLowerCase() });
-    if (!profile) return res.status(404).send("Profile not found");
+    const profile = await Profile.findOne({ wallet: { $eq: req.params.wallet.toLowerCase() } });
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
     res.json(profile);
   } catch (err) {
     console.error("Profile fetch error:", err);
-    res.status(500).send("Server error");
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -68,7 +98,11 @@ router.get("/", async (req, res) => {
 });
 
 // POST create profile with optional photo
-router.post("/", upload.single('photo'), async (req, res) => {
+router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   const { wallet, name, birthday, starSign, balance } = req.body;
   
   console.log("Profile create request:", { 
@@ -251,41 +285,61 @@ router.post("/archive", async (req, res) => {
   }
 });
 
+// Secure file name sanitization
+const sanitizeFilename = (filename) => {
+  // Remove any path traversal attempts and normalize
+  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '');
+  
+  // Only allow specific pattern for profile photos
+  if (!sanitized.match(/^profile_[a-fA-F0-9]{8,}_[0-9]{13}_[a-z0-9]{13}\.(jpg|jpeg|png)$/i)) {
+    throw new Error('Invalid filename format');
+  }
+  
+  return sanitized;
+};
+
 // Serve profile photos
 router.get("/photo/:filename", (req, res) => {
   const filename = req.params.filename;
   
   console.log("📸 Photo request:", filename, "from:", req.get('User-Agent')?.includes('Mobile') ? 'Mobile' : 'Desktop');
   
-  // Basic security: only allow certain file extensions and prevent path traversal
-  if (!filename.match(/^profile_[a-zA-Z0-9_]+\.(jpg|jpeg|png)$/i)) {
-    console.log("❌ Invalid filename:", filename);
+  try {
+    // Secure filename validation
+    const safeFilename = sanitizeFilename(filename);
+    const photoPath = path.resolve(uploadsDir, safeFilename);
+    
+    // Double-check that resolved path is within uploads directory
+    if (!photoPath.startsWith(path.resolve(uploadsDir))) {
+      console.log("❌ Path traversal attempt blocked:", filename);
+      return res.status(400).send("Invalid file path");
+    }
+  
+    if (fs.existsSync(photoPath)) {
+      console.log("✅ Serving photo:", photoPath);
+      
+      // Set headers for better mobile compatibility
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-origin requests
+      res.setHeader('Access-Control-Allow-Methods', 'GET');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      
+      // Use res.sendFile with absolute path for better compatibility
+      const absolutePath = path.resolve(photoPath);
+      res.sendFile(absolutePath, (err) => {
+        if (err) {
+          console.error("❌ Error serving photo:", err);
+          res.status(500).send("Error serving photo");
+        }
+      });
+    } else {
+      console.log("❌ Photo not found:", photoPath);
+      res.status(404).send("Photo not found");
+    }
+  } catch (error) {
+    console.log("❌ Invalid filename:", filename, error.message);
     return res.status(400).send("Invalid filename");
-  }
-  
-  const photoPath = path.join(uploadsDir, filename);
-  
-  if (fs.existsSync(photoPath)) {
-    console.log("✅ Serving photo:", photoPath);
-    
-    // Set headers for better mobile compatibility
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-origin requests
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    // Use res.sendFile with absolute path for better compatibility
-    const absolutePath = path.resolve(photoPath);
-    res.sendFile(absolutePath, (err) => {
-      if (err) {
-        console.error("❌ Error serving photo:", err);
-        res.status(500).send("Error serving photo");
-      }
-    });
-  } else {
-    console.log("❌ Photo not found:", photoPath);
-    res.status(404).send("Photo not found");
   }
 });
 
