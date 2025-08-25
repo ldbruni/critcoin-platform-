@@ -432,7 +432,7 @@ export default function ForumPage() {
                 fontFamily: 'Fira Code, monospace',
                 fontStyle: "italic"
               }}>
-                // neural_link_required_to_vote
+                // profile required to vote
               </div>
             )}
           </div>

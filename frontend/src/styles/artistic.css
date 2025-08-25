@@ -1,17 +1,17 @@
-/* CritCoin Gothic Theme - Monochromatic with Blackletter */
+/* CritCoin Gothic Theme - Blue/Orange with Blackletter */
 @import url('https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 :root {
-  /* Monochromatic Color Palette - Based on Deep Charcoal/Silver */
-  --primary: #1a1a1a;
-  --primary-light: #2d2d2d;
-  --primary-lighter: #404040;
-  --primary-lightest: #595959;
-  --accent-dark: #0d0d0d;
-  --accent-light: #737373;
-  --accent-bright: #a3a3a3;
-  --accent-silver: #d4d4d4;
-  --accent-white: #f5f5f5;
+  /* Blue/Orange Color Palette */
+  --primary-blue: #1e40af;
+  --primary-blue-light: #3b82f6;
+  --primary-blue-lighter: #60a5fa;
+  --primary-blue-lightest: #93c5fd;
+  --accent-orange: #ea580c;
+  --accent-orange-light: #f97316;
+  --accent-orange-lighter: #fb923c;
+  --accent-orange-lightest: #fdba74;
+  --neutral-white: #ffffff;
   
   /* Gothic Tones */
   --dark-bg: #0a0a0a;
@@ -21,19 +21,19 @@
   --parchment: #f5f5f5;
   --ink: #0d0d0d;
   
-  /* Enhanced Monochromatic Gradients */
-  --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-lighter), var(--accent-light));
-  --gradient-secondary: linear-gradient(135deg, var(--primary-light), var(--primary-lightest), var(--accent-bright));
-  --gradient-accent: linear-gradient(135deg, var(--accent-light), var(--accent-bright), var(--accent-silver));
+  /* Blue/Orange Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light), var(--primary-blue-lighter));
+  --gradient-secondary: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-light), var(--accent-orange-lighter));
+  --gradient-accent: linear-gradient(135deg, var(--primary-blue-light), var(--accent-orange-light));
   --gradient-parchment: linear-gradient(145deg, #f5f5f5, #e8e8e8, #f0f0f0);
-  --gradient-dark: linear-gradient(135deg, var(--accent-dark), var(--primary), var(--primary-light));
-  --gradient-silver: linear-gradient(135deg, var(--accent-bright), var(--accent-silver), var(--accent-white));
-  --gradient-shimmer: linear-gradient(45deg, var(--accent-light), var(--accent-bright), var(--accent-silver), var(--accent-bright), var(--accent-light));
+  --gradient-dark: linear-gradient(135deg, #0d0d0d, var(--primary-blue), var(--accent-orange));
+  --gradient-bright: linear-gradient(135deg, var(--primary-blue-lighter), var(--accent-orange-lighter), var(--neutral-white));
+  --gradient-shimmer: linear-gradient(45deg, var(--primary-blue-light), var(--accent-orange-light), var(--primary-blue-lighter), var(--accent-orange-lighter), var(--primary-blue-light));
   
   /* Subtle Animation Colors */
-  --shimmer-1: rgba(163, 163, 163, 0.3);
-  --shimmer-2: rgba(115, 115, 115, 0.2);
-  --shimmer-3: rgba(212, 212, 212, 0.25);
+  --shimmer-1: rgba(59, 130, 246, 0.3);
+  --shimmer-2: rgba(249, 115, 22, 0.2);
+  --shimmer-3: rgba(147, 197, 253, 0.25);
 }
 
 /* Global Styles */
@@ -87,13 +87,13 @@ h1, h2, h3, h4, h5, h6 {
 
 h1 {
   font-size: 3.2rem;
-  background: var(--gradient-silver);
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: 
     0 2px 4px rgba(0, 0, 0, 0.8),
-    0 0 10px rgba(212, 212, 212, 0.3);
+    0 0 10px rgba(59, 130, 246, 0.3);
   position: relative;
   font-weight: 400;
   background-size: 200% 200%;
@@ -219,21 +219,21 @@ h3 {
 }
 
 .nav-link:hover {
-  color: var(--accent-silver);
-  border-color: var(--accent-bright);
+  color: var(--primary-blue-lighter);
+  border-color: var(--primary-blue-light);
   box-shadow: 
-    0 4px 15px rgba(163, 163, 163, 0.3),
-    inset 0 1px 0 rgba(212, 212, 212, 0.2);
+    0 4px 15px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(96, 165, 250, 0.2);
   transform: translateY(-3px);
 }
 
 .nav-link.active {
-  background: var(--gradient-secondary);
-  border-color: var(--primary-lighter);
-  color: var(--accent-silver);
+  background: var(--gradient-accent);
+  border-color: var(--accent-orange);
+  color: var(--neutral-white);
   box-shadow: 
-    0 4px 20px rgba(26, 26, 26, 0.4),
-    0 0 15px rgba(163, 163, 163, 0.2);
+    0 4px 20px rgba(234, 88, 12, 0.4),
+    0 0 15px rgba(59, 130, 246, 0.2);
   animation: activeGlow 3s ease-in-out infinite;
 }
 
@@ -252,10 +252,10 @@ h3 {
 }
 
 .artistic-card:hover {
-  border-color: var(--accent-bright);
+  border-color: var(--primary-blue-light);
   box-shadow: 
-    0 8px 32px rgba(163, 163, 163, 0.3),
-    inset 0 1px 0 rgba(245, 245, 245, 0.1);
+    0 8px 32px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform: translateY(-4px);
 }
 
@@ -282,9 +282,9 @@ h3 {
 /* Buttons */
 .artistic-btn {
   font-family: 'UnifrakturMaguntia', 'Cinzel', serif;
-  background: var(--gradient-dark);
-  border: 2px solid var(--accent-light);
-  color: var(--accent-white);
+  background: var(--gradient-primary);
+  border: 2px solid var(--primary-blue-light);
+  color: var(--neutral-white);
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   cursor: pointer;
@@ -301,11 +301,11 @@ h3 {
 .artistic-btn:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 8px 25px rgba(115, 115, 115, 0.4),
-    0 0 20px rgba(163, 163, 163, 0.3);
-  border-color: var(--accent-bright);
-  color: var(--accent-silver);
-  background: var(--gradient-silver);
+    0 8px 25px rgba(234, 88, 12, 0.4),
+    0 0 20px rgba(249, 115, 22, 0.3);
+  border-color: var(--accent-orange-light);
+  color: var(--neutral-white);
+  background: var(--gradient-secondary);
   animation: buttonHoverGlow 2s ease-in-out infinite;
 }
 
@@ -401,35 +401,35 @@ h3 {
   50% { opacity: 0.3; }
 }
 
-/* Gothic Text Effects - Monochromatic */
+/* Gothic Text Effects - Blue/Orange */
 .gothic-text {
-  color: var(--accent-silver);
+  color: var(--primary-blue-lighter);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .ember-text {
-  color: var(--accent-bright);
-  text-shadow: 0 1px 3px rgba(163, 163, 163, 0.4);
+  color: var(--accent-orange-light);
+  text-shadow: 0 1px 3px rgba(249, 115, 22, 0.4);
 }
 
 .silver-text {
-  color: var(--accent-silver);
-  text-shadow: 0 1px 2px rgba(212, 212, 212, 0.3);
+  color: var(--primary-blue-lightest);
+  text-shadow: 0 1px 2px rgba(147, 197, 253, 0.3);
 }
 
 .copper-text {
-  color: var(--accent-light);
-  text-shadow: 0 1px 3px rgba(115, 115, 115, 0.4);
+  color: var(--accent-orange);
+  text-shadow: 0 1px 3px rgba(234, 88, 12, 0.4);
 }
 
 .sage-text {
-  color: var(--accent-bright);
-  text-shadow: 0 1px 2px rgba(163, 163, 163, 0.3);
+  color: var(--primary-blue-light);
+  text-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
 }
 
 .royal-text {
-  color: var(--primary-lightest);
-  text-shadow: 0 1px 3px rgba(89, 89, 89, 0.4);
+  color: var(--primary-blue);
+  text-shadow: 0 1px 3px rgba(30, 64, 175, 0.4);
 }
 
 /* Container for artistic pages */

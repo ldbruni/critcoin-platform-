@@ -357,11 +357,12 @@ router.post("/archive", async (req, res) => {
 
 // Secure file name sanitization
 const sanitizeFilename = (filename) => {
-  // Remove any path traversal attempts and normalize
-  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '');
+  // Remove any path traversal attempts and normalize, but keep x for 0x prefix
+  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-x]/g, '');
   
-  // Only allow specific pattern for profile photos
-  if (!sanitized.match(/^profile_[a-fA-F0-9]{8,}_[0-9]{13}_[a-z0-9]{13}\.(jpg|jpeg|png)$/i)) {
+  // Only allow specific pattern for profile photos  
+  if (!sanitized.match(/^profile_0x[a-fA-F0-9]{40}_[0-9]{13}_[a-z0-9]{8,20}\.(jpg|jpeg|png)$/i)) {
+    console.log('❌ Filename does not match pattern:', sanitized);
     throw new Error('Invalid filename format');
   }
   

@@ -14,7 +14,12 @@
       "Bash(rm:*)",
       "Bash(npm uninstall:*)",
       "Bash(node:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(npm ls:*)",
+      "Bash(mv:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c:*)"
     ],
     "deny": [],
     "ask": []
