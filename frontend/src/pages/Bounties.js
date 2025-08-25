@@ -101,7 +101,7 @@ export default function Bounties() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 className="glitch neon-text" data-text="🎯 BOUNTY PROTOCOLS">🎯 BOUNTY PROTOCOLS</h1>
+      <h1 className="gothic-title gothic-text">🎯 Active Bounties</h1>
 
       {!wallet ? (
         <div style={{ 

@@ -290,27 +290,27 @@ export default function Profiles() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem" }}>
-      <h1 className="glitch neon-text" data-text="🪪 IDENTITY MATRIX">🪪 IDENTITY MATRIX</h1>
+      <h1 className="gothic-title gothic-text">🪪 CritCoin Profiles</h1>
 
       {!wallet ? (
         <div>
           <div className="artistic-card" style={{ 
             textAlign: "center",
             padding: "2rem",
-            background: 'rgba(0, 128, 255, 0.05)',
-            border: '2px solid var(--neon-blue)'
+            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(22, 163, 74, 0.03))',
+            border: '2px solid var(--complement-blue)'
           }}>
-            <h3 className="neon-blue-text" style={{ fontFamily: 'Orbitron, monospace' }}>🔗 NEURAL INTERFACE REQUIRED</h3>
-            <p style={{ fontFamily: 'Fira Code, monospace', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem' }}>// Initialize quantum wallet to access identity protocols</p>
+            <h3 className="royal-text" style={{ fontFamily: 'Cinzel, serif' }}>🔗 Wallet Connection Required</h3>
+            <p style={{ fontFamily: 'Crimson Text, serif', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem', fontStyle: 'italic' }}>Connect your wallet to create or edit your profile</p>
             <button onClick={connectWallet} className="artistic-btn">
-              ESTABLISH CONNECTION
+              Connect Wallet
             </button>
           </div>
 
-          <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'rgba(57, 255, 20, 0.05)', border: '2px solid var(--neon-green)' }}>
-            <h2 className="neon-green-text" style={{ fontFamily: 'Orbitron, monospace' }}>👥 COMMUNITY MATRIX</h2>
-            <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'Space Mono, monospace' }}>
-              // Scanning registered identities in the CritCoin network...
+          <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(245, 158, 11, 0.05))', border: '2px solid var(--complement-green)' }}>
+            <h2 className="sage-text" style={{ fontFamily: 'Cinzel, serif' }}>👥 Community Profiles</h2>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>
+              Discover the CritCoin community members
             </p>
           </div>
 

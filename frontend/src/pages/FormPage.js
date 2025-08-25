@@ -188,48 +188,48 @@ export default function ForumPage() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h1 className="glitch neon-text" data-text="💬 CRITCOIN FORUM">💬 CRITCOIN FORUM</h1>
+      <h1 className="gothic-title gothic-text">💬 CritCoin Forum</h1>
 
       {!wallet ? (
         <div className="artistic-card" style={{ textAlign: "center", padding: "2rem" }}>
-          <h3 className="neon-cyan-text">🔗 NEURAL LINK REQUIRED</h3>
-          <p style={{ marginBottom: "1.5rem", fontFamily: 'Fira Code, monospace' }}>// Initialize wallet connection to access the forum matrix</p>
-          <button onClick={connectWallet} className="artistic-btn">CONNECT WALLET</button>
+          <h3 className="royal-text">🔗 Wallet Connection Required</h3>
+          <p style={{ marginBottom: "1.5rem", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>Connect your wallet to access the forum</p>
+          <button onClick={connectWallet} className="artistic-btn">Connect Wallet</button>
         </div>
       ) : (
         <>
-          <div className="artistic-card" style={{ marginBottom: "1.5rem", background: 'rgba(0, 255, 255, 0.05)', border: '2px solid var(--neon-cyan)' }}>
-            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
-              <span className="neon-green-text">USER:</span> <code style={{ color: 'var(--neon-pink)' }}>{profile?.name || wallet}</code> 
-              <span style={{ margin: '0 1rem', color: 'rgba(255,255,255,0.5)' }}>|</span>
-              <span className="neon-cyan-text">CREDITS:</span> <span style={{ color: 'var(--neon-orange)', fontWeight: 'bold' }}>{balance}</span>
+          <div className="artistic-card" style={{ marginBottom: "1.5rem", background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(37, 99, 235, 0.03))', border: '2px solid var(--complement-green)' }}>
+            <p style={{ fontFamily: 'Crimson Text, serif', fontSize: '1.1rem' }}>
+              <span className="sage-text" style={{ fontWeight: '600' }}>User:</span> <code style={{ color: 'var(--accent-gold)', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>{profile?.name || wallet}</code> 
+              <span style={{ margin: '0 1rem', color: 'rgba(255,255,255,0.5)' }}>•</span>
+              <span className="royal-text" style={{ fontWeight: '600' }}>Balance:</span> <span style={{ color: 'var(--accent-copper)', fontWeight: 'bold' }}>{balance}</span> <span className="silver-text">CritCoin</span>
             </p>
           </div>
 
           {profile && Number(balance) >= 1 ? (
             <div className="artistic-form">
-              <h3 className="neon-purple-text" style={{ marginBottom: '1rem', fontFamily: 'Orbitron, monospace' }}>BROADCAST MESSAGE</h3>
+              <h3 className="copper-text" style={{ marginBottom: '1rem', fontFamily: 'Cinzel, serif' }}>Share Your Thoughts</h3>
               <textarea
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
                 rows={4}
-                placeholder="// Enter your transmission... (max 2000 characters)"
+                placeholder="Write your message... (max 2000 characters)"
                 maxLength="2000"
                 required
                 className="artistic-input"
-                style={{ fontFamily: 'Fira Code, monospace', minHeight: '120px', resize: 'vertical' }}
+                style={{ fontFamily: 'Crimson Text, serif', minHeight: '120px', resize: 'vertical' }}
               />
               <div style={{ 
                 fontSize: "0.8em", 
-                color: newPost.length > 1800 ? "var(--neon-orange)" : "rgba(255,255,255,0.6)", 
+                color: newPost.length > 1800 ? "var(--accent-copper)" : "rgba(255,255,255,0.6)", 
                 textAlign: "right",
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Crimson Text, serif',
                 marginTop: '0.5rem'
               }}>
-                [{newPost.length}/2000] CHARS
+                {newPost.length}/2000 characters
               </div>
               <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <button type="submit" onClick={submitPost} className="artistic-btn">TRANSMIT 📡</button>
+                <button type="submit" onClick={submitPost} className="artistic-btn">Post Message</button>
               </div>
             </div>
           ) : (

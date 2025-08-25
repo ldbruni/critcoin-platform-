@@ -49,24 +49,21 @@ export class Dapp extends React.Component {
     return (
       <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
         <div className="artistic-card">
-          <h1 
-            className="glitch neon-text" 
-            data-text={`${this.state.tokenData.name} (${this.state.tokenData.symbol})`}
-          >
+          <h1 className="gothic-title gothic-text">
             {this.state.tokenData.name} ({this.state.tokenData.symbol})
           </h1>
           <div style={{ 
-            background: 'rgba(0, 255, 255, 0.1)', 
-            border: '2px solid var(--neon-cyan)', 
-            borderRadius: '12px', 
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(220, 38, 38, 0.05))', 
+            border: '2px solid var(--accent-gold)', 
+            borderRadius: '8px', 
             padding: '1.5rem',
             margin: '1rem 0'
           }}>
-            <p style={{ fontSize: '1.2rem', fontFamily: 'Orbitron, monospace' }}>
-              <span className="neon-green-text">CONNECTED:</span> <code>{this.state.selectedAddress}</code>
+            <p style={{ fontSize: '1.1rem', fontFamily: 'Crimson Text, serif' }}>
+              <span className="sage-text" style={{ fontWeight: '600' }}>Connected:</span> <code style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{this.state.selectedAddress}</code>
             </p>
-            <p style={{ fontSize: '1.5rem', fontFamily: 'Orbitron, monospace' }}>
-              <span className="neon-pink-text">BALANCE:</span> <span className="neon-text" style={{ fontSize: '2rem', fontWeight: 'bold' }}>{this.state.balance.toString()}</span> <span className="neon-green-text">{this.state.tokenData.symbol}</span>
+            <p style={{ fontSize: '1.3rem', fontFamily: 'Crimson Text, serif' }}>
+              <span className="ember-text" style={{ fontWeight: '600' }}>Balance:</span> <span className="gothic-text" style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>{this.state.balance.toString()}</span> <span className="copper-text">{this.state.tokenData.symbol}</span>
             </p>
           </div>
           
@@ -86,12 +83,12 @@ export class Dapp extends React.Component {
               🚰 GET SEPOLIA ETH
             </a>
             <p style={{ 
-              color: "rgba(255, 255, 255, 0.7)", 
-              fontFamily: 'Fira Code, monospace',
+              color: "rgba(255, 255, 255, 0.6)", 
+              fontFamily: 'Crimson Text, serif',
               fontSize: '0.9rem',
               fontStyle: 'italic'
             }}>
-              // Need test ETH for gas fees? Access the Sepolia faucet protocol
+              Need test ETH for gas fees? Access the Sepolia faucet
             </p>
           </div>
         </div>
