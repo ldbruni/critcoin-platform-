@@ -215,7 +215,7 @@ export default function Projects() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text">Creative Projects</h1>
+      <h1 className="gothic-title gothic-text">Projects</h1>
 
       {!wallet ? (
         <button onClick={connectWallet}>Connect Wallet</button>

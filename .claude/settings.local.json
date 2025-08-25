@@ -13,7 +13,8 @@
       "Bash(curl:*)",
       "Bash(rm:*)",
       "Bash(npm uninstall:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
