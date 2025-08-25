@@ -107,7 +107,13 @@ export default function ForumPage() {
     if (!wallet) { alert("Connect wallet first"); return; }
     if (!profile) { alert("Create a profile before posting"); return; }
     if (Number(balance) < 1) { alert("Need ≥1 CritCoin to post"); return; }
-    if (!newPost.trim()) { return; }
+    if (!newPost.trim()) { alert("Post cannot be empty"); return; }
+    
+    // Validate post length (match backend 2000 char limit)
+    if (newPost.trim().length > 2000) {
+      alert("Post is too long. Maximum 2000 characters allowed.");
+      return;
+    }
 
     try {
       const res = await fetch(API.posts, {
@@ -117,9 +123,16 @@ export default function ForumPage() {
       });
 
       if (!res.ok) {
-        const t = await res.text();
-        console.error("Post failed:", t);
-        alert("Post failed: " + t);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Post failed:", error);
+        
+        if (error.errors && Array.isArray(error.errors)) {
+          // Handle validation errors
+          const errorMessages = error.errors.map(err => err.msg).join(", ");
+          alert("Post validation failed: " + errorMessages);
+        } else {
+          alert("Post failed: " + (error.error || error));
+        }
         return;
       }
 
@@ -127,7 +140,11 @@ export default function ForumPage() {
       fetchPosts();
     } catch (err) {
       console.error("Network error submitting post:", err);
-      alert("Error submitting post. Check console.");
+      if (err.name === 'NetworkError' || err.message.includes('fetch')) {
+        alert("❌ Network error. Please check your internet connection and try again.");
+      } else {
+        alert("❌ Error submitting post. Please try again.");
+      }
     }
   };
 
@@ -145,15 +162,27 @@ export default function ForumPage() {
       });
       
       if (!res.ok) {
-        const errorText = await res.text();
-        alert(errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Vote failed:", error);
+        
+        if (error.errors && Array.isArray(error.errors)) {
+          // Handle validation errors
+          const errorMessages = error.errors.map(err => err.msg).join(", ");
+          alert("Vote validation failed: " + errorMessages);
+        } else {
+          alert("Vote failed: " + (error.error || error));
+        }
         return;
       }
       
       fetchPosts();
     } catch (err) {
       console.error("Vote error:", err);
-      alert("Voting failed. Please try again.");
+      if (err.name === 'NetworkError' || err.message.includes('fetch')) {
+        alert("❌ Network error. Please check your internet connection and try again.");
+      } else {
+        alert("❌ Voting failed. Please try again.");
+      }
     }
   };
 
@@ -173,9 +202,13 @@ export default function ForumPage() {
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
                 rows={4}
-                placeholder="Write something…"
+                placeholder="Write something… (max 2000 characters)"
+                maxLength="2000"
                 required
               />
+              <div style={{ fontSize: "0.8em", color: "#666", textAlign: "right" }}>
+                {newPost.length}/2000 characters
+              </div>
               <br />
               <button type="submit">Post</button>
             </form>

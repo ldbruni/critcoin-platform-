@@ -113,10 +113,17 @@ export default function Profiles() {
         return;
       }
       
-      // Check file size (limit to 10MB for mobile compatibility)
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      // Check file size (updated to 5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        alert('Photo file is too large. Please select a file smaller than 10MB.');
+        alert('Photo file is too large. Please select a file smaller than 5MB.');
+        return;
+      }
+      
+      // Enhanced file type validation
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPEG, PNG, GIF, or WebP).');
         return;
       }
       
@@ -141,6 +148,27 @@ export default function Profiles() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!wallet) return;
+
+    // Frontend validation to match backend requirements
+    if (!form.name.trim() || form.name.trim().length < 1 || form.name.trim().length > 50) {
+      alert("Name must be 1-50 characters long");
+      return;
+    }
+
+    if (!form.birthday.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      alert("Please enter a valid date in YYYY-MM-DD format");
+      return;
+    }
+
+    const validStarSigns = [
+      'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+    ];
+    
+    if (!validStarSigns.includes(form.starSign)) {
+      alert("Please select a valid star sign");
+      return;
+    }
 
     // Check balance requirement for new profile creation
     if (!profile && Number(balance) < 1) {
@@ -195,19 +223,30 @@ export default function Profiles() {
         setPhotoPreview(null);
         // Refresh public profiles to show updated profile
         fetchPublicProfiles();
+        alert(`✅ Profile ${profile ? 'updated' : 'created'} successfully!`);
       } else {
-        const errText = await res.text();
-        console.error("Save failed:", errText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Save failed:", error);
         
-        // Handle specific whitelist error with user-friendly message
-        if (res.status === 403 && errText.includes("whitelist")) {
+        if (error.errors && Array.isArray(error.errors)) {
+          // Handle validation errors
+          const errorMessages = error.errors.map(err => err.msg).join("\n");
+          alert("Profile validation failed:\n" + errorMessages);
+        } else if (res.status === 403 && (error.error || error).includes("whitelist")) {
           alert("⚠️ Profile Creation Restricted\n\nProfile creation is currently restricted to whitelisted wallets only. Please contact your instructor to be added to the whitelist.");
         } else {
-          alert("Profile save error: " + errText);
+          alert("Profile save error: " + (error.error || error));
         }
       }
     } catch (err) {
       console.error("Profile submit error:", err);
+      if (err.name === 'NetworkError' || err.message.includes('fetch')) {
+        alert('❌ Network error. Please check your internet connection and try again.');
+      } else if (err.message.includes('signature')) {
+        alert('❌ Signature error. Please make sure your wallet is connected and try again.');
+      } else {
+        alert('❌ An unexpected error occurred. Please try again.');
+      }
     }
   };
 
@@ -450,7 +489,7 @@ export default function Profiles() {
                 disabled={!profile && Number(balance) < 1}
               />
               <small style={{ display: "block", marginTop: "0.25rem", color: "#666" }}>
-                📱 Tap to select or take a photo (max 10MB)
+                📱 Tap to select or take a photo (max 5MB) - JPEG, PNG, GIF, WebP only
               </small>
               {(photoPreview || (profile?.photo && !selectedPhoto)) && (
                 <div style={{ marginTop: "0.5rem" }}>
@@ -491,9 +530,10 @@ export default function Profiles() {
             </div>
             <input
               name="name"
-              placeholder="Name"
+              placeholder="Name (1-50 characters)"
               value={form.name}
               onChange={handleChange}
+              maxLength="50"
               required
               disabled={!profile && Number(balance) < 1}
             /><br />
@@ -505,14 +545,28 @@ export default function Profiles() {
               required
               disabled={!profile && Number(balance) < 1}
             /><br />
-            <input
+            <select
               name="starSign"
-              placeholder="Star Sign"
               value={form.starSign}
               onChange={handleChange}
               required
               disabled={!profile && Number(balance) < 1}
-            /><br />
+              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+            >
+              <option value="">Select Star Sign</option>
+              <option value="Aries">Aries</option>
+              <option value="Taurus">Taurus</option>
+              <option value="Gemini">Gemini</option>
+              <option value="Cancer">Cancer</option>
+              <option value="Leo">Leo</option>
+              <option value="Virgo">Virgo</option>
+              <option value="Libra">Libra</option>
+              <option value="Scorpio">Scorpio</option>
+              <option value="Sagittarius">Sagittarius</option>
+              <option value="Capricorn">Capricorn</option>
+              <option value="Aquarius">Aquarius</option>
+              <option value="Pisces">Pisces</option>
+            </select><br />
             <button 
               type="submit" 
               disabled={!profile && Number(balance) < 1}

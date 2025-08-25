@@ -15,6 +15,8 @@ const ADMIN_WALLET = process.env.REACT_APP_ADMIN_WALLET?.toLowerCase() || "0xc69
 export default function Admin() {
   const [wallet, setWallet] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dashboard, setDashboard] = useState({});
   const [profiles, setProfiles] = useState([]);
@@ -57,35 +59,118 @@ export default function Admin() {
   const connectWallet = async () => {
     try {
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      
       setWallet(addr);
+      setProvider(provider);
+      setSigner(signer);
       setIsAdmin(addr.toLowerCase() === ADMIN_WALLET);
     } catch (err) {
       console.error("Wallet connect error:", err);
     }
   };
 
+  // Helper function to create signed admin requests
+  const createSignedAdminRequest = async (action, additionalData = {}) => {
+    if (!signer || !wallet) {
+      throw new Error('Wallet not connected');
+    }
+
+    const messageData = {
+      timestamp: Date.now(),
+      action: action,
+      wallet: wallet.toLowerCase(),
+      ...additionalData
+    };
+
+    const message = JSON.stringify(messageData);
+    const signature = await signer.signMessage(message);
+    
+    return { message, signature };
+  };
+
+  // Helper function for signed GET requests
+  const fetchWithSignature = async (url, action) => {
+    try {
+      const { message, signature } = await createSignedAdminRequest(action);
+      const signedUrl = `${url}?message=${encodeURIComponent(message)}&signature=${signature}`;
+      return await fetch(signedUrl);
+    } catch (err) {
+      console.error('Signed request error:', err);
+      // Fallback for development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Falling back to unsigned request in development mode');
+        return await fetch(url);
+      }
+      throw err;
+    }
+  };
+
+  // Helper function for signed POST requests
+  const postWithSignature = async (url, action, data = {}) => {
+    try {
+      const { message, signature } = await createSignedAdminRequest(action, data);
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...data,
+          adminWallet: wallet,
+          message,
+          signature
+        })
+      });
+    } catch (err) {
+      console.error('Signed POST request error:', err);
+      // Fallback for development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Falling back to unsigned POST request in development mode');
+        return await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...data,
+            adminWallet: wallet
+          })
+        });
+      }
+      throw err;
+    }
+  };
+
   const fetchDashboard = async () => {
     try {
-      const res = await fetch(`${API.admin}/dashboard/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/dashboard/${wallet}`, 'admin_get_dashboard');
       if (res.ok) {
         const data = await res.json();
         setDashboard(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch dashboard' }));
+        console.error("Dashboard fetch error:", error);
+        alert(`Dashboard error: ${error.error}`);
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
+      alert('Failed to connect to dashboard. Please check your wallet connection.');
     }
   };
 
   const fetchProfiles = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API.admin}/profiles/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/profiles/${wallet}`, 'admin_get_profiles');
       if (res.ok) {
         const data = await res.json();
         setProfiles(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch profiles' }));
+        console.error("Profiles fetch error:", error);
+        alert(`Profiles error: ${error.error}`);
       }
     } catch (err) {
       console.error("Profiles fetch error:", err);
+      alert('Failed to fetch profiles. Please check your wallet connection.');
     } finally {
       setLoading(false);
     }
@@ -94,13 +179,18 @@ export default function Admin() {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API.admin}/posts/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/posts/${wallet}`, 'admin_get_posts');
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch posts' }));
+        console.error("Posts fetch error:", error);
+        alert(`Posts error: ${error.error}`);
       }
     } catch (err) {
       console.error("Posts fetch error:", err);
+      alert('Failed to fetch posts. Please check your wallet connection.');
     } finally {
       setLoading(false);
     }
@@ -109,13 +199,18 @@ export default function Admin() {
   const fetchBounties = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API.admin}/bounties/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/bounties/${wallet}`, 'admin_get_bounties');
       if (res.ok) {
         const data = await res.json();
         setBounties(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch bounties' }));
+        console.error("Bounties fetch error:", error);
+        alert(`Bounties error: ${error.error}`);
       }
     } catch (err) {
       console.error("Bounties fetch error:", err);
+      alert('Failed to fetch bounties. Please check your wallet connection.');
     } finally {
       setLoading(false);
     }
@@ -124,13 +219,18 @@ export default function Admin() {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API.admin}/projects/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/projects/${wallet}`, 'admin_get_projects');
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch projects' }));
+        console.error("Projects fetch error:", error);
+        alert(`Projects error: ${error.error}`);
       }
     } catch (err) {
       console.error("Projects fetch error:", err);
+      alert('Failed to fetch projects. Please check your wallet connection.');
     } finally {
       setLoading(false);
     }
@@ -139,29 +239,37 @@ export default function Admin() {
   const fetchSettings = async () => {
     try {
       console.log("Fetching settings for wallet:", wallet);
-      const res = await fetch(`${API.admin}/settings/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/settings/${wallet}`, 'admin_get_settings');
       if (res.ok) {
         const data = await res.json();
         console.log("Settings fetched:", data);
         setSettings(data);
       } else {
-        console.error("Settings fetch failed:", res.status, await res.text());
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch settings' }));
+        console.error("Settings fetch error:", error);
+        alert(`Settings error: ${error.error}`);
       }
     } catch (err) {
       console.error("Settings fetch error:", err);
+      alert('Failed to fetch settings. Please check your wallet connection.');
     }
   };
 
   const fetchWhitelist = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API.admin}/whitelist/${wallet}`);
+      const res = await fetchWithSignature(`${API.admin}/whitelist/${wallet}`, 'admin_get_whitelist');
       if (res.ok) {
         const data = await res.json();
         setWhitelist(data);
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch whitelist' }));
+        console.error("Whitelist fetch error:", error);
+        alert(`Whitelist error: ${error.error}`);
       }
     } catch (err) {
       console.error("Whitelist fetch error:", err);
+      alert('Failed to fetch whitelist. Please check your wallet connection.');
     } finally {
       setLoading(false);
     }
@@ -169,14 +277,9 @@ export default function Admin() {
 
   const handleArchiveProfile = async (profileWallet, archive) => {
     try {
-      const res = await fetch(`${API.admin}/profiles/archive`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          wallet: profileWallet,
-          archive
-        })
+      const res = await postWithSignature(`${API.admin}/profiles/archive`, 'admin_post_profiles_archive', {
+        wallet: profileWallet,
+        archive
       });
 
       if (res.ok) {
@@ -184,12 +287,12 @@ export default function Admin() {
         fetchProfiles();
         fetchDashboard();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(() => ({ error: 'Failed to archive profile' }));
+        alert("Error: " + error.error);
       }
     } catch (err) {
       console.error("Archive profile error:", err);
-      alert("Error archiving profile");
+      alert("Error archiving profile. Please check your wallet connection.");
     }
   };
 
