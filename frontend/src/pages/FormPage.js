@@ -250,7 +250,7 @@ export default function ForumPage() {
 
       <div style={{ height: '2px', background: 'var(--gradient-primary)', margin: '2rem 0', borderRadius: '1px' }}></div>
       <div className="artistic-card" style={{ background: 'rgba(26, 26, 26, 0.6)', padding: '1rem' }}>
-        <h2 className="neon-green-text" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>📡 TRANSMISSION LOG</h2>
+        <h2 className="sage-text" style={{ marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'Cinzel, serif' }}>💬 Forum Posts</h2>
       </div>
       
       {posts.map((p) => (
