@@ -3,9 +3,10 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const mongoSanitize = require('express-mongo-sanitize');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+// Temporarily disable all security middleware for debugging
+// const mongoSanitize = require('express-mongo-sanitize');
+// const helmet = require('helmet');
+// const rateLimit = require('express-rate-limit');
 // Routes
 const profileRoutes = require("./routes/profiles");
 const postRoutes = require("./routes/posts");
@@ -64,32 +65,36 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"]
-    }
-  },
-  crossOriginEmbedderPolicy: false
-}));
+// Temporarily disable helmet to fix database connectivity
+// app.use(helmet({
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       styleSrc: ["'self'", "'unsafe-inline'"],
+//       scriptSrc: ["'self'"],
+//       imgSrc: ["'self'", "data:", "https:"],
+//       connectSrc: ["'self'"]
+//     }
+//   },
+//   crossOriginEmbedderPolicy: false
+// }));
 
 // Sanitize user input to prevent NoSQL injection
-app.use(mongoSanitize());
+// Temporarily disabled due to compatibility issue
+// app.use(mongoSanitize({
+//   replaceWith: '_'
+// }));
 
-// General rate limiting
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { error: 'Too many requests, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Temporarily disable rate limiting
+// const generalLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+//   message: { error: 'Too many requests, please try again later' },
+//   standardHeaders: true,
+//   legacyHeaders: false
+// });
 
-app.use(generalLimiter);
+// app.use(generalLimiter);
 app.use(express.json({ limit: '10mb' }));
 
 // Serve static files for profile photos

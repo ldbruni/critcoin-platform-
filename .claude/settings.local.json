@@ -8,7 +8,12 @@
       "Bash(git push:*)",
       "Bash(dir:*)",
       "Bash(npm install:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

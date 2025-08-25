@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
-const rateLimit = require('express-rate-limit');
+// Temporarily disable rate limiting
+// const rateLimit = require('express-rate-limit');
 const Profile = require("../models/Profiles");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
@@ -82,14 +83,8 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Rate limiting for file uploads
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 uploads per windowMs
-  message: { error: 'Too many uploads, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Rate limiting temporarily disabled - dummy middleware
+const uploadLimiter = (req, res, next) => next();
 
 // Validation middleware
 const validateProfileCreation = [

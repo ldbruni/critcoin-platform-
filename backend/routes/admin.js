@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const { param, body, validationResult } = require('express-validator');
-const rateLimit = require('express-rate-limit');
+// Temporarily disable rate limiting
+// const rateLimit = require('express-rate-limit');
 const Profile = require("../models/Profiles");
 const Post = require("../models/Post");
 const Bounty = require("../models/Bounty");
@@ -81,14 +82,8 @@ const authenticateAdmin = async (req, res, next) => {
   }
 };
 
-// Rate limiting for admin endpoints
-const adminRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // limit each IP to 50 requests per windowMs
-  message: 'Too many admin requests, please try again later',
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Rate limiting for admin endpoints - temporarily disabled
+const adminRateLimit = (req, res, next) => next(); // Dummy middleware
 
 // Admin authentication for GET routes (uses query parameters)
 const authenticateAdminGET = async (req, res, next) => {

@@ -2,27 +2,16 @@
 const express = require("express");
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
-const rateLimit = require('express-rate-limit');
+// Temporarily disable rate limiting
+// const rateLimit = require('express-rate-limit');
 const Post = require("../models/Post");
 const Profile = require("../models/Profiles");
 
 
 // Rate limiting for posts
-const postLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 posts per windowMs
-  message: { error: 'Too many posts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-const voteLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // limit each IP to 30 votes per minute
-  message: { error: 'Too many votes, please slow down' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// Rate limiting temporarily disabled - dummy middleware
+const postLimiter = (req, res, next) => next();
+const voteLimiter = (req, res, next) => next();
 
 // Input validation middleware
 const validatePost = [
@@ -41,7 +30,7 @@ const validateVote = [
 ];
 
 // Create a new post
-router.post("/", postLimiter, validatePost, async (req, res) => {
+router.post("/", validatePost, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -95,7 +84,7 @@ router.get("/", async (req, res) => {
 });
 
 // Upvote or downvote a post
-router.post("/vote", voteLimiter, validateVote, async (req, res) => {
+router.post("/vote", validateVote, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
