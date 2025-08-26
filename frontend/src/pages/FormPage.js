@@ -432,7 +432,7 @@ export default function ForumPage() {
                 fontFamily: 'Fira Code, monospace',
                 fontStyle: "italic"
               }}>
-                // profile required to vote
+                profile required to vote
               </div>
             )}
           </div>
