@@ -64,10 +64,10 @@ body::before {
   width: 100%;
   height: 100%;
   background: 
-    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 80%, rgba(147, 197, 253, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 60%, rgba(234, 88, 12, 0.04) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 80%, rgba(147, 197, 253, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(234, 88, 12, 0.08) 0%, transparent 50%);
   animation: backgroundShift 25s ease-in-out infinite;
   z-index: -1;
 }
@@ -481,15 +481,15 @@ h3 {
   height: 100vh;
   pointer-events: none;
   background: 
-    radial-gradient(3px 3px at 20% 30%, var(--accent-orange-light), transparent),
-    radial-gradient(2px 2px at 40% 70%, var(--primary-blue-light), transparent),
-    radial-gradient(4px 4px at 90% 40%, var(--accent-orange-lighter), transparent),
-    radial-gradient(1px 1px at 50% 50%, var(--primary-blue-lighter), transparent),
-    radial-gradient(2px 2px at 10% 80%, var(--primary-blue-lightest), transparent),
-    radial-gradient(1px 1px at 80% 10%, var(--accent-orange), transparent);
+    radial-gradient(4px 4px at 20% 30%, var(--accent-orange-light), transparent),
+    radial-gradient(3px 3px at 40% 70%, var(--primary-blue-light), transparent),
+    radial-gradient(5px 5px at 90% 40%, var(--accent-orange-lighter), transparent),
+    radial-gradient(2px 2px at 50% 50%, var(--primary-blue-lighter), transparent),
+    radial-gradient(3px 3px at 10% 80%, var(--primary-blue-lightest), transparent),
+    radial-gradient(2px 2px at 80% 10%, var(--accent-orange), transparent);
   animation: enhancedFloat 18s ease-in-out infinite;
   z-index: -1;
-  opacity: 0.25;
+  opacity: 0.4;
 }
 
 @keyframes float {
@@ -510,19 +510,19 @@ h3 {
 @keyframes enhancedFloat {
   0%, 100% { 
     transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
-    opacity: 0.25;
+    opacity: 0.4;
   }
   25% { 
     transform: translateY(-15px) translateX(8px) rotate(90deg) scale(1.1);
-    opacity: 0.2;
+    opacity: 0.35;
   }
   50% { 
     transform: translateY(-5px) translateX(-12px) rotate(180deg) scale(0.9);
-    opacity: 0.3;
+    opacity: 0.45;
   }
   75% { 
     transform: translateY(18px) translateX(5px) rotate(270deg) scale(1.05);
-    opacity: 0.15;
+    opacity: 0.3;
   }
 }
 
@@ -676,8 +676,8 @@ body::after {
   width: 100vw;
   height: 100vh;
   background-image: 
-    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(249, 115, 22, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249, 115, 22, 0.04) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
   z-index: -2;
