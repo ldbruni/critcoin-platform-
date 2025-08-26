@@ -391,7 +391,7 @@ export default function Profiles() {
                       fontSize: "0.9rem",
                       marginBottom: "0.5rem"
                     }}>
-                      ⭐ {prof.starSign}
+                      Star sign: {prof.starSign}
                     </p>
                   )}
                   {prof.bio && (
@@ -664,7 +664,7 @@ export default function Profiles() {
                       fontSize: "0.9rem",
                       marginBottom: "0.5rem"
                     }}>
-                      ⭐ {prof.starSign}
+                      Star sign: {prof.starSign}
                     </p>
                   )}
                   {prof.bio && (
