@@ -399,6 +399,31 @@ export default function Admin() {
     }
   };
 
+  const handleDeleteBounty = async (bountyId, bountyTitle) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the bounty "${bountyTitle}"?\n\nThis action cannot be undone!`)) {
+      return;
+    }
+
+    try {
+      const res = await postWithSignature(`${API.admin}/bounties/delete`, 'admin_post_bounties_delete', {
+        bountyId
+      });
+
+      if (res.ok) {
+        alert('Bounty deleted successfully');
+        fetchBounties();
+        fetchDashboard();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Delete bounty error:", error);
+        alert("Error: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Delete bounty error:", err);
+      alert("Error deleting bounty. Please check your wallet connection.");
+    }
+  };
+
   const handleToggleWhitelistMode = async () => {
     try {
       const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
@@ -907,7 +932,7 @@ export default function Admin() {
                 backgroundColor: "#f8f9fa",
                 fontWeight: "bold"
               }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 150px", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 200px", gap: "1rem" }}>
                   <span>Bounty</span>
                   <span>Reward</span>
                   <span>Status</span>
@@ -923,7 +948,7 @@ export default function Admin() {
                     backgroundColor: bounty.crossedOut ? "#f8d7da" : "white"
                   }}
                 >
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 150px", gap: "1rem", alignItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 200px", gap: "1rem", alignItems: "center" }}>
                     <div style={{ 
                       textDecoration: bounty.crossedOut ? "line-through" : "none",
                       color: bounty.crossedOut ? "#721c24" : "inherit"
@@ -972,10 +997,26 @@ export default function Admin() {
                           border: "none",
                           borderRadius: "4px",
                           cursor: "pointer",
-                          fontSize: "0.7rem"
+                          fontSize: "0.7rem",
+                          marginRight: "0.25rem"
                         }}
                       >
                         {bounty.crossedOut ? "Restore" : "Cross Out"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBounty(bounty._id, bounty.title)}
+                        style={{
+                          padding: "0.25rem 0.5rem",
+                          backgroundColor: "#6c757d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "0.7rem"
+                        }}
+                        title="Permanently delete bounty"
+                      >
+                        Delete
                       </button>
                     </div>
                   </div>
