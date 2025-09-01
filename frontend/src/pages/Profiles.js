@@ -31,6 +31,24 @@ export default function Profiles() {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
 
+  // Copy wallet address to clipboard
+  const copyWalletAddress = async (address) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      alert('Wallet address copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy wallet address:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = address;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Wallet address copied to clipboard!');
+    }
+  };
+
   const connectWallet = async () => {
     try {
       console.log("🔗 Connecting wallet...");
@@ -394,6 +412,60 @@ export default function Profiles() {
                       Star sign: {prof.starSign}
                     </p>
                   )}
+                  
+                  {/* Wallet Address with Copy Button */}
+                  <div style={{ 
+                    textAlign: "center", 
+                    marginBottom: "0.5rem",
+                    padding: "0.5rem",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "4px",
+                    border: "1px solid #e9ecef"
+                  }}>
+                    <div style={{ 
+                      fontSize: "0.75rem", 
+                      color: "#666", 
+                      marginBottom: "0.25rem",
+                      fontWeight: "600"
+                    }}>
+                      Wallet Address
+                    </div>
+                    <div style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      gap: "0.5rem" 
+                    }}>
+                      <code style={{ 
+                        fontSize: "0.75rem", 
+                        backgroundColor: "#ffffff", 
+                        padding: "0.25rem 0.5rem", 
+                        borderRadius: "3px",
+                        border: "1px solid #ddd",
+                        color: "#333",
+                        wordBreak: "break-all"
+                      }}>
+                        {prof.wallet}
+                      </code>
+                      <button
+                        onClick={() => copyWalletAddress(prof.wallet)}
+                        style={{
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "3px",
+                          padding: "0.25rem 0.5rem",
+                          fontSize: "0.7rem",
+                          cursor: "pointer",
+                          minWidth: "50px"
+                        }}
+                        title="Copy wallet address"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  
                   {prof.bio && (
                     <p style={{ 
                       fontSize: "0.9rem",
@@ -667,6 +739,60 @@ export default function Profiles() {
                       Star sign: {prof.starSign}
                     </p>
                   )}
+                  
+                  {/* Wallet Address with Copy Button */}
+                  <div style={{ 
+                    textAlign: "center", 
+                    marginBottom: "0.5rem",
+                    padding: "0.5rem",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "4px",
+                    border: "1px solid #e9ecef"
+                  }}>
+                    <div style={{ 
+                      fontSize: "0.75rem", 
+                      color: "#666", 
+                      marginBottom: "0.25rem",
+                      fontWeight: "600"
+                    }}>
+                      Wallet Address
+                    </div>
+                    <div style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      gap: "0.5rem" 
+                    }}>
+                      <code style={{ 
+                        fontSize: "0.75rem", 
+                        backgroundColor: "#ffffff", 
+                        padding: "0.25rem 0.5rem", 
+                        borderRadius: "3px",
+                        border: "1px solid #ddd",
+                        color: "#333",
+                        wordBreak: "break-all"
+                      }}>
+                        {prof.wallet}
+                      </code>
+                      <button
+                        onClick={() => copyWalletAddress(prof.wallet)}
+                        style={{
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "3px",
+                          padding: "0.25rem 0.5rem",
+                          fontSize: "0.7rem",
+                          cursor: "pointer",
+                          minWidth: "50px"
+                        }}
+                        title="Copy wallet address"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  
                   {prof.bio && (
                     <p style={{ 
                       fontSize: "0.9rem",
