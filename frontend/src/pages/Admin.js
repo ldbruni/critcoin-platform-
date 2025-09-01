@@ -298,14 +298,9 @@ export default function Admin() {
 
   const handleHidePost = async (postId, hide) => {
     try {
-      const res = await fetch(`${API.admin}/posts/hide`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          postId,
-          hide
-        })
+      const res = await postWithSignature(`${API.admin}/posts/hide`, 'admin_post_posts_hide', {
+        postId,
+        hide
       });
 
       if (res.ok) {
@@ -313,25 +308,21 @@ export default function Admin() {
         fetchPosts();
         fetchDashboard();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Hide post error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Hide post error:", err);
-      alert("Error hiding post");
+      alert("Error hiding post. Please check your wallet connection.");
     }
   };
 
   const handleArchiveProject = async (projectId, archive) => {
     try {
-      const res = await fetch(`${API.admin}/projects/archive`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          projectId,
-          archive
-        })
+      const res = await postWithSignature(`${API.admin}/projects/archive`, 'admin_post_projects_archive', {
+        projectId,
+        archive
       });
 
       if (res.ok) {
@@ -339,12 +330,13 @@ export default function Admin() {
         fetchProjects();
         fetchDashboard();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Archive project error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Archive project error:", err);
-      alert("Error archiving project");
+      alert("Error archiving project. Please check your wallet connection.");
     }
   };
 
@@ -352,12 +344,12 @@ export default function Admin() {
     e.preventDefault();
     
     try {
+      const action = editingBounty ? 'admin_post_bounties_update' : 'admin_post_bounties_create';
       const endpoint = editingBounty 
         ? `${API.admin}/bounties/update`
         : `${API.admin}/bounties`;
       
       const payload = {
-        adminWallet: wallet,
         title: bountyForm.title,
         description: bountyForm.description,
         reward: Number(bountyForm.reward)
@@ -367,11 +359,7 @@ export default function Admin() {
         payload.bountyId = editingBounty._id;
       }
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const res = await postWithSignature(endpoint, action, payload);
 
       if (res.ok) {
         alert(`Bounty ${editingBounty ? 'updated' : 'created'} successfully`);
@@ -380,62 +368,55 @@ export default function Admin() {
         fetchBounties();
         fetchDashboard();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Bounty submit error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Bounty submit error:", err);
-      alert("Error with bounty");
+      alert("Error with bounty. Please check your wallet connection.");
     }
   };
 
   const handleCrossOutBounty = async (bountyId, crossOut) => {
     try {
-      const res = await fetch(`${API.admin}/bounties/cross-out`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          bountyId,
-          crossOut
-        })
+      const res = await postWithSignature(`${API.admin}/bounties/cross-out`, 'admin_post_bounties_cross_out', {
+        bountyId,
+        crossOut
       });
 
       if (res.ok) {
         alert(`Bounty ${crossOut ? 'crossed out' : 'restored'} successfully`);
         fetchBounties();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Cross out bounty error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Cross out bounty error:", err);
-      alert("Error crossing out bounty");
+      alert("Error crossing out bounty. Please check your wallet connection.");
     }
   };
 
   const handleToggleWhitelistMode = async () => {
     try {
-      const res = await fetch(`${API.admin}/settings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          key: "whitelistMode",
-          value: !settings.whitelistMode
-        })
+      const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
+        key: "whitelistMode",
+        value: !settings.whitelistMode
       });
 
       if (res.ok) {
         alert(`Whitelist mode ${!settings.whitelistMode ? 'enabled' : 'disabled'} successfully`);
         fetchSettings();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Toggle whitelist mode error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Toggle whitelist mode error:", err);
-      alert("Error toggling whitelist mode");
+      alert("Error toggling whitelist mode. Please check your wallet connection.");
     }
   };
 
@@ -448,14 +429,9 @@ export default function Admin() {
     }
 
     try {
-      const res = await fetch(`${API.admin}/whitelist/add`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          wallet: whitelistForm.wallet,
-          notes: whitelistForm.notes
-        })
+      const res = await postWithSignature(`${API.admin}/whitelist/add`, 'admin_post_whitelist_add', {
+        wallet: whitelistForm.wallet,
+        notes: whitelistForm.notes
       });
 
       if (res.ok) {
@@ -463,12 +439,13 @@ export default function Admin() {
         setWhitelistForm({ wallet: "", notes: "" });
         fetchWhitelist();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Add to whitelist error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Add to whitelist error:", err);
-      alert("Error adding wallet to whitelist");
+      alert("Error adding wallet to whitelist. Please check your wallet connection.");
     }
   };
 
@@ -478,25 +455,21 @@ export default function Admin() {
     }
 
     try {
-      const res = await fetch(`${API.admin}/whitelist/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          wallet: walletToRemove
-        })
+      const res = await postWithSignature(`${API.admin}/whitelist/remove`, 'admin_post_whitelist_remove', {
+        wallet: walletToRemove
       });
 
       if (res.ok) {
         alert("Wallet removed from whitelist successfully");
         fetchWhitelist();
       } else {
-        const errorText = await res.text();
-        alert("Error: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Remove from whitelist error:", error);
+        alert("Error: " + (error.error || error));
       }
     } catch (err) {
       console.error("Remove from whitelist error:", err);
-      alert("Error removing wallet from whitelist");
+      alert("Error removing wallet from whitelist. Please check your wallet connection.");
     }
   };
 
@@ -508,13 +481,8 @@ export default function Admin() {
 
     setDeployLoading(true);
     try {
-      const res = await fetch(`${API.admin}/deploy-critcoin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          adminWallet: wallet,
-          confirmed: true
-        })
+      const res = await postWithSignature(`${API.admin}/deploy-critcoin`, 'admin_post_deploy_critcoin', {
+        confirmed: true
       });
 
       if (res.ok) {
@@ -522,12 +490,13 @@ export default function Admin() {
         alert(`CritCoin deployed successfully!\n${result.recipients} profiles received ${result.amountPerProfile} CritCoin each.\nTotal deployed: ${result.totalDeployed} CritCoin`);
         setShowDeployConfirm(false);
       } else {
-        const errorText = await res.text();
-        alert("Deploy failed: " + errorText);
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        console.error("Deploy CritCoin error:", error);
+        alert("Deploy failed: " + (error.error || error));
       }
     } catch (err) {
       console.error("Deploy CritCoin error:", err);
-      alert("Error deploying CritCoin");
+      alert("Error deploying CritCoin. Please check your wallet connection.");
     } finally {
       setDeployLoading(false);
     }
