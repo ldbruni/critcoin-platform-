@@ -439,6 +439,34 @@ router.post("/bounties/cross-out", authenticateAdmin, async (req, res) => {
   }
 });
 
+// POST delete bounty
+router.post("/bounties/delete", authenticateAdmin, async (req, res) => {
+  const { bountyId } = req.body;
+  
+  if (!bountyId) {
+    return res.status(400).send("Bounty ID required");
+  }
+
+  try {
+    const bounty = await Bounty.findByIdAndDelete(bountyId);
+    
+    if (!bounty) {
+      return res.status(404).send("Bounty not found");
+    }
+
+    res.json({ 
+      message: "Bounty deleted successfully",
+      deletedBounty: bounty 
+    });
+  } catch (err) {
+    console.error("Delete bounty error:", err);
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    res.status(500).json({ 
+      error: isDevelopment ? err.message : 'Database error' 
+    });
+  }
+});
+
 // POST deploy CritCoin to all active profiles (excluding admin)
 router.post("/deploy-critcoin", authenticateAdmin, async (req, res) => {
   const { adminWallet, confirmed } = req.body;
