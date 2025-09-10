@@ -1,0 +1,20 @@
+{
+  "name": "critcoin-platform",
+  "version": "1.0.0",
+  "description": "CritCoin Educational Blockchain Platform",
+  "main": "index.js",
+  "scripts": {
+    "setup": "cd frontend && npm install && cd ../backend && npm install",
+    "start": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
+    "start-backend": "cd backend && npm run dev",
+    "start-frontend": "cd frontend && npm start",
+    "start-windows": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start-windows\"",
+    "install-deps": "npm run setup"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["blockchain", "education", "ethereum", "react", "hardhat"],
+  "author": "CritCoin Platform",
+  "license": "MIT"
+}

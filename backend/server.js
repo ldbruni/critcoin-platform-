@@ -3,10 +3,10 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-// Temporarily disable all security middleware for debugging
-// const mongoSanitize = require('express-mongo-sanitize');
-// const helmet = require('helmet');
-// const rateLimit = require('express-rate-limit');
+// Security middleware
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 // Routes
 const profileRoutes = require("./routes/profiles");
 const postRoutes = require("./routes/posts");
@@ -32,7 +32,13 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'https://critcoin-platform.vercel.app',
       'https://critcoin-platform.vercel.app/'
     ].filter(Boolean)
-  : ['http://localhost:3000', 'http://localhost:3001'];
+  : [
+      'http://localhost:3000', 
+      'http://localhost:3001',
+      'https://localhost:3000',
+      'https://127.0.0.1:3000',
+      'https://0.0.0.0:3000'
+    ];
 
 console.log("🔧 CORS Configuration:");
 console.log("NODE_ENV:", process.env.NODE_ENV);
@@ -65,36 +71,42 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 // Security middleware
-// Temporarily disable helmet to fix database connectivity
-// app.use(helmet({
-//   contentSecurityPolicy: {
-//     directives: {
-//       defaultSrc: ["'self'"],
-//       styleSrc: ["'self'", "'unsafe-inline'"],
-//       scriptSrc: ["'self'"],
-//       imgSrc: ["'self'", "data:", "https:"],
-//       connectSrc: ["'self'"]
-//     }
-//   },
-//   crossOriginEmbedderPolicy: false
-// }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://localhost:*", "wss://localhost:*", "https://127.0.0.1:*", "https://0.0.0.0:*"],
+      fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+      frameSrc: ["'none'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  // Allow self-signed certificates in development
+  hsts: process.env.NODE_ENV === 'production' ? undefined : false
+}));
 
 // Sanitize user input to prevent NoSQL injection
-// Temporarily disabled due to compatibility issue
-// app.use(mongoSanitize({
-//   replaceWith: '_'
-// }));
+app.use(mongoSanitize({
+  replaceWith: '_'
+}));
 
-// Temporarily disable rate limiting
-// const generalLimiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 100, // limit each IP to 100 requests per windowMs
-//   message: { error: 'Too many requests, please try again later' },
-//   standardHeaders: true,
-//   legacyHeaders: false
-// });
+// Rate limiting - more lenient in development
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 100 : 500, // More requests allowed in dev
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for admin in development
+    return process.env.NODE_ENV !== 'production' && req.path.startsWith('/api/admin');
+  }
+});
 
-// app.use(generalLimiter);
+app.use(generalLimiter);
 app.use(express.json({ limit: '10mb' }));
 
 // Serve static files for profile photos
@@ -172,7 +184,12 @@ mongoose.connection.on('reconnected', () => {
 });
 
 // Start server
+// Note: Binding to 0.0.0.0 for development only - allows university network access
+// In production, this should be restricted to specific interfaces
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`🌐 Also accessible at http://localhost:${PORT}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('⚠️  Development mode: Server accessible on all network interfaces');
+  }
 });
