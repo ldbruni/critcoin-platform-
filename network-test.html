@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CritCoin Network Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        code { background: #f8f9fa; padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 CritCoin University Network Diagnostic</h1>
+        <p>This tool helps identify which ports and protocols work on your university network.</p>
+        
+        <div class="test info">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li>Make sure both frontend and backend servers are running</li>
+                <li>Click "Test All Configurations" below</li>
+                <li>Use the working configuration from the results</li>
+            </ol>
+        </div>
+
+        <button onclick="testAllConfigurations()">🔍 Test All Configurations</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+        
+        <div id="results"></div>
+
+        <div class="test warning">
+            <h3>🛠️ Common Solutions</h3>
+            <ul>
+                <li><strong>If all tests fail:</strong> Contact your IT department</li>
+                <li><strong>Certificate warnings:</strong> Click "Advanced" → "Proceed to localhost"</li>
+                <li><strong>Windows Firewall:</strong> Allow Node.js and your browser</li>
+                <li><strong>Try different browsers:</strong> Firefox, Chrome, Edge</li>
+            </ul>
+        </div>
+
+        <div class="test info">
+            <h3>🎯 Start Commands</h3>
+            <p><strong>Standard ports:</strong> <code>npm run start-university</code></p>
+            <p><strong>Secure ports:</strong> <code>npm run start-secure</code></p>
+            <p><strong>Default HTTPS:</strong> <code>npm run start-dev</code></p>
+        </div>
+    </div>
+
+    <script>
+        const configurations = [
+            { name: "Default HTTPS", frontend: "https://localhost:3000", backend: "http://localhost:3001" },
+            { name: "University Ports", frontend: "https://localhost:8080", backend: "http://localhost:8081" },
+            { name: "Secure Ports", frontend: "https://localhost:8443", backend: "http://localhost:8444" },
+            { name: "IP Alternative 1", frontend: "https://127.0.0.1:3000", backend: "http://127.0.0.1:3001" },
+            { name: "IP Alternative 2", frontend: "https://127.0.0.1:8080", backend: "http://127.0.0.1:8081" },
+            { name: "Network Binding", frontend: "https://0.0.0.0:3000", backend: "http://0.0.0.0:3001" }
+        ];
+
+        async function testConfiguration(config) {
+            const results = { frontend: false, backend: false };
+            
+            // Test frontend
+            try {
+                const response = await fetch(config.frontend, { 
+                    method: 'HEAD', 
+                    mode: 'no-cors',
+                    timeout: 5000 
+                });
+                results.frontend = true;
+            } catch (e) {
+                results.frontend = false;
+            }
+            
+            // Test backend
+            try {
+                const response = await fetch(config.backend + '/api/health', { 
+                    method: 'GET',
+                    timeout: 5000 
+                });
+                results.backend = response.ok;
+            } catch (e) {
+                results.backend = false;
+            }
+            
+            return results;
+        }
+
+        async function testAllConfigurations() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test info">🔄 Testing configurations...</div>';
+            
+            for (const config of configurations) {
+                const results = await testConfiguration(config);
+                const success = results.frontend && results.backend;
+                const className = success ? 'success' : 'error';
+                const icon = success ? '✅' : '❌';
+                
+                const testResult = `
+                    <div class="test ${className}">
+                        <h4>${icon} ${config.name}</h4>
+                        <p><strong>Frontend:</strong> <a href="${config.frontend}" target="_blank">${config.frontend}</a> ${results.frontend ? '✅' : '❌'}</p>
+                        <p><strong>Backend:</strong> <a href="${config.backend}/api/health" target="_blank">${config.backend}</a> ${results.backend ? '✅' : '❌'}</p>
+                        ${success ? '<p><strong>✅ This configuration works! Use this one.</strong></p>' : ''}
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML += testResult;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-detect current configuration
+        window.addEventListener('load', () => {
+            const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+            const currentHost = window.location.hostname;
+            
+            if (currentPort !== '80' && currentPort !== '443') {
+                document.getElementById('results').innerHTML = `
+                    <div class="test info">
+                        <h4>📍 Current Configuration Detected</h4>
+                        <p>You're running on: <strong>${window.location.protocol}//${currentHost}:${currentPort}</strong></p>
+                        <p>This page can help test if other configurations work better.</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

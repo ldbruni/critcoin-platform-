@@ -3,6 +3,8 @@ node_modules
 .idea
 .env
 frontend/.env
+frontend/.env.local
+frontend/.env.production.local
 backend/.env
 
 # Build outputs

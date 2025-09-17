@@ -3,6 +3,20 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+
+// Environment validation for production
+if (process.env.NODE_ENV === 'production') {
+  const requiredEnvVars = ['MONGO_URI', 'ADMIN_WALLET'];
+  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  
+  if (missingEnvVars.length > 0) {
+    console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
+    console.error('💡 Please set these variables in your Railway dashboard');
+    process.exit(1);
+  }
+  
+  console.log('✅ All required environment variables are set');
+}
 // Security middleware
 const mongoSanitize = require('express-mongo-sanitize');
 const helmet = require('helmet');
@@ -29,6 +43,8 @@ if (!fs.existsSync(uploadsDir)) {
 const allowedOrigins = process.env.NODE_ENV === 'production' 
   ? [
       process.env.FRONTEND_URL, 
+      'https://critcoin.art',
+      'https://www.critcoin.art',
       'https://critcoin-platform.vercel.app',
       'https://critcoin-platform.vercel.app/'
     ].filter(Boolean)
@@ -37,7 +53,11 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'http://localhost:3001',
       'https://localhost:3000',
       'https://127.0.0.1:3000',
-      'https://0.0.0.0:3000'
+      'https://0.0.0.0:3000',
+      'https://localhost:8080',
+      'https://127.0.0.1:8080',
+      'https://localhost:8443',
+      'https://127.0.0.1:8443'
     ];
 
 console.log("🔧 CORS Configuration:");
@@ -184,12 +204,16 @@ mongoose.connection.on('reconnected', () => {
 });
 
 // Start server
-// Note: Binding to 0.0.0.0 for development only - allows university network access
-// In production, this should be restricted to specific interfaces
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`🌐 Also accessible at http://localhost:${PORT}`);
+const host = process.env.NODE_ENV === 'production' ? undefined : '0.0.0.0';
+
+app.listen(PORT, host, () => {
+  const bindAddress = host || '0.0.0.0';
+  console.log(`🚀 Server running on http://${bindAddress}:${PORT}`);
+  
   if (process.env.NODE_ENV !== 'production') {
+    console.log(`🌐 Also accessible at http://localhost:${PORT}`);
     console.log('⚠️  Development mode: Server accessible on all network interfaces');
+  } else {
+    console.log('🔒 Production mode: Server bound to Railway default interface');
   }
 });

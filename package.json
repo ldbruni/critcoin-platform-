@@ -5,10 +5,16 @@
   "main": "index.js",
   "scripts": {
     "setup": "cd frontend && npm install && cd ../backend && npm install",
-    "start": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
+    "start": "cd backend && npm start",
+    "start-dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start-dev\"",
+    "start-university": "concurrently \"cd backend && npm run start-university\" \"cd frontend && npm run start-university\"",
+    "start-secure": "concurrently \"cd backend && npm run start-secure\" \"cd frontend && npm run start-secure\"",
     "start-backend": "cd backend && npm run dev",
     "start-frontend": "cd frontend && npm start",
     "start-windows": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run start-windows\"",
+    "build": "cd frontend && npm run build",
+    "build-production": "cd frontend && npm run build-production",
+    "deploy-frontend": "cd frontend && npm run deploy-vercel",
     "install-deps": "npm run setup"
   },
   "devDependencies": {

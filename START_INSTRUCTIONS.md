@@ -2,19 +2,52 @@
 
 ## For University Windows Machines
 
-**Just run these 2 commands - that's it!**
+## Development Mode (University Networks)
+
+### 🎓 For University Windows Machines
+
+**If university firewall blocks the site, try these options:**
 
 ```bash
-# 1. Install dependencies
+# 1. Install dependencies (one-time setup)
 npm run setup
 
-# 2. Start the application
-npm start
+# 2. Try different port configurations:
+
+# Option A: Standard web ports (most likely to work)
+npm run start-university
+# Access at: https://localhost:8080
+
+# Option B: Secure ports
+npm run start-secure  
+# Access at: https://localhost:8443
+
+# Option C: Default HTTPS
+npm run start-dev
+# Access at: https://localhost:3000
 ```
 
-Then open: **https://localhost:3000**
+### 🔧 Windows Quick Setup
 
-*(Accept the security certificate warning - this is normal for development)*
+**Double-click:** `university-setup.bat` (Windows) or `university-setup.sh` (Mac/Linux)
+
+This script will:
+- Test different port configurations
+- Start the servers automatically
+- Give you the working URL
+
+### 🔍 Network Diagnostics
+
+**Open:** `network-test.html` in your browser to test which configurations work on your network.
+
+## Production Mode (Railway/Heroku)
+
+**Backend only** - Frontend should be deployed separately:
+
+```bash
+# Starts backend server only
+npm start
+```
 
 ---
 

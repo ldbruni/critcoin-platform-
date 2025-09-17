@@ -44,13 +44,17 @@ export default function Explorer() {
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
 
+      console.log("🔍 Fetching transactions from:", `${API.explorer}/transactions?${params}`);
       const res = await fetch(`${API.explorer}/transactions?${params}`);
       if (res.ok) {
         const data = await res.json();
+        console.log("📊 Transaction data received:", data);
         setTransactions(data.transactions);
         setPagination(data.pagination);
       } else {
-        console.error("Failed to fetch transactions");
+        console.error("Failed to fetch transactions, status:", res.status);
+        const errorText = await res.text();
+        console.error("Error response:", errorText);
       }
     } catch (err) {
       console.error("Network error fetching transactions:", err);
@@ -95,6 +99,29 @@ export default function Explorer() {
       from: "",
       to: ""
     });
+  };
+
+  const createSampleData = async () => {
+    try {
+      const res = await fetch(`${API.explorer}/sample-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        // Refresh the data
+        fetchTransactions();
+        fetchStats();
+      } else {
+        const error = await res.text();
+        alert(`Error: ${error}`);
+      }
+    } catch (err) {
+      console.error("Error creating sample data:", err);
+      alert("Error creating sample data. Check console for details.");
+    }
   };
 
   const formatDate = (dateString) => {
@@ -281,7 +308,32 @@ export default function Explorer() {
         {loading ? (
           <div style={{ padding: "2rem", textAlign: "center" }}>Loading transactions...</div>
         ) : transactions.length === 0 ? (
-          <div style={{ padding: "2rem", textAlign: "center" }}>No transactions found</div>
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h3>No transactions found</h3>
+              <p>The explorer will show data when:</p>
+              <ul style={{ textAlign: "left", display: "inline-block" }}>
+                <li>Students tip projects</li>
+                <li>Admin deploys CritCoin</li>
+                <li>Users transfer CritCoin to each other</li>
+                <li>Forum rewards are distributed</li>
+              </ul>
+            </div>
+            <button
+              onClick={createSampleData}
+              style={{
+                padding: "0.75rem 1.5rem",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "1rem"
+              }}
+            >
+              Create Sample Data (Development)
+            </button>
+          </div>
         ) : (
           transactions.map((tx, index) => (
             <div 

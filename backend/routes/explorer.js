@@ -68,6 +68,11 @@ router.get("/transactions", async (req, res) => {
       };
     });
 
+    // If no transactions exist, create some sample data for testing
+    if (total === 0 && process.env.NODE_ENV !== 'production') {
+      console.log('🔍 No transactions found, consider using admin CritCoin deployment to create initial transactions');
+    }
+
     res.json({
       transactions: enrichedTransactions,
       pagination: {
@@ -254,6 +259,85 @@ router.get("/wallet/:address", async (req, res) => {
   } catch (err) {
     console.error("Wallet transactions fetch error:", err);
     res.status(500).send("Failed to fetch wallet transactions");
+  }
+});
+
+// POST create sample transactions (development only)
+router.post("/sample-data", async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).send("Sample data creation not allowed in production");
+  }
+
+  try {
+    // Check if transactions already exist
+    const existingCount = await Transaction.countDocuments();
+    if (existingCount > 0) {
+      return res.json({ 
+        message: "Sample data already exists", 
+        existingTransactions: existingCount 
+      });
+    }
+
+    // Get some profiles to use for sample data
+    const profiles = await Profile.find({ archived: { $ne: true } }).limit(5);
+    
+    if (profiles.length < 2) {
+      return res.status(400).json({ 
+        error: "Need at least 2 profiles to create sample transactions. Create some profiles first." 
+      });
+    }
+
+    const sampleTransactions = [];
+    const types = ['transfer', 'project_tip', 'forum_reward', 'system'];
+    
+    // Create 20 sample transactions
+    for (let i = 0; i < 20; i++) {
+      const fromProfile = profiles[Math.floor(Math.random() * profiles.length)];
+      let toProfile = profiles[Math.floor(Math.random() * profiles.length)];
+      
+      // Ensure different from and to
+      while (toProfile.wallet === fromProfile.wallet) {
+        toProfile = profiles[Math.floor(Math.random() * profiles.length)];
+      }
+      
+      const type = types[Math.floor(Math.random() * types.length)];
+      const amount = Math.floor(Math.random() * 100) + 1; // 1-100 CC
+      
+      // Random timestamp within last 30 days
+      const timestamp = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+      
+      sampleTransactions.push({
+        fromWallet: fromProfile.wallet,
+        toWallet: toProfile.wallet,
+        amount: amount,
+        type: type,
+        description: `Sample ${type.replace('_', ' ')} transaction`,
+        status: 'completed',
+        timestamp: timestamp
+      });
+    }
+
+    // Add a few system transactions
+    sampleTransactions.push({
+      fromWallet: 'system',
+      toWallet: profiles[0].wallet,
+      amount: 1000,
+      type: 'system',
+      description: 'Initial CritCoin deployment',
+      status: 'completed',
+      timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+    });
+
+    await Transaction.insertMany(sampleTransactions);
+
+    res.json({
+      message: "Sample transaction data created successfully",
+      transactionsCreated: sampleTransactions.length,
+      note: "Visit the Explorer page to see the sample transactions"
+    });
+  } catch (err) {
+    console.error("Failed to create sample data:", err);
+    res.status(500).send("Failed to create sample data");
   }
 });
 
