@@ -263,12 +263,20 @@ export default function Projects() {
                   src={`${API.projects}/image/${userSubmission.image}`}
                   alt={userSubmission.title}
                   style={{
-                    width: "300px",
-                    height: "300px",
-                    objectFit: "cover",
+                    width: "100%",
+                    maxWidth: "400px",
+                    height: "auto",
+                    objectFit: "contain",
                     borderRadius: "8px",
-                    marginBottom: "1rem"
+                    marginBottom: "1rem",
+                    backgroundColor: "#f0f0f0"
                   }}
+                  onError={(e) => {
+                    console.error("❌ Failed to load your submission image:", userSubmission.image);
+                    console.error("❌ Image URL:", e.target.src);
+                    e.target.alt = "Image failed to load";
+                  }}
+                  onLoad={() => console.log("✅ Your submission image loaded:", userSubmission.image)}
                 />
                 <h4>{userSubmission.title}</h4>
                 <p>{userSubmission.description}</p>
@@ -278,7 +286,7 @@ export default function Projects() {
             ) : (
               <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: "1rem" }}>
-                  <label>Project Image (max 1080x1080):</label><br />
+                  <label>Project Image (phone photos welcome - max 10MB):</label><br />
                   <input
                     type="file"
                     accept="image/*"
@@ -288,15 +296,22 @@ export default function Projects() {
                   />
                   {(imagePreview || (userSubmission?.image && !selectedImage)) && (
                     <div style={{ marginTop: "0.5rem" }}>
-                      <img 
+                      <img
                         src={imagePreview || `${API.projects}/image/${userSubmission.image}`}
                         alt="Preview"
-                        style={{ 
-                          width: "200px", 
-                          height: "200px", 
-                          objectFit: "cover",
+                        style={{
+                          width: "100%",
+                          maxWidth: "300px",
+                          height: "auto",
+                          maxHeight: "400px",
+                          objectFit: "contain",
                           borderRadius: "8px",
-                          border: "2px solid #ddd"
+                          border: "2px solid #ddd",
+                          backgroundColor: "#f0f0f0"
+                        }}
+                        onError={(e) => {
+                          console.error("❌ Failed to load preview image");
+                          e.target.alt = "Preview failed to load";
                         }}
                       />
                     </div>
@@ -371,11 +386,34 @@ export default function Projects() {
                     alt={project.title}
                     style={{
                       width: "100%",
-                      height: "200px",
-                      objectFit: "cover",
+                      height: "auto",
+                      maxHeight: "400px",
+                      objectFit: "contain",
                       borderRadius: "8px",
-                      marginBottom: "1rem"
+                      marginBottom: "1rem",
+                      backgroundColor: "#f0f0f0"
                     }}
+                    onError={(e) => {
+                      console.error("❌ Failed to load project image:", project.image);
+                      console.error("❌ Image URL:", e.target.src);
+                      e.target.style.display = 'none';
+                      const placeholder = document.createElement('div');
+                      placeholder.style.cssText = `
+                        width: 100%;
+                        height: 200px;
+                        background-color: #f0f0f0;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #999;
+                        font-size: 1rem;
+                        margin-bottom: 1rem;
+                      `;
+                      placeholder.textContent = '📷 Image not available';
+                      e.target.parentNode.insertBefore(placeholder, e.target);
+                    }}
+                    onLoad={() => console.log("✅ Project image loaded:", project.image)}
                   />
                   
                   <h4>{project.title}</h4>

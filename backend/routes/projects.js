@@ -117,13 +117,17 @@ router.post("/", upload.single('image'), async (req, res) => {
       return res.status(400).send("Need ≥1 CritCoin to submit projects");
     }
 
-    const imageFilename = `${wallet.toLowerCase()}_project${projNum}.jpg`;
+    // Generate unique filename with timestamp and random string
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const imageFilename = `project_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
     const imagePath = path.join(uploadsDir, imageFilename);
 
-    // Process and save image (max 1080x1080)
+    // Process and save image - accommodate phone photos (portrait/landscape)
+    // Max dimensions: 1920px (wide enough for landscape), maintain aspect ratio
     await sharp(req.file.buffer)
-      .resize(1080, 1080, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 90 })
+      .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
       .toFile(imagePath);
 
     // Check if project already exists (update) or create new
@@ -203,42 +207,48 @@ router.post("/send-coin", async (req, res) => {
 
 // Secure file name sanitization for project images
 const sanitizeProjectFilename = (filename) => {
-  // Remove any path traversal attempts and normalize
-  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '');
-  
-  // Only allow specific pattern for project images
-  if (!sanitized.match(/^project_[a-fA-F0-9]{8,}_[0-9]{13}_[a-z0-9]{13}\.(jpg|jpeg|png|gif|webp)$/i)) {
+  // Remove any path traversal attempts and normalize, but keep x for 0x prefix
+  const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-x]/g, '');
+
+  // Only allow specific pattern for project images: project_0x[wallet]_[timestamp]_[random].jpg
+  // Pattern: project_0x[40 hex chars]_[13 digits]_[8-20 chars].jpg
+  if (!sanitized.match(/^project_0x[a-fA-F0-9]{40}_[0-9]{13}_[a-z0-9]{8,20}\.jpg$/i)) {
+    console.log('❌ Filename does not match pattern:', sanitized);
+    console.log('❌ Expected: project_0x[40 hex chars]_[13 digits]_[8-20 chars].jpg');
     throw new Error('Invalid project image filename format');
   }
-  
+
   return sanitized;
 };
 
 // Serve project images
 router.get("/image/:filename", (req, res) => {
   const filename = req.params.filename;
-  
-  console.log("🖼️ Project image request:", filename);
-  
+
+  console.log("🖼️ Project image request:", filename, "from:", req.get('User-Agent')?.includes('Mobile') ? 'Mobile' : 'Desktop');
+
   try {
     // Secure filename validation
     const safeFilename = sanitizeProjectFilename(filename);
     const imagePath = path.resolve(uploadsDir, safeFilename);
-    
+
     // Double-check that resolved path is within uploads directory
     if (!imagePath.startsWith(path.resolve(uploadsDir))) {
       console.log("❌ Path traversal attempt blocked:", filename);
       return res.status(400).json({ error: "Invalid file path" });
     }
-    
+
     if (fs.existsSync(imagePath)) {
       console.log("✅ Serving project image:", imagePath);
-      
-      // Set security headers for image serving
+
+      // Set headers for better mobile compatibility and CORS
       res.setHeader('Content-Type', 'image/jpeg');
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      
+      res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-origin requests
+      res.setHeader('Access-Control-Allow-Methods', 'GET');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
       // Use absolute path for sendFile
       const absolutePath = path.resolve(imagePath);
       res.sendFile(absolutePath, (err) => {
