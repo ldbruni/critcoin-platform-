@@ -53,7 +53,15 @@ export default function ForumPage() {
       // 3) Enrich posts with profile info including photos
       const enriched = data.map(post => {
         const w = post.authorWallet?.toLowerCase();
-        const profileData = w && profiles.find(p => p.wallet === w);
+        const profileData = w && profiles.find(p => p.wallet.toLowerCase() === w);
+
+        // Debug logging
+        if (w && profileData) {
+          console.log("📸 Found profile for", w, "- photo:", profileData.photo);
+        } else if (w) {
+          console.warn("⚠️ No profile found for wallet:", w);
+        }
+
         return {
           ...post,
           authorName: (w && profileMap[w]) || post.authorWallet || "Unknown",
@@ -61,6 +69,7 @@ export default function ForumPage() {
         };
       });
 
+      console.log("📝 Enriched posts with photos:", enriched.map(p => ({ author: p.authorName, photo: p.authorPhoto })));
       setPosts(enriched);
     } catch (err) {
       console.error("Network error in fetchPosts:", err);
@@ -283,20 +292,26 @@ export default function ForumPage() {
                   height: "50px",
                   marginRight: "1rem"
                 }}
+                onError={(e) => {
+                  console.error("❌ Failed to load photo:", p.authorPhoto, "for author:", p.authorName);
+                  console.error("❌ Photo URL:", e.target.src);
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+                onLoad={() => console.log("✅ Photo loaded successfully:", p.authorPhoto)}
               />
-            ) : (
-              <div style={{
-                width: "50px",
-                height: "50px",
-                borderRadius: "50%",
-                background: 'var(--gradient-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: "1rem",
-                fontSize: '1.5rem'
-              }}>P</div>
-            )}
+            ) : null}
+            <div style={{
+              width: "50px",
+              height: "50px",
+              borderRadius: "50%",
+              background: 'var(--gradient-secondary)',
+              display: p.authorPhoto ? 'none' : 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: "1rem",
+              fontSize: '1.5rem'
+            }}>P</div>
             <div style={{ flex: 1 }}>
               <div style={{ 
                 fontFamily: 'Cinzel, serif', 
