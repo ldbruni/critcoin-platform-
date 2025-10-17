@@ -67,17 +67,12 @@ console.log("Allowed origins:", allowedOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // In production, never allow requests with no origin
-    if (!origin && process.env.NODE_ENV === 'production') {
-      console.log("❌ No origin in production - blocked");
-      return callback(new Error('Not allowed by CORS - no origin'));
-    }
-    
-    // Allow no origin only in development
-    if (!origin && process.env.NODE_ENV !== 'production') {
+    // Allow requests without origin (like <img> tags, direct browser navigation)
+    // These are safe as they can't read the response with JavaScript
+    if (!origin) {
       return callback(null, true);
     }
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
