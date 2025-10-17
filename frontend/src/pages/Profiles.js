@@ -16,10 +16,6 @@ const API = {
 
 console.log("🔍 Final API.profiles URL:", API.profiles);
 
-// Test photo URL construction
-const testPhotoUrl = `${API.profiles}/photo/test123.jpg`;
-console.log("🔍 Test photo URL would be:", testPhotoUrl);
-
 export default function Profiles() {
   const [wallet, setWallet] = useState(null);
   const [balance, setBalance] = useState(0);
