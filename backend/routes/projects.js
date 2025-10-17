@@ -9,6 +9,14 @@ const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
 const { ethers } = require("ethers");
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Load contract info
 const contractInfo = require("../sepolia.json");
@@ -117,30 +125,49 @@ router.post("/", upload.single('image'), async (req, res) => {
       return res.status(400).send("Need ≥1 CritCoin to submit projects");
     }
 
-    // Generate unique filename with timestamp and random string
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const imageFilename = `project_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
-    const imagePath = path.join(uploadsDir, imageFilename);
+    console.log("🖼️ Uploading project image to Cloudinary...");
 
-    // Process and save image - accommodate phone photos (portrait/landscape)
-    // Max dimensions: 1920px (wide enough for landscape), maintain aspect ratio
-    await sharp(req.file.buffer)
+    // Process and upload image to Cloudinary - accommodate phone photos
+    // Max dimensions: 1920px, maintain aspect ratio
+    const processedImageBuffer = await sharp(req.file.buffer)
       .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85 })
-      .toFile(imagePath);
+      .toBuffer();
+
+    // Upload to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'critcoin/projects',
+          public_id: `project_${wallet.toLowerCase()}_${projNum}_${Date.now()}`,
+          resource_type: 'image',
+          transformation: [
+            { width: 1920, height: 1920, crop: 'limit' },
+            { quality: 'auto:good' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(processedImageBuffer);
+    });
+
+    const imageUrl = uploadResult.secure_url;
+    console.log("✅ Project image uploaded to Cloudinary:", imageUrl);
 
     // Check if project already exists (update) or create new
-    let project = await Project.findOne({ 
-      authorWallet: wallet.toLowerCase(), 
-      projectNumber: projNum 
+    let project = await Project.findOne({
+      authorWallet: wallet.toLowerCase(),
+      projectNumber: projNum
     });
 
     if (project) {
       // Update existing project
       project.title = title;
       project.description = description || "";
-      project.image = imageFilename;
+      project.image = imageUrl;
       project.updatedAt = new Date();
       await project.save();
     } else {
@@ -150,7 +177,7 @@ router.post("/", upload.single('image'), async (req, res) => {
         projectNumber: projNum,
         title,
         description: description || "",
-        image: imageFilename
+        image: imageUrl
       });
       await project.save();
     }

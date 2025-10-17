@@ -12,6 +12,14 @@ const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
 const { ethers } = require("ethers");
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Load contract info
 const contractInfo = require("../sepolia.json");
@@ -173,26 +181,26 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
       return res.status(400).send("Need ≥1 CritCoin to create profile");
     }
 
-    let photoFilename = null;
-    
+    let photoUrl = null;
+
     // Process uploaded photo if provided
     if (req.file) {
       try {
         console.log("📸 Processing photo upload...");
-        
+
         // Validate file size (already checked by multer, but double-check)
         if (req.file.size > 5 * 1024 * 1024) {
           console.log("❌ Photo too large:", req.file.size);
           return res.status(400).json({ error: "Photo file is too large (max 5MB)" });
         }
-        
+
         // Validate file type using magic numbers
         const detectedType = validateImageType(req.file.buffer);
         if (!detectedType) {
           console.log("❌ Invalid image file signature");
           return res.status(400).json({ error: "Invalid image file format" });
         }
-        
+
         // Verify the detected type matches the claimed MIME type
         const mimeTypeMap = {
           'jpg': ['image/jpeg', 'image/jpg'],
@@ -200,38 +208,53 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
           'gif': ['image/gif'],
           'webp': ['image/webp']
         };
-        
+
         if (!mimeTypeMap[detectedType] || !mimeTypeMap[detectedType].includes(req.file.mimetype)) {
           console.log("❌ File signature doesn't match MIME type:", detectedType, req.file.mimetype);
           return res.status(400).json({ error: "File type mismatch detected" });
         }
-        
-        // Generate unique filename
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
-        photoFilename = `profile_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
-        const photoPath = path.join(uploadsDir, photoFilename);
-        
-        console.log("📸 Saving photo to:", photoPath);
-        
-        // Process and save image using Sharp with security settings
-        await sharp(req.file.buffer)
-          .resize(300, 300, { 
+
+        console.log("📸 Uploading photo to Cloudinary...");
+
+        // Process image with Sharp and upload to Cloudinary
+        const processedImageBuffer = await sharp(req.file.buffer)
+          .resize(300, 300, {
             fit: 'cover',
-            withoutEnlargement: true // Don't upscale small images
+            withoutEnlargement: true
           })
-          .jpeg({ 
+          .jpeg({
             quality: 85,
-            mozjpeg: true // Use mozjpeg encoder for better compression
+            mozjpeg: true
           })
-          .removeAlpha() // Remove alpha channel for security
-          .toFile(photoPath);
-          
-        console.log("✅ Photo saved successfully:", photoFilename);
+          .removeAlpha()
+          .toBuffer();
+
+        // Upload to Cloudinary
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'critcoin/profiles',
+              public_id: `profile_${wallet.toLowerCase()}_${Date.now()}`,
+              resource_type: 'image',
+              transformation: [
+                { width: 300, height: 300, crop: 'fill' },
+                { quality: 'auto:good' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(processedImageBuffer);
+        });
+
+        photoUrl = uploadResult.secure_url;
+        console.log("✅ Photo uploaded to Cloudinary:", photoUrl);
       } catch (photoError) {
         console.error("❌ Photo processing error:", photoError);
         const isDevelopment = process.env.NODE_ENV === 'development';
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: isDevelopment ? photoError.message : 'Photo processing failed'
         });
       }
@@ -239,12 +262,12 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
       console.log("📸 No photo provided");
     }
 
-    const profile = new Profile({ 
-      wallet: wallet.toLowerCase(), 
-      name, 
-      birthday, 
+    const profile = new Profile({
+      wallet: wallet.toLowerCase(),
+      name,
+      birthday,
       starSign,
-      photo: photoFilename 
+      photo: photoUrl
     });
     
     console.log("Attempting to save profile:", profile);
@@ -275,35 +298,43 @@ router.post("/update", upload.single('photo'), async (req, res) => {
     // Process uploaded photo if provided
     if (req.file) {
       try {
-        // Generate unique filename
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
-        const photoFilename = `profile_${wallet.toLowerCase()}_${timestamp}_${randomString}.jpg`;
-        const photoPath = path.join(uploadsDir, photoFilename);
-        
-        // Process and save image using Sharp (resize to 300x300, compress)
-        await sharp(req.file.buffer)
-          .resize(300, 300, { fit: 'cover' })
-          .jpeg({ quality: 85 })
-          .toFile(photoPath);
-          
-        // Add photo to update data
-        updateData.photo = photoFilename;
-        console.log("Photo saved successfully:", photoFilename);
-        
-        // Optional: Delete old photo file if it exists
-        const existingProfile = await Profile.findOne({ wallet: wallet.toLowerCase() });
-        if (existingProfile?.photo) {
-          const oldPhotoPath = path.join(uploadsDir, existingProfile.photo);
-          try {
-            if (fs.existsSync(oldPhotoPath)) {
-              fs.unlinkSync(oldPhotoPath);
-              console.log("Old photo deleted:", existingProfile.photo);
+        console.log("📸 Uploading photo to Cloudinary...");
+
+        // Process image with Sharp and upload to Cloudinary
+        const processedImageBuffer = await sharp(req.file.buffer)
+          .resize(300, 300, {
+            fit: 'cover',
+            withoutEnlargement: true
+          })
+          .jpeg({
+            quality: 85,
+            mozjpeg: true
+          })
+          .removeAlpha()
+          .toBuffer();
+
+        // Upload to Cloudinary
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'critcoin/profiles',
+              public_id: `profile_${wallet.toLowerCase()}_${Date.now()}`,
+              resource_type: 'image',
+              transformation: [
+                { width: 300, height: 300, crop: 'fill' },
+                { quality: 'auto:good' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
             }
-          } catch (deleteError) {
-            console.warn("Could not delete old photo:", deleteError.message);
-          }
-        }
+          );
+          uploadStream.end(processedImageBuffer);
+        });
+
+        updateData.photo = uploadResult.secure_url;
+        console.log("✅ Photo uploaded to Cloudinary:", uploadResult.secure_url);
       } catch (photoError) {
         console.error("Photo processing error:", photoError);
         // Continue without updating photo if processing fails

@@ -284,7 +284,7 @@ export default function ForumPage() {
           <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
             {p.authorPhoto ? (
               <img
-                src={`${API.profiles}/photo/${p.authorPhoto}`}
+                src={p.authorPhoto}
                 alt="Profile"
                 className="artistic-profile-img"
                 style={{
@@ -293,12 +293,12 @@ export default function ForumPage() {
                   marginRight: "1rem"
                 }}
                 onError={(e) => {
-                  console.error("❌ Failed to load photo:", p.authorPhoto, "for author:", p.authorName);
+                  console.error("❌ Failed to load photo for author:", p.authorName);
                   console.error("❌ Photo URL:", e.target.src);
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
                 }}
-                onLoad={() => console.log("✅ Photo loaded successfully:", p.authorPhoto)}
+                onLoad={() => console.log("✅ Photo loaded successfully for:", p.authorName)}
               />
             ) : null}
             <div style={{

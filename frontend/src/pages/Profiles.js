@@ -360,21 +360,23 @@ export default function Profiles() {
                 >
                   <div style={{ textAlign: "center", marginBottom: "1rem" }}>
                     {prof.photo ? (
-                      <img 
-                        src={`${API.profiles}/photo/${prof.photo}`}
+                      <img
+                        src={prof.photo}
                         alt={`${prof.name || 'Profile'}'s profile`}
-                        style={{ 
-                          width: "80px", 
-                          height: "80px", 
+                        style={{
+                          width: "80px",
+                          height: "80px",
                           objectFit: "cover",
                           borderRadius: "50%",
                           border: "3px solid #007bff",
                           backgroundColor: "#f8f9fa"
                         }}
                         onError={(e) => {
+                          console.error("❌ Failed to load profile photo:", prof.photo);
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
                         }}
+                        onLoad={() => console.log("✅ Profile photo loaded:", prof.name)}
                       />
                     ) : null}
                     <div 
@@ -505,16 +507,21 @@ export default function Profiles() {
           <h3 className="neon-purple-text" style={{ fontFamily: 'Orbitron, monospace', textAlign: 'center', marginBottom: '1.5rem' }}>YOUR DIGITAL IDENTITY</h3>
           {profile.photo && (
             <div style={{ marginBottom: "1rem" }}>
-              <img 
-                src={`${API.profiles}/photo/${profile.photo}`}
+              <img
+                src={profile.photo}
                 alt="Profile"
-                style={{ 
-                  width: "150px", 
-                  height: "150px", 
+                style={{
+                  width: "150px",
+                  height: "150px",
                   objectFit: "cover",
                   borderRadius: "8px",
                   border: "2px solid #ddd"
                 }}
+                onError={(e) => {
+                  console.error("❌ Failed to load your profile photo:", profile.photo);
+                  e.target.style.display = 'none';
+                }}
+                onLoad={() => console.log("✅ Your profile photo loaded successfully")}
               />
             </div>
           )}
@@ -561,31 +568,31 @@ export default function Profiles() {
               </small>
               {(photoPreview || (profile?.photo && !selectedPhoto)) && (
                 <div style={{ marginTop: "0.5rem" }}>
-                  <img 
-                    src={photoPreview || `${API.profiles}/photo/${profile.photo}`}
+                  <img
+                    src={photoPreview || profile.photo}
                     alt="Profile Preview"
-                    style={{ 
-                      width: "150px", 
-                      height: "150px", 
+                    style={{
+                      width: "150px",
+                      height: "150px",
                       objectFit: "cover",
                       borderRadius: "8px",
                       border: "2px solid #ddd",
                       backgroundColor: "#f0f0f0"
                     }}
-                    onLoad={() => console.log("✅ Profile photo loaded successfully")}
+                    onLoad={() => console.log("✅ Profile photo preview loaded successfully")}
                     onError={(e) => {
-                      console.error("❌ Profile photo failed to load:", e.target.src);
+                      console.error("❌ Profile photo preview failed to load:", e.target.src);
                       e.target.style.display = 'none';
                       const fallback = document.createElement('div');
                       fallback.style.cssText = `
-                        width: 150px; 
-                        height: 150px; 
-                        border-radius: 8px; 
-                        border: 2px solid #ddd; 
-                        background-color: #f0f0f0; 
-                        display: flex; 
-                        align-items: center; 
-                        justify-content: center; 
+                        width: 150px;
+                        height: 150px;
+                        border-radius: 8px;
+                        border: 2px solid #ddd;
+                        background-color: #f0f0f0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
                         font-size: 3rem;
                         color: #999;
                       `;
@@ -687,21 +694,23 @@ export default function Profiles() {
                 >
                   <div style={{ textAlign: "center", marginBottom: "1rem" }}>
                     {prof.photo ? (
-                      <img 
-                        src={`${API.profiles}/photo/${prof.photo}`}
+                      <img
+                        src={prof.photo}
                         alt={`${prof.name}'s profile`}
-                        style={{ 
-                          width: "70px", 
-                          height: "70px", 
+                        style={{
+                          width: "70px",
+                          height: "70px",
                           objectFit: "cover",
                           borderRadius: "50%",
                           border: "3px solid #007bff",
                           backgroundColor: "#f8f9fa"
                         }}
                         onError={(e) => {
+                          console.error("❌ Failed to load profile photo for:", prof.name);
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
                         }}
+                        onLoad={() => console.log("✅ Community profile photo loaded:", prof.name)}
                       />
                     ) : null}
                     <div 

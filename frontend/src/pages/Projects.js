@@ -260,7 +260,7 @@ export default function Projects() {
             ) : userSubmission && !editing ? (
               <div>
                 <img
-                  src={`${API.projects}/image/${userSubmission.image}`}
+                  src={userSubmission.image}
                   alt={userSubmission.title}
                   style={{
                     width: "100%",
@@ -272,11 +272,11 @@ export default function Projects() {
                     backgroundColor: "#f0f0f0"
                   }}
                   onError={(e) => {
-                    console.error("❌ Failed to load your submission image:", userSubmission.image);
+                    console.error("❌ Failed to load your submission image");
                     console.error("❌ Image URL:", e.target.src);
                     e.target.alt = "Image failed to load";
                   }}
-                  onLoad={() => console.log("✅ Your submission image loaded:", userSubmission.image)}
+                  onLoad={() => console.log("✅ Your submission image loaded successfully")}
                 />
                 <h4>{userSubmission.title}</h4>
                 <p>{userSubmission.description}</p>
@@ -297,7 +297,7 @@ export default function Projects() {
                   {(imagePreview || (userSubmission?.image && !selectedImage)) && (
                     <div style={{ marginTop: "0.5rem" }}>
                       <img
-                        src={imagePreview || `${API.projects}/image/${userSubmission.image}`}
+                        src={imagePreview || userSubmission.image}
                         alt="Preview"
                         style={{
                           width: "100%",
@@ -367,7 +367,7 @@ export default function Projects() {
                   <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
                     {project.authorPhoto && (
                       <img
-                        src={`${API.profiles}/photo/${project.authorPhoto}`}
+                        src={project.authorPhoto}
                         alt="Profile"
                         style={{
                           width: "30px",
@@ -376,13 +376,17 @@ export default function Projects() {
                           objectFit: "cover",
                           marginRight: "0.5rem"
                         }}
+                        onError={(e) => {
+                          console.error("❌ Failed to load author photo");
+                          e.target.style.display = 'none';
+                        }}
                       />
                     )}
                     <strong>{project.authorName}</strong>
                   </div>
-                  
+
                   <img
-                    src={`${API.projects}/image/${project.image}`}
+                    src={project.image}
                     alt={project.title}
                     style={{
                       width: "100%",
@@ -394,7 +398,7 @@ export default function Projects() {
                       backgroundColor: "#f0f0f0"
                     }}
                     onError={(e) => {
-                      console.error("❌ Failed to load project image:", project.image);
+                      console.error("❌ Failed to load project image");
                       console.error("❌ Image URL:", e.target.src);
                       e.target.style.display = 'none';
                       const placeholder = document.createElement('div');
@@ -413,7 +417,7 @@ export default function Projects() {
                       placeholder.textContent = '📷 Image not available';
                       e.target.parentNode.insertBefore(placeholder, e.target);
                     }}
-                    onLoad={() => console.log("✅ Project image loaded:", project.image)}
+                    onLoad={() => console.log("✅ Project image loaded:", project.title)}
                   />
                   
                   <h4>{project.title}</h4>

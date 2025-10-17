@@ -27,6 +27,7 @@
     "solidity-coverage": "^0.8.2"
   },
   "dependencies": {
+    "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^4.21.0",
