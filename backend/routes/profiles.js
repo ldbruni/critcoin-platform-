@@ -361,8 +361,9 @@ const sanitizeFilename = (filename) => {
   const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-x]/g, '');
   
   // Only allow specific pattern for profile photos  
-  if (!sanitized.match(/^profile_0x[a-fA-F0-9]{40}_[0-9]{13}_[a-z0-9]{8,20}\.(jpg|jpeg|png)$/i)) {
+  if (!sanitized.match(/^profile_0x[a-fA-F0-9]{40}_[0-9]{13}_[a-z0-9]{8,20}\.jpg$/i)) {
     console.log('❌ Filename does not match pattern:', sanitized);
+    console.log('❌ Expected: profile_0x[40 hex chars]_[13 digits]_[8-20 chars].jpg');
     throw new Error('Invalid filename format');
   }
   
