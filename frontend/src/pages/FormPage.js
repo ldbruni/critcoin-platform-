@@ -1,4 +1,5 @@
 // src/pages/ForumPage.js
+// Build: 2025-10-17-03:15 - Cloudinary direct URLs
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
