@@ -21,6 +21,7 @@
     "start-windows": "set HTTPS=true&& set HOST=0.0.0.0&& set GENERATE_SOURCEMAP=false&& react-scripts start",
     "build": "react-scripts build",
     "build-production": "cross-env NODE_ENV=production react-scripts build",
+    "vercel-build": "react-scripts build",
     "deploy-vercel": "npm run build-production && npx vercel --prod",
     "eject": "react-scripts eject"
   },
