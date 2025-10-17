@@ -1,7 +1,6 @@
 {
   "buildCommand": "cd frontend && npm run build-production",
   "outputDirectory": "frontend/build",
-  "installCommand": "cd frontend && npm install",
   "env": {
     "REACT_APP_API_URL": "https://critcoin-platform-production.up.railway.app"
   },
