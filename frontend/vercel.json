@@ -1,7 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "build",
+  "outputDirectory": "./build",
   "installCommand": "npm install",
+  "framework": "create-react-app",
   "env": {
     "REACT_APP_API_URL": "https://critcoin-platform-production.up.railway.app"
   }
