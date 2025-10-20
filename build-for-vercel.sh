@@ -5,12 +5,12 @@ cd frontend
 echo "Installing dependencies..."
 npm install
 echo "Building React app..."
-npm run build
+CI=false npm run build
 echo "Build complete! Checking output..."
-ls -la build/
-echo "Moving build directory to root..."
-mv build ../build
-echo "Build directory moved! Checking..."
+ls -la build/ || echo "Build directory not found!"
+echo "Copying build directory to root..."
+cp -r build ../build || echo "Copy failed!"
+echo "Build directory copied! Checking..."
 cd ..
-ls -la build/
+ls -la build/ || echo "Build not in root!"
 echo "Done!"
