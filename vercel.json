@@ -1,6 +1,6 @@
 {
   "buildCommand": "bash build-for-vercel.sh",
-  "outputDirectory": "frontend/build",
+  "outputDirectory": "build",
   "env": {
     "REACT_APP_API_URL": "https://critcoin-platform-production.up.railway.app"
   }
