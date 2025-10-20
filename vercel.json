@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build && echo '=== Build complete ===' && ls -la && echo '=== Checking build dir ===' && ls -la build",
+  "buildCommand": "bash build-for-vercel.sh",
   "outputDirectory": "frontend/build",
   "env": {
     "REACT_APP_API_URL": "https://critcoin-platform-production.up.railway.app"
