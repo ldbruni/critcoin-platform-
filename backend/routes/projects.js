@@ -248,6 +248,54 @@ const sanitizeProjectFilename = (filename) => {
   return sanitized;
 };
 
+// GET leaderboard - top 3 projects for each project number
+router.get("/leaderboard/top", async (req, res) => {
+  try {
+    const leaderboard = {};
+
+    // Get top 3 for each project number (1-4)
+    for (let projectNumber = 1; projectNumber <= 4; projectNumber++) {
+      const topProjects = await Project.find({
+        projectNumber,
+        archived: { $ne: true }
+      })
+      .sort({ totalReceived: -1 })
+      .limit(3);
+
+      // Enrich with profile data
+      const enrichedProjects = await Promise.all(
+        topProjects.map(async (project) => {
+          const profile = await Profile.findOne({
+            wallet: project.authorWallet.toLowerCase(),
+            archived: { $ne: true }
+          });
+
+          const walletAddress = project.authorWallet;
+          const displayName = profile?.name ||
+            (walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown");
+
+          return {
+            _id: project._id,
+            title: project.title,
+            image: project.image,
+            totalReceived: project.totalReceived,
+            authorName: displayName,
+            authorPhoto: profile?.photo,
+            authorWallet: project.authorWallet
+          };
+        })
+      );
+
+      leaderboard[`project${projectNumber}`] = enrichedProjects;
+    }
+
+    res.json(leaderboard);
+  } catch (err) {
+    console.error("Failed to fetch leaderboard:", err);
+    res.status(500).send("Failed to fetch leaderboard");
+  }
+});
+
 // Serve project images
 router.get("/image/:filename", (req, res) => {
   const filename = req.params.filename;

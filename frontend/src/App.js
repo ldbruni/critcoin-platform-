@@ -7,6 +7,7 @@ import FormPage from "./pages/FormPage";
 import Projects from "./pages/Projects";
 import Explorer from "./pages/Explorer";
 import Admin from "./pages/Admin";
+import Leaderboard from "./pages/Leaderboard";
 import './styles/artistic.css';
 
 // Replace with your actual admin wallet address
@@ -27,9 +28,10 @@ function Navigation({ isAdmin }) {
         <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>Home</Link>
         <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'active' : ''}`}>Profiles</Link>
         <Link to="/projects" className={`nav-link ${isActive('/projects') ? 'active' : ''}`}>Projects</Link>
-        <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>Explorer</Link>
+        <Link to="/leaderboard" className={`nav-link ${isActive('/leaderboard') ? 'active' : ''}`}>Leaderboard</Link>
       </div>
       <div className="nav-row">
+        <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>Explorer</Link>
         <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>Forum</Link>
         <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>Bounties</Link>
         {isAdmin && (
@@ -99,6 +101,7 @@ export default function App() {
         <Route path="/bounties" element={<Bounties />} />
         <Route path="/profiles" element={<Profiles />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/explorer" element={<Explorer />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/forum" element={<FormPage />} />
