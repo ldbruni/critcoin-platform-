@@ -1,5 +1,5 @@
 // src/pages/Projects.js
-// Build: 2025-10-17-03:15 - Cloudinary direct URLs
+// Build: 2025-10-27-04:20 - Real blockchain transfers for Projects 2-4
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
@@ -189,7 +189,43 @@ export default function Projects() {
     }
 
     try {
-      // In a real implementation, you'd interact with the smart contract here
+      // Project 1 is demo mode - only update database
+      if (activeProject === 1) {
+        const res = await fetch(`${API.projects}/send-coin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fromWallet: wallet,
+            toWallet: recipientWallet,
+            amount: Number(amount),
+            projectId
+          })
+        });
+
+        if (res.ok) {
+          alert(`Successfully sent ${amount} CritCoin!`);
+          setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
+          fetchProjects();
+        } else {
+          const errorText = await res.text();
+          alert("Failed to send CritCoin: " + errorText);
+        }
+        return;
+      }
+
+      // Projects 2-4 use real blockchain transfers
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(deployed.address, deployed.abi, signer);
+
+      // Execute blockchain transfer
+      const tx = await contract.transfer(recipientWallet, Number(amount));
+      alert("Transaction submitted! Waiting for confirmation...");
+
+      // Wait for transaction to be mined
+      await tx.wait();
+
+      // Record transaction in backend
       const res = await fetch(`${API.projects}/send-coin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,23 +233,40 @@ export default function Projects() {
           fromWallet: wallet,
           toWallet: recipientWallet,
           amount: Number(amount),
-          projectId
+          projectId,
+          txHash: tx.hash
         })
       });
 
       if (res.ok) {
-        alert(`Successfully sent ${amount} CritCoin!`);
-        // Clear only this project's amount
+        alert(`Successfully sent ${amount} CritCoin!\nTransaction: ${tx.hash}`);
+
+        // Update balance from blockchain
+        const newBalance = await contract.balanceOf(wallet);
+        setBalance(Number(newBalance.toString()));
+
+        // Clear input and refresh projects
         setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
         fetchProjects();
-        // Refresh balance (in real implementation)
       } else {
         const errorText = await res.text();
-        alert("Failed to send CritCoin: " + errorText);
+        alert("Blockchain transfer succeeded but backend update failed: " + errorText);
+
+        // Still update balance and clear input
+        const newBalance = await contract.balanceOf(wallet);
+        setBalance(Number(newBalance.toString()));
+        setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
+        fetchProjects();
       }
     } catch (err) {
       console.error("Send coin error:", err);
-      alert("Error sending CritCoin. Check console.");
+      if (err.code === 4001) {
+        alert("Transaction cancelled by user");
+      } else if (err.code === -32603 || err.message?.includes("insufficient funds")) {
+        alert("Insufficient funds for transaction (including gas fees)");
+      } else {
+        alert(`Error sending CritCoin: ${err.message || "Unknown error"}`);
+      }
     }
   };
 
