@@ -21,7 +21,7 @@ export default function Projects() {
   const [form, setForm] = useState({ title: "", description: "" });
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [sendAmount, setSendAmount] = useState("");
+  const [sendAmounts, setSendAmounts] = useState({});
 
   useEffect(() => {
     if (window.ethereum) connectWallet();
@@ -171,12 +171,14 @@ export default function Projects() {
   };
 
   const handleSendCoin = async (projectId, recipientWallet) => {
-    if (!wallet || !sendAmount || Number(sendAmount) <= 0) {
+    const amount = sendAmounts[projectId] || "";
+
+    if (!wallet || !amount || Number(amount) <= 0) {
       alert("Please enter a valid amount");
       return;
     }
 
-    if (Number(sendAmount) > Number(balance)) {
+    if (Number(amount) > Number(balance)) {
       alert("Insufficient balance");
       return;
     }
@@ -194,14 +196,15 @@ export default function Projects() {
         body: JSON.stringify({
           fromWallet: wallet,
           toWallet: recipientWallet,
-          amount: Number(sendAmount),
+          amount: Number(amount),
           projectId
         })
       });
 
       if (res.ok) {
-        alert(`Successfully sent ${sendAmount} CritCoin!`);
-        setSendAmount("");
+        alert(`Successfully sent ${amount} CritCoin!`);
+        // Clear only this project's amount
+        setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
         fetchProjects();
         // Refresh balance (in real implementation)
       } else {
@@ -430,13 +433,13 @@ export default function Projects() {
                       <input
                         type="number"
                         placeholder="Amount"
-                        value={sendAmount}
-                        onChange={(e) => setSendAmount(e.target.value)}
+                        value={sendAmounts[project._id] || ""}
+                        onChange={(e) => setSendAmounts(prev => ({ ...prev, [project._id]: e.target.value }))}
                         min="1"
                         max={balance}
                         style={{ width: "80px", marginRight: "0.5rem" }}
                       />
-                      <button 
+                      <button
                         onClick={() => handleSendCoin(project._id, project.authorWallet)}
                         style={{
                           backgroundColor: "#28a745",
