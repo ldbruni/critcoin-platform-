@@ -1,5 +1,5 @@
 // src/pages/Leaderboard.js
-// Build: 2025-10-27-04:30 - Public leaderboard showing top 3 projects
+// Build: 2025-10-27-04:45 - Fix empty state logic
 import React, { useEffect, useState } from "react";
 
 const API = {
@@ -154,7 +154,7 @@ export default function Leaderboard() {
         );
       })}
 
-      {(!leaderboard || Object.keys(leaderboard).every(key => leaderboard[key].length === 0)) && (
+      {leaderboard && Object.values(leaderboard).every(projects => projects.length === 0) && (
         <p style={{ textAlign: "center", color: "#999", fontSize: "1.2rem" }}>
           No projects submitted yet. Be the first!
         </p>
