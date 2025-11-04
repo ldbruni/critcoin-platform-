@@ -1,5 +1,5 @@
 // src/pages/ForumPage.js
-// Build: 2025-10-17-03:15 - Cloudinary direct URLs
+// Build: 2025-10-27-05:00 - Added comments with replies and voting
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
@@ -12,10 +12,15 @@ export default function ForumPage() {
   const [balance, setBalance] = useState(0);
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState("");
+  const [comments, setComments] = useState({}); // { postId: [comments] }
+  const [newComment, setNewComment] = useState({}); // { postId: "text" }
+  const [replyingTo, setReplyingTo] = useState({}); // { commentId: "text" }
+  const [showComments, setShowComments] = useState({}); // { postId: boolean }
 
   const API = {
     profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
-    posts: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/posts` : "http://localhost:3001/api/posts"
+    posts: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/posts` : "http://localhost:3001/api/posts",
+    comments: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/comments` : "http://localhost:3001/api/comments"
   };
 
   useEffect(() => {
@@ -163,18 +168,18 @@ export default function ForumPage() {
       alert("Connect wallet to vote");
       return;
     }
-    
+
     try {
       const res = await fetch(`${API.posts}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ postId: id, type, voterWallet: wallet })
       });
-      
+
       if (!res.ok) {
         const error = await res.json().catch(async () => ({ error: await res.text() }));
         console.error("Vote failed:", error);
-        
+
         if (error.errors && Array.isArray(error.errors)) {
           // Handle validation errors
           const errorMessages = error.errors.map(err => err.msg).join(", ");
@@ -184,7 +189,7 @@ export default function ForumPage() {
         }
         return;
       }
-      
+
       fetchPosts();
     } catch (err) {
       console.error("Vote error:", err);
@@ -193,6 +198,119 @@ export default function ForumPage() {
       } else {
         alert("❌ Voting failed. Please try again.");
       }
+    }
+  };
+
+  const fetchComments = async (postId) => {
+    try {
+      const res = await fetch(`${API.comments}/post/${postId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(prev => ({ ...prev, [postId]: data }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch comments:", err);
+    }
+  };
+
+  const toggleComments = (postId) => {
+    const isShowing = showComments[postId];
+    setShowComments(prev => ({ ...prev, [postId]: !isShowing }));
+
+    // Fetch comments if showing for first time
+    if (!isShowing && !comments[postId]) {
+      fetchComments(postId);
+    }
+  };
+
+  const submitComment = async (postId, parentCommentId = null) => {
+    if (!wallet || !profile) {
+      alert("Connect wallet and create profile to comment");
+      return;
+    }
+
+    const text = parentCommentId ? replyingTo[parentCommentId] : newComment[postId];
+    if (!text || !text.trim()) {
+      alert("Comment cannot be empty");
+      return;
+    }
+
+    if (text.length > 1000) {
+      alert("Comment too long (max 1000 characters)");
+      return;
+    }
+
+    try {
+      const res = await fetch(API.comments, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId,
+          authorWallet: wallet,
+          text: text.trim(),
+          parentCommentId
+        })
+      });
+
+      if (res.ok) {
+        // Clear input
+        if (parentCommentId) {
+          setReplyingTo(prev => ({ ...prev, [parentCommentId]: "" }));
+        } else {
+          setNewComment(prev => ({ ...prev, [postId]: "" }));
+        }
+        // Refresh comments
+        fetchComments(postId);
+      } else {
+        const error = await res.text();
+        alert("Failed to post comment: " + error);
+      }
+    } catch (err) {
+      console.error("Comment submission error:", err);
+      alert("Error posting comment");
+    }
+  };
+
+  const voteComment = async (commentId, voteType, postId) => {
+    if (!wallet) {
+      alert("Connect wallet to vote");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API.comments}/${commentId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet, voteType })
+      });
+
+      if (res.ok) {
+        fetchComments(postId);
+      } else {
+        const error = await res.text();
+        alert("Vote failed: " + error);
+      }
+    } catch (err) {
+      console.error("Comment vote error:", err);
+      alert("Error voting on comment");
+    }
+  };
+
+  const unvoteComment = async (commentId, postId) => {
+    if (!wallet) return;
+
+    try {
+      const res = await fetch(`${API.comments}/${commentId}/unvote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet })
+      });
+
+      if (res.ok) {
+        fetchComments(postId);
+      }
+    } catch (err) {
+      console.error("Unvote error:", err);
     }
   };
 
@@ -449,6 +567,412 @@ export default function ForumPage() {
                 fontStyle: "italic"
               }}>
                 profile required to vote
+              </div>
+            )}
+          </div>
+
+          {/* Comments Section */}
+          <div style={{
+            marginTop: '1rem',
+            borderTop: '1px solid var(--dark-elevated)',
+            paddingTop: '1rem'
+          }}>
+            <button
+              onClick={() => toggleComments(p._id)}
+              className="artistic-btn"
+              style={{
+                background: 'rgba(37, 99, 235, 0.1)',
+                border: '1px solid var(--accent-blue)',
+                color: 'var(--accent-blue)',
+                padding: '0.5rem 1rem',
+                fontSize: '0.9rem',
+                width: '100%'
+              }}
+            >
+              {showComments[p._id] ? '▼' : '▶'} Comments {comments[p._id] ? `(${comments[p._id].length})` : ''}
+            </button>
+
+            {showComments[p._id] && (
+              <div style={{ marginTop: '1rem' }}>
+                {/* Add Comment Form */}
+                {wallet && profile && (
+                  <div style={{
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid var(--dark-elevated)',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <textarea
+                      value={newComment[p._id] || ""}
+                      onChange={(e) => setNewComment(prev => ({ ...prev, [p._id]: e.target.value }))}
+                      placeholder="Write a comment..."
+                      maxLength="1000"
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        border: '1px solid var(--dark-elevated)',
+                        borderRadius: '4px',
+                        color: 'white',
+                        fontFamily: 'Space Mono, monospace',
+                        fontSize: '0.9rem',
+                        marginBottom: '0.5rem',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <div style={{ textAlign: 'right' }}>
+                      <button
+                        onClick={() => submitComment(p._id)}
+                        className="artistic-btn"
+                        style={{
+                          background: 'var(--gradient-secondary)',
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        Post Comment
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments List */}
+                {comments[p._id] && comments[p._id].filter(c => !c.parentCommentId).map(comment => (
+                  <div key={comment._id} style={{
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    border: '1px solid var(--dark-elevated)',
+                    borderRadius: '8px',
+                    padding: '1rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {/* Comment Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      {comment.authorPhoto ? (
+                        <img
+                          src={comment.authorPhoto}
+                          alt="Profile"
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            marginRight: '0.5rem'
+                          }}
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '50%',
+                          background: 'var(--gradient-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: '0.5rem',
+                          fontSize: '0.8rem'
+                        }}>C</div>
+                      )}
+                      <div>
+                        <div style={{
+                          fontFamily: 'Cinzel, serif',
+                          color: 'var(--accent-gold)',
+                          fontSize: '0.9rem',
+                          fontWeight: '600'
+                        }}>
+                          {comment.authorName}
+                        </div>
+                        <div style={{
+                          fontSize: '0.7rem',
+                          color: 'rgba(255,255,255,0.5)',
+                          fontFamily: 'Crimson Text, serif'
+                        }}>
+                          {new Date(comment.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Comment Text */}
+                    <div style={{
+                      fontFamily: 'Space Mono, monospace',
+                      fontSize: '0.85rem',
+                      lineHeight: '1.6',
+                      marginBottom: '0.5rem',
+                      color: 'rgba(255,255,255,0.9)'
+                    }}>
+                      {comment.text}
+                    </div>
+
+                    {/* Comment Votes */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button
+                          onClick={() => {
+                            const hasUpvoted = comment.upvotes?.includes(wallet?.toLowerCase());
+                            if (hasUpvoted) {
+                              unvoteComment(comment._id, p._id);
+                            } else {
+                              voteComment(comment._id, 'upvote', p._id);
+                            }
+                          }}
+                          disabled={!wallet}
+                          style={{
+                            background: comment.upvotes?.includes(wallet?.toLowerCase())
+                              ? 'rgba(22, 163, 74, 0.3)'
+                              : 'rgba(22, 163, 74, 0.1)',
+                            border: '1px solid var(--complement-green)',
+                            color: 'var(--complement-green)',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            cursor: wallet ? 'pointer' : 'not-allowed',
+                            fontFamily: 'Cinzel, serif'
+                          }}
+                        >
+                          ↑ {comment.upvotes?.length || 0}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const hasDownvoted = comment.downvotes?.includes(wallet?.toLowerCase());
+                            if (hasDownvoted) {
+                              unvoteComment(comment._id, p._id);
+                            } else {
+                              voteComment(comment._id, 'downvote', p._id);
+                            }
+                          }}
+                          disabled={!wallet}
+                          style={{
+                            background: comment.downvotes?.includes(wallet?.toLowerCase())
+                              ? 'rgba(220, 38, 38, 0.3)'
+                              : 'rgba(220, 38, 38, 0.1)',
+                            border: '1px solid var(--primary-red)',
+                            color: 'var(--primary-red)',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            cursor: wallet ? 'pointer' : 'not-allowed',
+                            fontFamily: 'Cinzel, serif'
+                          }}
+                        >
+                          ↓ {comment.downvotes?.length || 0}
+                        </button>
+
+                        <span style={{
+                          fontSize: '0.8rem',
+                          color: comment.netVotes >= 0 ? 'var(--complement-green)' : 'var(--primary-red)',
+                          fontWeight: 'bold',
+                          marginLeft: '0.5rem'
+                        }}>
+                          {comment.netVotes > 0 ? '+' : ''}{comment.netVotes}
+                        </span>
+                      </div>
+
+                      {wallet && profile && (
+                        <button
+                          onClick={() => {
+                            const currentReply = replyingTo[comment._id];
+                            if (currentReply === undefined) {
+                              setReplyingTo(prev => ({ ...prev, [comment._id]: "" }));
+                            } else {
+                              setReplyingTo(prev => {
+                                const next = { ...prev };
+                                delete next[comment._id];
+                                return next;
+                              });
+                            }
+                          }}
+                          style={{
+                            background: 'rgba(37, 99, 235, 0.1)',
+                            border: '1px solid var(--accent-blue)',
+                            color: 'var(--accent-blue)',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ↩ Reply
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Reply Form */}
+                    {replyingTo[comment._id] !== undefined && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <textarea
+                          value={replyingTo[comment._id]}
+                          onChange={(e) => setReplyingTo(prev => ({ ...prev, [comment._id]: e.target.value }))}
+                          placeholder="Write a reply..."
+                          maxLength="1000"
+                          rows={2}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            background: 'rgba(0, 0, 0, 0.5)',
+                            border: '1px solid var(--dark-elevated)',
+                            borderRadius: '4px',
+                            color: 'white',
+                            fontFamily: 'Space Mono, monospace',
+                            fontSize: '0.8rem',
+                            marginBottom: '0.5rem',
+                            resize: 'vertical'
+                          }}
+                        />
+                        <div style={{ textAlign: 'right' }}>
+                          <button
+                            onClick={() => submitComment(p._id, comment._id)}
+                            className="artistic-btn"
+                            style={{
+                              background: 'var(--gradient-secondary)',
+                              padding: '0.4rem 0.8rem',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            Post Reply
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Replies */}
+                    {comments[p._id].filter(r => r.parentCommentId === comment._id).map(reply => (
+                      <div key={reply._id} style={{
+                        marginLeft: '2rem',
+                        marginTop: '0.5rem',
+                        background: 'rgba(0, 0, 0, 0.3)',
+                        border: '1px solid var(--dark-elevated)',
+                        borderLeft: '3px solid var(--accent-blue)',
+                        borderRadius: '4px',
+                        padding: '0.75rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          {reply.authorPhoto ? (
+                            <img
+                              src={reply.authorPhoto}
+                              alt="Profile"
+                              style={{
+                                width: '25px',
+                                height: '25px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                marginRight: '0.5rem'
+                              }}
+                              onError={(e) => e.target.style.display = 'none'}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '25px',
+                              height: '25px',
+                              borderRadius: '50%',
+                              background: 'var(--gradient-secondary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginRight: '0.5rem',
+                              fontSize: '0.7rem'
+                            }}>R</div>
+                          )}
+                          <div>
+                            <div style={{
+                              fontFamily: 'Cinzel, serif',
+                              color: 'var(--accent-gold)',
+                              fontSize: '0.85rem',
+                              fontWeight: '600'
+                            }}>
+                              {reply.authorName}
+                            </div>
+                            <div style={{
+                              fontSize: '0.65rem',
+                              color: 'rgba(255,255,255,0.5)',
+                              fontFamily: 'Crimson Text, serif'
+                            }}>
+                              {new Date(reply.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          fontFamily: 'Space Mono, monospace',
+                          fontSize: '0.8rem',
+                          lineHeight: '1.6',
+                          marginBottom: '0.5rem',
+                          color: 'rgba(255,255,255,0.85)'
+                        }}>
+                          {reply.text}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <button
+                            onClick={() => {
+                              const hasUpvoted = reply.upvotes?.includes(wallet?.toLowerCase());
+                              if (hasUpvoted) {
+                                unvoteComment(reply._id, p._id);
+                              } else {
+                                voteComment(reply._id, 'upvote', p._id);
+                              }
+                            }}
+                            disabled={!wallet}
+                            style={{
+                              background: reply.upvotes?.includes(wallet?.toLowerCase())
+                                ? 'rgba(22, 163, 74, 0.3)'
+                                : 'rgba(22, 163, 74, 0.1)',
+                              border: '1px solid var(--complement-green)',
+                              color: 'var(--complement-green)',
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '10px',
+                              fontSize: '0.7rem',
+                              cursor: wallet ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            ↑ {reply.upvotes?.length || 0}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const hasDownvoted = reply.downvotes?.includes(wallet?.toLowerCase());
+                              if (hasDownvoted) {
+                                unvoteComment(reply._id, p._id);
+                              } else {
+                                voteComment(reply._id, 'downvote', p._id);
+                              }
+                            }}
+                            disabled={!wallet}
+                            style={{
+                              background: reply.downvotes?.includes(wallet?.toLowerCase())
+                                ? 'rgba(220, 38, 38, 0.3)'
+                                : 'rgba(220, 38, 38, 0.1)',
+                              border: '1px solid var(--primary-red)',
+                              color: 'var(--primary-red)',
+                              padding: '0.2rem 0.4rem',
+                              borderRadius: '10px',
+                              fontSize: '0.7rem',
+                              cursor: wallet ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            ↓ {reply.downvotes?.length || 0}
+                          </button>
+
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: reply.netVotes >= 0 ? 'var(--complement-green)' : 'var(--primary-red)',
+                            fontWeight: 'bold',
+                            marginLeft: '0.25rem'
+                          }}>
+                            {reply.netVotes > 0 ? '+' : ''}{reply.netVotes}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </div>

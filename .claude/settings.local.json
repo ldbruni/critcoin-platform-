@@ -1,25 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cp:*)",
-      "Bash(mkdir:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(dir:*)",
-      "Bash(npm install:*)",
-      "Bash(npm audit:*)",
-      "Bash(npm start)",
-      "Bash(curl:*)",
-      "Bash(rm:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(node:*)",
-      "WebSearch",
-      "Bash(grep:*)",
-      "Bash(npm ls:*)",
-      "Bash(mv:*)",
-      "Bash(taskkill:*)",
-      "Bash(cmd //c:*)"
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(test:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
