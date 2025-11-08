@@ -1,5 +1,5 @@
 // src/pages/Projects.js
-// Build: 2025-10-27-04:20 - Real blockchain transfers for Projects 2-4
+// Build: 2025-10-27-05:30 - Changed description to Materials
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
@@ -386,7 +386,7 @@ export default function Projects() {
                 
                 <textarea
                   name="description"
-                  placeholder="Project Description (optional)"
+                  placeholder="Materials (optional)"
                   value={form.description}
                   onChange={handleChange}
                   rows={3}
