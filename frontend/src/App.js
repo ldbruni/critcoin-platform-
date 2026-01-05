@@ -8,6 +8,7 @@ import Projects from "./pages/Projects";
 import Explorer from "./pages/Explorer";
 import Admin from "./pages/Admin";
 import Leaderboard from "./pages/Leaderboard";
+import Archive from "./pages/Archive";
 import './styles/artistic.css';
 
 // Replace with your actual admin wallet address
@@ -34,6 +35,7 @@ function Navigation({ isAdmin }) {
         <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>Explorer</Link>
         <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>Forum</Link>
         <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>Bounties</Link>
+        <Link to="/archive" className={`nav-link ${isActive('/archive') ? 'active' : ''}`}>Archive</Link>
         {isAdmin && (
           <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`} style={{
             background: 'linear-gradient(135deg, #ff6600, #ff0080)',
@@ -105,6 +107,8 @@ export default function App() {
         <Route path="/explorer" element={<Explorer />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/forum" element={<FormPage />} />
+        <Route path="/archive" element={<Archive />} />
+        <Route path="/archive/:archiveId" element={<Archive />} />
       </Routes>
     </Router>
   );

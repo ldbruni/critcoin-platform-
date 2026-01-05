@@ -6,7 +6,8 @@ import deployed from "../contracts/sepolia.json";
 
 const API = {
   admin: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin` : "http://localhost:3001/api/admin",
-  profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles"
+  profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
+  archive: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/archive` : "http://localhost:3001/api/archive"
 };
 
 // Replace with your actual admin wallet address
@@ -38,6 +39,14 @@ export default function Admin() {
   // Whitelist form
   const [whitelistForm, setWhitelistForm] = useState({ wallet: "", notes: "" });
 
+  // Semester Archive state
+  const [semesterArchives, setSemesterArchives] = useState([]);
+  const [archiveForm, setArchiveForm] = useState({ name: "", description: "" });
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [editingArchive, setEditingArchive] = useState(null);
+
   useEffect(() => {
     if (window.ethereum) connectWallet();
   }, []);
@@ -53,6 +62,7 @@ export default function Admin() {
         fetchSettings();
         fetchWhitelist();
       }
+      if (activeTab === "semester") fetchSemesterArchives();
     }
   }, [isAdmin, activeTab]);
 
@@ -527,6 +537,140 @@ export default function Admin() {
     }
   };
 
+  // Semester Archive Functions
+  const fetchSemesterArchives = async () => {
+    setArchiveLoading(true);
+    try {
+      const res = await fetch(API.archive);
+      if (res.ok) {
+        const data = await res.json();
+        setSemesterArchives(data);
+      }
+    } catch (err) {
+      console.error("Semester archives fetch error:", err);
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
+  const handleCreateArchive = async (e) => {
+    e.preventDefault();
+
+    if (!archiveForm.name.trim()) {
+      alert("Please enter a semester name");
+      return;
+    }
+
+    if (!showArchiveConfirm) {
+      setShowArchiveConfirm(true);
+      return;
+    }
+
+    setArchiveLoading(true);
+    try {
+      const res = await postWithSignature(`${API.archive}/create`, 'admin_post_archive_create', {
+        name: archiveForm.name,
+        description: archiveForm.description
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        alert(`Semester "${result.archive.name}" archived successfully!\n\nArchived:\n- ${result.archive.stats.totalProfiles} profiles\n- ${result.archive.stats.totalProjects} projects\n- ${result.archive.stats.totalPosts} posts\n- ${result.archive.stats.totalTransactions} transactions`);
+        setArchiveForm({ name: "", description: "" });
+        setShowArchiveConfirm(false);
+        fetchSemesterArchives();
+        fetchDashboard();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Archive failed: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Create archive error:", err);
+      alert("Error creating archive. Please check your wallet connection.");
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
+  const handleClearSiteData = async () => {
+    if (!showClearConfirm) {
+      setShowClearConfirm(true);
+      return;
+    }
+
+    setArchiveLoading(true);
+    try {
+      const res = await postWithSignature(`${API.archive}/clear-current`, 'admin_post_archive_clear', {
+        confirmed: true
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        alert(`Site data cleared successfully!\n\nDeleted:\n- ${result.deleted.profiles} profiles\n- ${result.deleted.projects} projects\n- ${result.deleted.posts} posts\n- ${result.deleted.comments} comments\n- ${result.deleted.transactions} transactions\n- ${result.deleted.bounties} bounties`);
+        setShowClearConfirm(false);
+        fetchDashboard();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Clear failed: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Clear site data error:", err);
+      alert("Error clearing site data. Please check your wallet connection.");
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
+  const handleDeleteArchive = async (archiveId, archiveName) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the archive "${archiveName}"?\n\nThis action cannot be undone!`)) {
+      return;
+    }
+
+    try {
+      const res = await postWithSignature(`${API.archive}/delete`, 'admin_post_archive_delete', {
+        archiveId
+      });
+
+      if (res.ok) {
+        alert('Archive deleted successfully');
+        fetchSemesterArchives();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Delete failed: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Delete archive error:", err);
+      alert("Error deleting archive. Please check your wallet connection.");
+    }
+  };
+
+  const handleUpdateArchive = async (e) => {
+    e.preventDefault();
+
+    if (!editingArchive) return;
+
+    try {
+      const res = await postWithSignature(`${API.archive}/update`, 'admin_post_archive_update', {
+        archiveId: editingArchive._id,
+        name: archiveForm.name,
+        description: archiveForm.description
+      });
+
+      if (res.ok) {
+        alert('Archive updated successfully');
+        setEditingArchive(null);
+        setArchiveForm({ name: "", description: "" });
+        fetchSemesterArchives();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Update failed: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Update archive error:", err);
+      alert("Error updating archive. Please check your wallet connection.");
+    }
+  };
+
   if (!wallet) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -562,7 +706,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "projects", "bounties", "whitelist", "deploy"].map(tab => (
+        {["dashboard", "profiles", "posts", "projects", "bounties", "whitelist", "semester", "deploy"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -577,7 +721,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab}
           </button>
         ))}
       </div>
@@ -1195,6 +1339,332 @@ export default function Admin() {
                     >
                       Remove
                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Semester Archive Tab */}
+      {activeTab === "semester" && (
+        <div>
+          <h2>📦 Semester Archive</h2>
+          <p style={{ color: "#666", marginBottom: "2rem" }}>
+            Archive the current semester's data before starting a new class. This preserves all profiles, projects, posts, and transactions for future reference.
+          </p>
+
+          {/* Create New Archive */}
+          <div style={{
+            backgroundColor: "#e7f3ff",
+            border: "1px solid #b3d9ff",
+            borderRadius: "8px",
+            padding: "1.5rem",
+            marginBottom: "2rem"
+          }}>
+            <h3 style={{ marginTop: 0 }}>Create New Archive</h3>
+            <form onSubmit={editingArchive ? handleUpdateArchive : handleCreateArchive}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "bold" }}>
+                  Semester Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Fall 2024, Spring 2025"
+                  value={archiveForm.name}
+                  onChange={(e) => setArchiveForm({...archiveForm, name: e.target.value})}
+                  required
+                  style={{
+                    width: "100%",
+                    maxWidth: "400px",
+                    padding: "0.5rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ced4da"
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", marginBottom: "0.25rem", fontWeight: "bold" }}>
+                  Description (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Introduction to Digital Art"
+                  value={archiveForm.description}
+                  onChange={(e) => setArchiveForm({...archiveForm, description: e.target.value})}
+                  style={{
+                    width: "100%",
+                    maxWidth: "400px",
+                    padding: "0.5rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ced4da"
+                  }}
+                />
+              </div>
+
+              {!showArchiveConfirm ? (
+                <button
+                  type="submit"
+                  disabled={archiveLoading || !archiveForm.name.trim()}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: editingArchive ? "#007bff" : "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: archiveLoading || !archiveForm.name.trim() ? "not-allowed" : "pointer",
+                    fontWeight: "bold",
+                    opacity: archiveLoading || !archiveForm.name.trim() ? 0.6 : 1,
+                    marginRight: "1rem"
+                  }}
+                >
+                  {editingArchive ? "Update Archive" : "📦 Archive Current Semester"}
+                </button>
+              ) : (
+                <div style={{
+                  backgroundColor: "#fff3cd",
+                  border: "1px solid #ffc107",
+                  borderRadius: "8px",
+                  padding: "1rem",
+                  marginTop: "1rem"
+                }}>
+                  <h4 style={{ color: "#856404", marginTop: 0 }}>⚠️ Confirm Archive</h4>
+                  <p>This will create a snapshot of all current data:</p>
+                  <ul style={{ textAlign: "left" }}>
+                    <li>{dashboard.profiles?.total || 0} profiles</li>
+                    <li>{dashboard.projects?.total || 0} projects</li>
+                    <li>{dashboard.posts?.total || 0} posts</li>
+                  </ul>
+                  <button
+                    type="submit"
+                    disabled={archiveLoading}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#28a745",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: archiveLoading ? "not-allowed" : "pointer",
+                      fontWeight: "bold",
+                      marginRight: "1rem"
+                    }}
+                  >
+                    {archiveLoading ? "Archiving..." : "✅ Yes, Create Archive"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveConfirm(false)}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#6c757d",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {editingArchive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingArchive(null);
+                    setArchiveForm({ name: "", description: "" });
+                  }}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: "#6c757d",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </form>
+          </div>
+
+          {/* Clear Current Site Data */}
+          <div style={{
+            backgroundColor: "#f8d7da",
+            border: "1px solid #f5c6cb",
+            borderRadius: "8px",
+            padding: "1.5rem",
+            marginBottom: "2rem"
+          }}>
+            <h3 style={{ marginTop: 0, color: "#721c24" }}>🗑️ Clear Current Site Data</h3>
+            <p style={{ color: "#721c24" }}>
+              After archiving, you can clear the current site data to start fresh for a new semester.
+              <br /><strong>Warning:</strong> This will permanently delete all current profiles (except admin), projects, posts, comments, transactions, and bounties.
+            </p>
+
+            {!showClearConfirm ? (
+              <button
+                onClick={handleClearSiteData}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "bold"
+                }}
+              >
+                🗑️ Clear All Current Data
+              </button>
+            ) : (
+              <div style={{
+                backgroundColor: "#fff",
+                border: "2px solid #dc3545",
+                borderRadius: "8px",
+                padding: "1rem",
+                marginTop: "1rem"
+              }}>
+                <h4 style={{ color: "#dc3545", marginTop: 0 }}>⚠️ DANGER ZONE</h4>
+                <p><strong>Are you absolutely sure?</strong> This action cannot be undone!</p>
+                <p>Make sure you have archived the current semester first.</p>
+                <button
+                  onClick={handleClearSiteData}
+                  disabled={archiveLoading}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: archiveLoading ? "not-allowed" : "pointer",
+                    fontWeight: "bold",
+                    marginRight: "1rem"
+                  }}
+                >
+                  {archiveLoading ? "Clearing..." : "🗑️ Yes, Delete Everything"}
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: "#6c757d",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Existing Archives */}
+          <h3>Existing Archives ({semesterArchives.length})</h3>
+          {archiveLoading ? (
+            <p>Loading archives...</p>
+          ) : semesterArchives.length === 0 ? (
+            <div style={{
+              backgroundColor: "#f8f9fa",
+              padding: "2rem",
+              textAlign: "center",
+              borderRadius: "8px",
+              border: "1px solid #dee2e6"
+            }}>
+              <p style={{ margin: 0, color: "#666" }}>No semester archives yet</p>
+            </div>
+          ) : (
+            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+              <div style={{
+                padding: "1rem",
+                borderBottom: "1px solid #ddd",
+                backgroundColor: "#f8f9fa",
+                fontWeight: "bold"
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 150px 200px", gap: "1rem" }}>
+                  <span>Semester</span>
+                  <span>Statistics</span>
+                  <span>Archived</span>
+                  <span>Actions</span>
+                </div>
+              </div>
+              {semesterArchives.map((archive, index) => (
+                <div
+                  key={archive._id}
+                  style={{
+                    padding: "1rem",
+                    borderBottom: index < semesterArchives.length - 1 ? "1px solid #e9ecef" : "none"
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 150px 200px", gap: "1rem", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontWeight: "bold", fontSize: "1.1rem" }}>{archive.name}</div>
+                      {archive.description && (
+                        <div style={{ fontSize: "0.9rem", color: "#666" }}>{archive.description}</div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "0.85rem" }}>
+                      <div>{archive.stats?.totalProfiles || 0} profiles</div>
+                      <div>{archive.stats?.totalProjects || 0} projects</div>
+                      <div>{archive.stats?.totalPosts || 0} posts</div>
+                    </div>
+                    <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                      {new Date(archive.archivedAt).toLocaleDateString()}
+                    </div>
+                    <div>
+                      <Link
+                        to={`/archive/${archive._id}`}
+                        style={{
+                          padding: "0.25rem 0.5rem",
+                          backgroundColor: "#007bff",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          textDecoration: "none",
+                          fontSize: "0.8rem",
+                          marginRight: "0.5rem"
+                        }}
+                      >
+                        View
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setEditingArchive(archive);
+                          setArchiveForm({ name: archive.name, description: archive.description || "" });
+                        }}
+                        style={{
+                          padding: "0.25rem 0.5rem",
+                          backgroundColor: "#ffc107",
+                          color: "#212529",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "0.8rem",
+                          marginRight: "0.5rem"
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteArchive(archive._id, archive.name)}
+                        style={{
+                          padding: "0.25rem 0.5rem",
+                          backgroundColor: "#dc3545",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontSize: "0.8rem"
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
