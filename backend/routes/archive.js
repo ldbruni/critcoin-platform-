@@ -521,8 +521,7 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
     // Delete all transactions
     const transactionResult = await Transaction.deleteMany({});
 
-    // Delete all bounties
-    const bountyResult = await Bounty.deleteMany({});
+    // Note: Bounties are NOT deleted - they persist across semesters
 
     console.log('Site data cleared successfully');
 
@@ -533,8 +532,7 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
         projects: projectResult.deletedCount,
         posts: postResult.deletedCount,
         comments: commentResult.deletedCount,
-        transactions: transactionResult.deletedCount,
-        bounties: bountyResult.deletedCount
+        transactions: transactionResult.deletedCount
       }
     });
   } catch (err) {
