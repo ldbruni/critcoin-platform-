@@ -274,6 +274,30 @@ router.get("/admin/:adminWallet", [
   }
 });
 
+// GET preview of what will be archived (public endpoint for admin UI)
+router.get("/preview", async (req, res) => {
+  try {
+    const profileCount = await Profile.countDocuments({ archived: { $ne: true } });
+    const projectCount = await Project.countDocuments({ archived: { $ne: true } });
+    const postCount = await Post.countDocuments({ hidden: { $ne: true } });
+    const commentCount = await Comment.countDocuments({ archived: { $ne: true } });
+    const transactionCount = await Transaction.countDocuments();
+    const bountyCount = await Bounty.countDocuments();
+
+    res.json({
+      profiles: profileCount,
+      projects: projectCount,
+      posts: postCount,
+      comments: commentCount,
+      transactions: transactionCount,
+      bounties: bountyCount
+    });
+  } catch (err) {
+    console.error("Archive preview error:", err);
+    res.status(500).json({ error: 'Failed to get archive preview' });
+  }
+});
+
 // POST create new semester archive (archives current site data)
 router.post("/create", authenticateAdmin, async (req, res) => {
   const { name, description, adminWallet } = req.body;

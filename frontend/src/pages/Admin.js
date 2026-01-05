@@ -46,6 +46,7 @@ export default function Admin() {
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [editingArchive, setEditingArchive] = useState(null);
+  const [archivePreview, setArchivePreview] = useState(null);
 
   useEffect(() => {
     if (window.ethereum) connectWallet();
@@ -553,6 +554,18 @@ export default function Admin() {
     }
   };
 
+  const fetchArchivePreview = async () => {
+    try {
+      const res = await fetch(`${API.archive}/preview`);
+      if (res.ok) {
+        const data = await res.json();
+        setArchivePreview(data);
+      }
+    } catch (err) {
+      console.error("Archive preview fetch error:", err);
+    }
+  };
+
   const handleCreateArchive = async (e) => {
     e.preventDefault();
 
@@ -562,6 +575,8 @@ export default function Admin() {
     }
 
     if (!showArchiveConfirm) {
+      // Fetch preview before showing confirmation
+      await fetchArchivePreview();
       setShowArchiveConfirm(true);
       return;
     }
@@ -1432,9 +1447,12 @@ export default function Admin() {
                   <h4 style={{ color: "#856404", marginTop: 0 }}>⚠️ Confirm Archive</h4>
                   <p>This will create a snapshot of all current data:</p>
                   <ul style={{ textAlign: "left" }}>
-                    <li>{dashboard.profiles?.total || 0} profiles</li>
-                    <li>{dashboard.projects?.total || 0} projects</li>
-                    <li>{dashboard.posts?.total || 0} posts</li>
+                    <li>{archivePreview?.profiles || 0} profiles</li>
+                    <li>{archivePreview?.projects || 0} projects</li>
+                    <li>{archivePreview?.posts || 0} posts</li>
+                    <li>{archivePreview?.comments || 0} comments</li>
+                    <li>{archivePreview?.transactions || 0} transactions</li>
+                    <li>{archivePreview?.bounties || 0} bounties</li>
                   </ul>
                   <button
                     type="submit"
