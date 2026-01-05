@@ -189,31 +189,7 @@ export default function Projects() {
     }
 
     try {
-      // Project 1 is demo mode - only update database
-      if (activeProject === 1) {
-        const res = await fetch(`${API.projects}/send-coin`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fromWallet: wallet,
-            toWallet: recipientWallet,
-            amount: Number(amount),
-            projectId
-          })
-        });
-
-        if (res.ok) {
-          alert(`Successfully sent ${amount} CritCoin!`);
-          setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
-          fetchProjects();
-        } else {
-          const errorText = await res.text();
-          alert("Failed to send CritCoin: " + errorText);
-        }
-        return;
-      }
-
-      // Projects 2-4 use real blockchain transfers
+      // All projects use real blockchain transfers
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const contract = new ethers.Contract(deployed.address, deployed.abi, signer);
