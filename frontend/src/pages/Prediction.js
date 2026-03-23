@@ -262,9 +262,7 @@ export default function Prediction() {
                   }}
                 >
                   <option value="">-- Select who will earn the most CritCoin --</option>
-                  {allProfiles
-                    .filter(p => p.wallet.toLowerCase() !== wallet.toLowerCase()) // Exclude self
-                    .map(p => (
+                  {allProfiles.map(p => (
                       <option key={p.wallet} value={p.wallet}>
                         {p.name} ({p.wallet.slice(0, 8)}...)
                       </option>

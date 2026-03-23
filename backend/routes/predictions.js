@@ -107,12 +107,7 @@ router.post("/", validatePrediction, async (req, res) => {
       return res.status(400).json({ error: "Selected user must have an active profile" });
     }
 
-    // 3. Prevent self-prediction
-    if (predictorLower === predictedLower) {
-      return res.status(400).json({ error: "You cannot predict yourself" });
-    }
-
-    // 4. Check if user already made a prediction
+    // 3. Check if user already made a prediction
     const existingPrediction = await Prediction.findOne({
       predictorWallet: predictorLower,
       archived: { $ne: true }
