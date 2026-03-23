@@ -29,6 +29,7 @@ const explorerRoutes = require("./routes/explorer");
 const adminRoutes = require("./routes/admin");
 const commentRoutes = require("./routes/comments");
 const archiveRoutes = require("./routes/archive");
+const predictionRoutes = require("./routes/predictions");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -147,6 +148,7 @@ app.use("/api/explorer", explorerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/archive", archiveRoutes);
+app.use("/api/predictions", predictionRoutes);
 
 // Debug environment variables
 console.log("🔍 Environment check:");

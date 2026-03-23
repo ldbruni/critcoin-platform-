@@ -31,6 +31,7 @@ export default function Admin() {
   // Deploy CritCoin confirmation
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [deployLoading, setDeployLoading] = useState(false);
+  const [deployProgress, setDeployProgress] = useState({ current: 0, total: 0, failed: [] });
   
   // Bounty form
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
@@ -515,24 +516,68 @@ export default function Admin() {
       return;
     }
 
-    setDeployLoading(true);
-    try {
-      const res = await postWithSignature(`${API.admin}/deploy-critcoin`, 'admin_post_deploy_critcoin', {
-        confirmed: true
-      });
+    if (!signer) {
+      alert("Please connect your wallet first");
+      return;
+    }
 
-      if (res.ok) {
-        const result = await res.json();
-        alert(`CritCoin deployed successfully!\n${result.recipients} profiles received ${result.amountPerProfile} CritCoin each.\nTotal deployed: ${result.totalDeployed} CritCoin`);
-        setShowDeployConfirm(false);
-      } else {
-        const error = await res.json().catch(async () => ({ error: await res.text() }));
-        console.error("Deploy CritCoin error:", error);
-        alert("Deploy failed: " + (error.error || error));
+    setDeployLoading(true);
+    setDeployProgress({ current: 0, total: 0, failed: [] });
+
+    try {
+      // Fetch all active profiles excluding admin
+      const profilesRes = await fetch(API.profiles);
+      if (!profilesRes.ok) {
+        throw new Error("Failed to fetch profiles");
       }
+      const allProfiles = await profilesRes.json();
+      const recipients = allProfiles.filter(p => p.wallet.toLowerCase() !== wallet.toLowerCase());
+
+      if (recipients.length === 0) {
+        alert("No active profiles to deploy to (excluding admin)");
+        setDeployLoading(false);
+        return;
+      }
+
+      const amount = 10000;
+      const contract = new ethers.Contract(deployed.address, deployed.abi, signer);
+      const failed = [];
+
+      setDeployProgress({ current: 0, total: recipients.length, failed: [] });
+
+      // Transfer to each profile
+      for (let i = 0; i < recipients.length; i++) {
+        const profile = recipients[i];
+        try {
+          console.log(`Transferring ${amount} CritCoin to ${profile.name} (${profile.wallet})`);
+          const tx = await contract.transfer(profile.wallet, amount);
+          await tx.wait(); // Wait for confirmation
+          console.log(`Transfer to ${profile.name} confirmed`);
+        } catch (err) {
+          console.error(`Failed to transfer to ${profile.name}:`, err);
+          failed.push({ name: profile.name, wallet: profile.wallet, error: err.message });
+        }
+        setDeployProgress({ current: i + 1, total: recipients.length, failed });
+      }
+
+      // Record transactions in database
+      if (recipients.length - failed.length > 0) {
+        await postWithSignature(`${API.admin}/deploy-critcoin`, 'admin_post_deploy_critcoin', {
+          confirmed: true,
+          successCount: recipients.length - failed.length,
+          amount: amount
+        });
+      }
+
+      if (failed.length === 0) {
+        alert(`CritCoin deployed successfully!\n${recipients.length} profiles received ${amount} CritCoin each.\nTotal deployed: ${recipients.length * amount} CritCoin`);
+      } else {
+        alert(`Deployment completed with ${failed.length} failures.\n${recipients.length - failed.length} profiles received ${amount} CritCoin.\nFailed: ${failed.map(f => f.name).join(', ')}`);
+      }
+      setShowDeployConfirm(false);
     } catch (err) {
       console.error("Deploy CritCoin error:", err);
-      alert("Error deploying CritCoin. Please check your wallet connection.");
+      alert("Error deploying CritCoin: " + err.message);
     } finally {
       setDeployLoading(false);
     }
@@ -1729,6 +1774,34 @@ export default function Admin() {
               <div>
                 <h4 style={{ color: "#d73527" }}>Are you absolutely sure?</h4>
                 <p>This action cannot be undone!</p>
+                <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                  Each transfer requires a blockchain transaction. You will need to confirm each in your wallet.
+                </p>
+                {deployLoading && deployProgress.total > 0 && (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{
+                      width: "100%",
+                      height: "20px",
+                      backgroundColor: "#e0e0e0",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      marginBottom: "0.5rem"
+                    }}>
+                      <div style={{
+                        width: `${(deployProgress.current / deployProgress.total) * 100}%`,
+                        height: "100%",
+                        backgroundColor: deployProgress.failed.length > 0 ? "#ffc107" : "#28a745",
+                        transition: "width 0.3s ease"
+                      }} />
+                    </div>
+                    <p style={{ margin: 0 }}>
+                      Progress: {deployProgress.current} / {deployProgress.total}
+                      {deployProgress.failed.length > 0 && (
+                        <span style={{ color: "#dc3545" }}> ({deployProgress.failed.length} failed)</span>
+                      )}
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={handleDeployCritCoin}
                   disabled={deployLoading}
@@ -1745,7 +1818,9 @@ export default function Admin() {
                     opacity: deployLoading ? 0.6 : 1
                   }}
                 >
-                  {deployLoading ? "Deploying..." : "✅ Yes, Deploy Now"}
+                  {deployLoading
+                    ? `Deploying... (${deployProgress.current}/${deployProgress.total})`
+                    : "✅ Yes, Deploy Now"}
                 </button>
                 <button
                   onClick={() => setShowDeployConfirm(false)}
