@@ -3,17 +3,34 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Prediction = require("../models/Prediction");
 const Profile = require("../models/Profiles");
+const SystemSettings = require("../models/SystemSettings");
 
 // Validation middleware
 const validatePrediction = [
   body('predictorWallet').isEthereumAddress().withMessage('Invalid predictor wallet address'),
-  body('predictedWallet').isEthereumAddress().withMessage('Invalid predicted wallet address')
+  body('predictedWallet').isEthereumAddress().withMessage('Invalid predicted wallet address'),
+  body('projectNumber').optional().isInt({ min: 2, max: 4 }).withMessage('Project number must be 2, 3, or 4')
 ];
 
-// GET all predictions with enriched profile data
+// GET public prediction enabled settings — MUST be before /check/:wallet
+router.get("/settings", async (req, res) => {
+  try {
+    const keys = ["predictionEnabled2", "predictionEnabled3", "predictionEnabled4"];
+    const docs = await SystemSettings.find({ key: { $in: keys } });
+    const result = { predictionEnabled2: true, predictionEnabled3: true, predictionEnabled4: true };
+    docs.forEach(s => { result[s.key] = s.value; });
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch prediction settings:", err);
+    res.status(500).json({ error: "Failed to fetch prediction settings" });
+  }
+});
+
+// GET all predictions with enriched profile data (filter by project)
 router.get("/", async (req, res) => {
   try {
-    const predictions = await Prediction.find({ archived: { $ne: true } });
+    const projectNumber = parseInt(req.query.project) || 2;
+    const predictions = await Prediction.find({ projectNumber, archived: { $ne: true } });
 
     // Get all active profiles for enrichment
     const profiles = await Profile.find({ archived: { $ne: true } });
@@ -42,17 +59,18 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET check if user has already made a prediction
+// GET check if user has already made a prediction (filter by project)
 router.get("/check/:wallet", async (req, res) => {
   try {
     const wallet = req.params.wallet.toLowerCase();
+    const projectNumber = parseInt(req.query.project) || 2;
     const prediction = await Prediction.findOne({
       predictorWallet: wallet,
+      projectNumber,
       archived: { $ne: true }
     });
 
     if (prediction) {
-      // Enrich with predicted profile info
       const predictedProfile = await Profile.findOne({
         wallet: prediction.predictedWallet,
         archived: { $ne: true }
@@ -75,19 +93,25 @@ router.get("/check/:wallet", async (req, res) => {
   }
 });
 
-// POST create a new prediction (ONE TIME ONLY)
+// POST create a new prediction (ONE TIME PER PROJECT)
 router.post("/", validatePrediction, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { predictorWallet, predictedWallet } = req.body;
+  const { predictorWallet, predictedWallet, projectNumber = 2 } = req.body;
   const predictorLower = predictorWallet.toLowerCase();
   const predictedLower = predictedWallet.toLowerCase();
 
   try {
-    // 1. Verify predictor has an active profile
+    // 1. Check if predictions are enabled for this project
+    const enabledSetting = await SystemSettings.findOne({ key: `predictionEnabled${projectNumber}` });
+    if (enabledSetting && enabledSetting.value === false) {
+      return res.status(403).json({ error: `Predictions for Project ${projectNumber} are currently closed.` });
+    }
+
+    // 2. Verify predictor has an active profile
     const predictorProfile = await Profile.findOne({
       wallet: predictorLower,
       archived: { $ne: true }
@@ -97,7 +121,7 @@ router.post("/", validatePrediction, async (req, res) => {
       return res.status(403).json({ error: "Must have an active profile to make predictions" });
     }
 
-    // 2. Verify predicted user has an active profile
+    // 3. Verify predicted user has an active profile
     const predictedProfile = await Profile.findOne({
       wallet: predictedLower,
       archived: { $ne: true }
@@ -107,15 +131,16 @@ router.post("/", validatePrediction, async (req, res) => {
       return res.status(400).json({ error: "Selected user must have an active profile" });
     }
 
-    // 3. Check if user already made a prediction
+    // 4. Check if user already made a prediction for this project
     const existingPrediction = await Prediction.findOne({
       predictorWallet: predictorLower,
+      projectNumber,
       archived: { $ne: true }
     });
 
     if (existingPrediction) {
       return res.status(409).json({
-        error: "You have already made a prediction. Predictions cannot be changed.",
+        error: `You have already made a prediction for Project ${projectNumber}. Predictions cannot be changed.`,
         existingPrediction: existingPrediction.predictedWallet
       });
     }
@@ -123,12 +148,13 @@ router.post("/", validatePrediction, async (req, res) => {
     // 5. Create the prediction
     const prediction = new Prediction({
       predictorWallet: predictorLower,
-      predictedWallet: predictedLower
+      predictedWallet: predictedLower,
+      projectNumber
     });
 
     await prediction.save();
 
-    console.log(`Prediction created: ${predictorProfile.name} predicted ${predictedProfile.name}`);
+    console.log(`Project ${projectNumber} prediction: ${predictorProfile.name} → ${predictedProfile.name}`);
 
     res.status(201).json({
       ...prediction.toObject(),
@@ -140,7 +166,7 @@ router.post("/", validatePrediction, async (req, res) => {
     // Handle duplicate key error (race condition protection)
     if (err.code === 11000) {
       return res.status(409).json({
-        error: "You have already made a prediction. Predictions cannot be changed."
+        error: `You have already made a prediction for Project ${projectNumber}. Predictions cannot be changed.`
       });
     }
 

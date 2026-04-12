@@ -30,6 +30,7 @@ const adminRoutes = require("./routes/admin");
 const commentRoutes = require("./routes/comments");
 const archiveRoutes = require("./routes/archive");
 const predictionRoutes = require("./routes/predictions");
+const Prediction = require("./models/Prediction");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -190,6 +191,16 @@ mongoose.connect(process.env.MONGO_URI, {
     console.error("Full error details:", JSON.stringify(err, null, 2));
     process.exit(1);
   });
+
+// One-time migration: drop old unique index and backfill projectNumber on existing predictions
+mongoose.connection.once('open', async () => {
+  try {
+    await mongoose.connection.collection('predictions').dropIndex('predictorWallet_1');
+    console.log('✅ Dropped old predictorWallet_1 unique index');
+  } catch (e) { /* index didn't exist, that's fine */ }
+  const r = await Prediction.updateMany({ projectNumber: { $exists: false } }, { $set: { projectNumber: 2 } });
+  if (r.modifiedCount) console.log(`✅ Migrated ${r.modifiedCount} predictions to projectNumber: 2`);
+});
 
 // Monitor MongoDB connection
 mongoose.connection.on('error', (err) => {

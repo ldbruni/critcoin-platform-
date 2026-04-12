@@ -64,6 +64,7 @@ export default function Admin() {
         fetchSettings();
         fetchWhitelist();
       }
+      if (activeTab === "predictions") fetchSettings();
       if (activeTab === "semester") fetchSemesterArchives();
     }
   }, [isAdmin, activeTab]);
@@ -436,6 +437,25 @@ export default function Admin() {
     }
   };
 
+  const handleTogglePrediction = async (projectNum, currentlyEnabled) => {
+    try {
+      const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
+        key: `predictionEnabled${projectNum}`,
+        value: !currentlyEnabled
+      });
+      if (res.ok) {
+        alert(`Project ${projectNum} predictions ${!currentlyEnabled ? 'opened' : 'closed'} successfully`);
+        fetchSettings();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Error: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Toggle prediction error:", err);
+      alert("Error toggling predictions. Please check your wallet connection.");
+    }
+  };
+
   const handleToggleWhitelistMode = async () => {
     try {
       const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
@@ -766,7 +786,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "projects", "bounties", "whitelist", "semester", "deploy"].map(tab => (
+        {["dashboard", "profiles", "posts", "projects", "bounties", "predictions", "whitelist", "semester", "deploy"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -781,7 +801,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab}
           </button>
         ))}
       </div>
@@ -1228,6 +1248,54 @@ export default function Admin() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Predictions Tab */}
+      {activeTab === "predictions" && (
+        <div>
+          <h2>Prediction Market Controls</h2>
+          <p>Enable or disable each project's prediction market. When closed, users cannot submit new predictions.</p>
+          {[2, 3, 4].map(projectNum => {
+            const key = `predictionEnabled${projectNum}`;
+            const isEnabled = settings[key] !== false;
+            return (
+              <div key={projectNum} style={{
+                backgroundColor: isEnabled ? "#d4edda" : "#fff3cd",
+                padding: "1.25rem 1.5rem",
+                borderRadius: "8px",
+                marginBottom: "1rem",
+                border: `1px solid ${isEnabled ? "#c3e6cb" : "#ffeaa7"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+                <div>
+                  <h4 style={{ margin: "0 0 0.25rem 0" }}>
+                    Project {projectNum} — <span style={{ color: isEnabled ? "#155724" : "#856404" }}>{isEnabled ? "OPEN" : "CLOSED"}</span>
+                  </h4>
+                  <p style={{ margin: 0, color: "#555", fontSize: "0.9rem" }}>
+                    Who will earn the most CritCoin in Project {projectNum}?
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleTogglePrediction(projectNum, isEnabled)}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: isEnabled ? "#dc3545" : "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {isEnabled ? "Close Predictions" : "Open Predictions"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

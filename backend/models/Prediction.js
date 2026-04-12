@@ -5,7 +5,6 @@ const predictionSchema = new mongoose.Schema({
   predictorWallet: {
     type: String,
     required: true,
-    unique: true,  // Enforces ONE prediction per user at DB level
     lowercase: true
   },
   // The wallet address of the person being predicted to win
@@ -13,6 +12,12 @@ const predictionSchema = new mongoose.Schema({
     type: String,
     required: true,
     lowercase: true
+  },
+  // Which project this prediction is for (2, 3, or 4)
+  projectNumber: {
+    type: Number,
+    required: true,
+    default: 2
   },
   // Timestamp when prediction was made
   createdAt: {
@@ -26,8 +31,8 @@ const predictionSchema = new mongoose.Schema({
   }
 });
 
-// Index for efficient queries
-predictionSchema.index({ predictorWallet: 1 });
+// Compound unique index: one prediction per user per project
+predictionSchema.index({ predictorWallet: 1, projectNumber: 1 }, { unique: true });
 predictionSchema.index({ predictedWallet: 1 });
 
 module.exports = mongoose.model("Prediction", predictionSchema);
