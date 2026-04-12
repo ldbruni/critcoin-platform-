@@ -9,6 +9,7 @@ const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const Transaction = require("../models/Transaction");
 const Bounty = require("../models/Bounty");
+const Prediction = require("../models/Prediction");
 const { ethers } = require('ethers');
 
 // Admin authentication middleware with signature verification
@@ -322,6 +323,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
     const comments = await Comment.find({ archived: { $ne: true } });
     const transactions = await Transaction.find();
     const bounties = await Bounty.find();
+    const predictions = await Prediction.find({ archived: { $ne: true } });
 
     // Create profile lookup map
     const profileMap = {};
@@ -425,6 +427,16 @@ router.post("/create", authenticateAdmin, async (req, res) => {
       createdAt: b.createdAt
     }));
 
+    // Archive predictions
+    const archivedPredictions = predictions.map(pred => ({
+      predictorWallet: pred.predictorWallet,
+      predictorName: profileMap[pred.predictorWallet?.toLowerCase()] || 'Unknown',
+      predictedWallet: pred.predictedWallet,
+      predictedName: profileMap[pred.predictedWallet?.toLowerCase()] || 'Unknown',
+      projectNumber: pred.projectNumber,
+      createdAt: pred.createdAt
+    }));
+
     // Build leaderboard snapshot (top 3 per project)
     const leaderboard = [];
     for (let projectNum = 1; projectNum <= 4; projectNum++) {
@@ -460,6 +472,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
         totalComments: comments.length,
         totalTransactions: transactions.length,
         totalBounties: bounties.length,
+        totalPredictions: predictions.length,
         totalCritCoinTransferred
       },
       profiles: archivedProfiles,
@@ -467,7 +480,8 @@ router.post("/create", authenticateAdmin, async (req, res) => {
       posts: archivedPosts,
       transactions: archivedTransactions,
       bounties: archivedBounties,
-      leaderboard
+      leaderboard,
+      predictions: archivedPredictions
     });
 
     await archive.save();
@@ -521,6 +535,9 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
     // Delete all transactions
     const transactionResult = await Transaction.deleteMany({});
 
+    // Delete all predictions
+    const predictionResult = await Prediction.deleteMany({});
+
     // Note: Bounties are NOT deleted - they persist across semesters
 
     console.log('Site data cleared successfully');
@@ -532,7 +549,8 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
         projects: projectResult.deletedCount,
         posts: postResult.deletedCount,
         comments: commentResult.deletedCount,
-        transactions: transactionResult.deletedCount
+        transactions: transactionResult.deletedCount,
+        predictions: predictionResult.deletedCount
       }
     });
   } catch (err) {

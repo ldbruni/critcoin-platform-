@@ -73,6 +73,16 @@ const archivedBountySchema = new mongoose.Schema({
   createdAt: Date
 }, { _id: false });
 
+// Schema for archived prediction data
+const archivedPredictionSchema = new mongoose.Schema({
+  predictorWallet: String,
+  predictorName: String,
+  predictedWallet: String,
+  predictedName: String,
+  projectNumber: Number,
+  createdAt: Date
+}, { _id: false });
+
 // Schema for leaderboard snapshot
 const leaderboardEntrySchema = new mongoose.Schema({
   projectNumber: Number,
@@ -107,6 +117,7 @@ const semesterArchiveSchema = new mongoose.Schema({
     totalComments: Number,
     totalTransactions: Number,
     totalBounties: Number,
+    totalPredictions: Number,
     totalCritCoinTransferred: Number
   },
 
@@ -116,7 +127,8 @@ const semesterArchiveSchema = new mongoose.Schema({
   posts: [archivedPostSchema],
   transactions: [archivedTransactionSchema],
   bounties: [archivedBountySchema],
-  leaderboard: [leaderboardEntrySchema]
+  leaderboard: [leaderboardEntrySchema],
+  predictions: [archivedPredictionSchema]
 });
 
 // Index for efficient queries
