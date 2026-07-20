@@ -295,7 +295,10 @@ export default function Profiles() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem" }}>
-      <h1 className="gothic-title gothic-text">CritCoin Profiles</h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Profiles</div>
+        <h1 className="gothic-title gothic-text">CritCoin Profiles</h1>
+      </div>
 
       {!wallet ? (
         <div>
@@ -303,29 +306,29 @@ export default function Profiles() {
             textAlign: "center",
             padding: "2rem",
             background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(22, 163, 74, 0.03))',
-            border: '2px solid var(--complement-blue)'
+            border: '2px solid var(--primary-blue)'
           }}>
-            <h3 className="royal-text" style={{ fontFamily: 'Cinzel, serif' }}>Wallet Connection Required</h3>
-            <p style={{ fontFamily: 'Crimson Text, serif', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem', fontStyle: 'italic' }}>Connect your wallet to create or edit your profile</p>
+            <h3 className="royal-text" style={{ fontFamily: 'var(--font-heading)' }}>Wallet Connection Required</h3>
+            <p style={{ fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.8)', marginBottom: '1.5rem', fontStyle: 'italic' }}>Connect your wallet to create or edit your profile</p>
             <button onClick={connectWallet} className="artistic-btn">
               Connect Wallet
             </button>
           </div>
 
-          <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(245, 158, 11, 0.05))', border: '2px solid var(--complement-green)' }}>
-            <h2 className="sage-text" style={{ fontFamily: 'Cinzel, serif' }}>Community Profiles</h2>
-            <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>
+          <div className="artistic-card" style={{ textAlign: 'center', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(245, 158, 11, 0.05))', border: '2px solid var(--status-positive)' }}>
+            <h2 className="sage-text" style={{ fontFamily: 'var(--font-heading)' }}>Community Profiles</h2>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>
               Discover the CritCoin community members
             </p>
           </div>
 
 
           {loadingProfiles ? (
-            <p style={{ textAlign: "center", color: "#666" }}>
+            <p style={{ textAlign: "center", color: "var(--text-muted)" }}>
               Loading community profiles...
             </p>
           ) : publicProfiles.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+            <p style={{ textAlign: "center", color: "var(--text-faint)", fontStyle: "italic" }}>
               No profiles found. Be the first to create one!
             </p>
           ) : (
@@ -338,8 +341,8 @@ export default function Profiles() {
                 <div 
                   key={prof._id}
                   style={{ 
-                    backgroundColor: "white",
-                    border: "1px solid #ddd",
+                    backgroundColor: "var(--surface-card)",
+                    border: "1px solid var(--surface-card-border)",
                     borderRadius: "8px",
                     padding: "1.5rem",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
@@ -355,8 +358,8 @@ export default function Profiles() {
                           height: "80px",
                           objectFit: "cover",
                           borderRadius: "50%",
-                          border: "3px solid #007bff",
-                          backgroundColor: "#f8f9fa"
+                          border: "3px solid var(--primary-blue)",
+                          backgroundColor: "var(--surface-muted)"
                         }}
                         onError={(e) => {
                           console.error("❌ Failed to load profile photo:", prof.photo);
@@ -371,13 +374,13 @@ export default function Profiles() {
                         width: "80px", 
                         height: "80px", 
                         borderRadius: "50%",
-                        border: "3px solid #007bff",
-                        backgroundColor: "#e9ecef",
+                        border: "3px solid var(--primary-blue)",
+                        backgroundColor: "var(--surface-card-border)",
                         display: prof.photo ? "none" : "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: "2rem",
-                        color: "#6c757d",
+                        color: "var(--text-muted)",
                         margin: "0 auto"
                       }}
                     >
@@ -387,14 +390,14 @@ export default function Profiles() {
                   <h4 style={{ 
                     textAlign: "center", 
                     marginBottom: "0.5rem",
-                    color: "#333"
+                    color: "var(--text-body)"
                   }}>
                     {prof.name || prof.wallet?.slice(0, 8) + '...' || 'Unknown User'}
                   </h4>
                   {prof.starSign && (
                     <p style={{ 
                       textAlign: "center", 
-                      color: "#666",
+                      color: "var(--text-muted)",
                       fontSize: "0.9rem",
                       marginBottom: "0.5rem"
                     }}>
@@ -407,13 +410,13 @@ export default function Profiles() {
                     textAlign: "center", 
                     marginBottom: "0.5rem",
                     padding: "0.5rem",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "var(--surface-muted)",
                     borderRadius: "4px",
-                    border: "1px solid #e9ecef"
+                    border: "1px solid var(--surface-card-border)"
                   }}>
                     <div style={{ 
                       fontSize: "0.75rem", 
-                      color: "#666", 
+                      color: "var(--text-muted)", 
                       marginBottom: "0.25rem",
                       fontWeight: "600"
                     }}>
@@ -427,11 +430,11 @@ export default function Profiles() {
                     }}>
                       <code style={{ 
                         fontSize: "0.75rem", 
-                        backgroundColor: "#ffffff", 
+                        backgroundColor: "var(--panel-2)", 
                         padding: "0.25rem 0.5rem", 
                         borderRadius: "3px",
-                        border: "1px solid #ddd",
-                        color: "#333",
+                        border: "1px solid var(--surface-card-border)",
+                        color: "var(--text-body)",
                         wordBreak: "break-all"
                       }}>
                         {prof.wallet}
@@ -439,7 +442,7 @@ export default function Profiles() {
                       <button
                         onClick={() => copyWalletAddress(prof.wallet)}
                         style={{
-                          backgroundColor: "#007bff",
+                          backgroundColor: "var(--primary-blue)",
                           color: "white",
                           border: "none",
                           borderRadius: "3px",
@@ -458,7 +461,7 @@ export default function Profiles() {
                   {prof.bio && (
                     <p style={{ 
                       fontSize: "0.9rem",
-                      color: "#666",
+                      color: "var(--text-muted)",
                       textAlign: "center",
                       lineHeight: "1.4"
                     }}>
@@ -468,10 +471,10 @@ export default function Profiles() {
                   <div style={{ 
                     marginTop: "1rem",
                     padding: "0.5rem",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "var(--surface-muted)",
                     borderRadius: "4px",
                     fontSize: "0.8rem",
-                    color: "#666",
+                    color: "var(--text-muted)",
                     textAlign: "center"
                   }}>
                     Joined: {new Date(prof.createdAt).toLocaleDateString()}
@@ -483,15 +486,15 @@ export default function Profiles() {
         </div>
       ) : profile && !editing ? (
         <>
-          <div className="artistic-card" style={{ background: 'rgba(0, 255, 255, 0.05)', border: '2px solid var(--neon-cyan)', marginBottom: '1.5rem' }}>
-            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
-              <span className="neon-green-text">WALLET:</span> <code style={{ color: 'var(--neon-pink)', fontSize: '0.9rem' }}>{wallet}</code>
+          <div className="artistic-card" style={{ background: 'rgba(0, 255, 255, 0.05)', border: '2px solid var(--primary-blue)', marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '1.1rem' }}>
+              <span className="neon-green-text">WALLET:</span> <code style={{ color: 'var(--accent-orange)', fontSize: '0.9rem' }}>{wallet}</code>
             </p>
-            <p style={{ fontFamily: 'Orbitron, monospace', fontSize: '1.1rem' }}>
-              <span className="neon-cyan-text">CREDITS:</span> <span style={{ color: 'var(--neon-orange)', fontWeight: 'bold' }}>{balance}</span> <span className="neon-green-text">CritCoin</span>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: '1.1rem' }}>
+              <span className="neon-cyan-text">CREDITS:</span> <span className="ledger-num" style={{ color: 'var(--accent-orange)', fontWeight: 'bold' }}>{balance}</span> <span className="neon-green-text">CritCoin</span>
             </p>
           </div>
-          <h3 className="neon-purple-text" style={{ fontFamily: 'Orbitron, monospace', textAlign: 'center', marginBottom: '1.5rem' }}>YOUR DIGITAL IDENTITY</h3>
+          <h3 className="neon-purple-text" style={{ fontFamily: 'var(--font-mono)', textAlign: 'center', marginBottom: '1.5rem' }}>YOUR DIGITAL IDENTITY</h3>
           {profile.photo && (
             <div style={{ marginBottom: "1rem" }}>
               <img
@@ -502,7 +505,7 @@ export default function Profiles() {
                   height: "150px",
                   objectFit: "cover",
                   borderRadius: "8px",
-                  border: "2px solid #ddd"
+                  border: "2px solid var(--surface-card-border)"
                 }}
                 onError={(e) => {
                   console.error("❌ Failed to load your profile photo:", profile.photo);
@@ -522,12 +525,12 @@ export default function Profiles() {
           <p>{profile ? "Edit your profile:" : "No profile found. Create one:"}</p>
           {!profile && (
             <div style={{
-              backgroundColor: "#e8f5e9",
-              border: "1px solid #4caf50",
+              backgroundColor: "var(--tint-positive)",
+              border: "1px solid var(--status-positive)",
               borderRadius: "4px",
               padding: "1rem",
               marginBottom: "1rem",
-              color: "#2e7d32"
+              color: "var(--status-positive)"
             }}>
               <strong>Welcome</strong>
               <p>Creating your profile grants you 1 CritCoin to get started.</p>
@@ -544,11 +547,11 @@ export default function Profiles() {
                   marginTop: "0.5rem",
                   width: "100%",
                   padding: "0.5rem",
-                  border: "2px dashed #ccc",
+                  border: "2px dashed var(--surface-card-border)",
                   borderRadius: "4px",
-                  backgroundColor: "#f9f9f9"
+                  backgroundColor: "var(--surface-muted)"
                 }}              />
-              <small style={{ display: "block", marginTop: "0.25rem", color: "#666" }}>
+              <small style={{ display: "block", marginTop: "0.25rem", color: "var(--text-muted)" }}>
                 📱 Tap to select or take a photo (max 5MB) - JPEG, PNG, GIF, WebP only
               </small>
               {(photoPreview || (profile?.photo && !selectedPhoto)) && (
@@ -561,8 +564,8 @@ export default function Profiles() {
                       height: "150px",
                       objectFit: "cover",
                       borderRadius: "8px",
-                      border: "2px solid #ddd",
-                      backgroundColor: "#f0f0f0"
+                      border: "2px solid var(--surface-card-border)",
+                      backgroundColor: "var(--surface-muted)"
                     }}
                     onLoad={() => console.log("✅ Profile photo preview loaded successfully")}
                     onError={(e) => {
@@ -573,13 +576,13 @@ export default function Profiles() {
                         width: 150px;
                         height: 150px;
                         border-radius: 8px;
-                        border: 2px solid #ddd;
-                        background-color: #f0f0f0;
+                        border: 2px solid var(--surface-card-border);
+                        background-color: var(--surface-muted);
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-size: 3rem;
-                        color: #999;
+                        color: var(--text-faint);
                       `;
                       fallback.textContent = 'P';
                       e.target.parentNode.appendChild(fallback);
@@ -635,14 +638,14 @@ export default function Profiles() {
 
       {/* Community Profiles Section for logged-in users */}
       {wallet && (
-        <div style={{ marginTop: "3rem", borderTop: "2px solid #eee", paddingTop: "2rem" }}>
+        <div style={{ marginTop: "3rem", borderTop: "2px solid var(--surface-card-border)", paddingTop: "2rem" }}>
           <h2>👥 Community Profiles</h2>
-          <p style={{ marginBottom: "2rem", color: "#666" }}>
+          <p style={{ marginBottom: "2rem", color: "var(--text-muted)" }}>
             Discover other CritCoin community members
           </p>
 
           {publicProfiles.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+            <p style={{ textAlign: "center", color: "var(--text-faint)", fontStyle: "italic" }}>
               No other profiles found yet.
             </p>
           ) : (
@@ -657,8 +660,8 @@ export default function Profiles() {
                 <div 
                   key={prof._id}
                   style={{ 
-                    backgroundColor: "white",
-                    border: "1px solid #ddd",
+                    backgroundColor: "var(--surface-card)",
+                    border: "1px solid var(--surface-card-border)",
                     borderRadius: "8px",
                     padding: "1.5rem",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
@@ -674,8 +677,8 @@ export default function Profiles() {
                           height: "70px",
                           objectFit: "cover",
                           borderRadius: "50%",
-                          border: "3px solid #007bff",
-                          backgroundColor: "#f8f9fa"
+                          border: "3px solid var(--primary-blue)",
+                          backgroundColor: "var(--surface-muted)"
                         }}
                         onError={(e) => {
                           console.error("❌ Failed to load profile photo for:", prof.name);
@@ -690,13 +693,13 @@ export default function Profiles() {
                         width: "70px", 
                         height: "70px", 
                         borderRadius: "50%",
-                        border: "3px solid #007bff",
-                        backgroundColor: "#e9ecef",
+                        border: "3px solid var(--primary-blue)",
+                        backgroundColor: "var(--surface-card-border)",
                         display: prof.photo ? "none" : "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: "1.8rem",
-                        color: "#6c757d",
+                        color: "var(--text-muted)",
                         margin: "0 auto"
                       }}
                     >
@@ -706,14 +709,14 @@ export default function Profiles() {
                   <h4 style={{ 
                     textAlign: "center", 
                     marginBottom: "0.5rem",
-                    color: "#333"
+                    color: "var(--text-body)"
                   }}>
                     {prof.name}
                   </h4>
                   {prof.starSign && (
                     <p style={{ 
                       textAlign: "center", 
-                      color: "#666",
+                      color: "var(--text-muted)",
                       fontSize: "0.9rem",
                       marginBottom: "0.5rem"
                     }}>
@@ -726,13 +729,13 @@ export default function Profiles() {
                     textAlign: "center", 
                     marginBottom: "0.5rem",
                     padding: "0.5rem",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "var(--surface-muted)",
                     borderRadius: "4px",
-                    border: "1px solid #e9ecef"
+                    border: "1px solid var(--surface-card-border)"
                   }}>
                     <div style={{ 
                       fontSize: "0.75rem", 
-                      color: "#666", 
+                      color: "var(--text-muted)", 
                       marginBottom: "0.25rem",
                       fontWeight: "600"
                     }}>
@@ -746,11 +749,11 @@ export default function Profiles() {
                     }}>
                       <code style={{ 
                         fontSize: "0.75rem", 
-                        backgroundColor: "#ffffff", 
+                        backgroundColor: "var(--panel-2)", 
                         padding: "0.25rem 0.5rem", 
                         borderRadius: "3px",
-                        border: "1px solid #ddd",
-                        color: "#333",
+                        border: "1px solid var(--surface-card-border)",
+                        color: "var(--text-body)",
                         wordBreak: "break-all"
                       }}>
                         {prof.wallet}
@@ -758,7 +761,7 @@ export default function Profiles() {
                       <button
                         onClick={() => copyWalletAddress(prof.wallet)}
                         style={{
-                          backgroundColor: "#007bff",
+                          backgroundColor: "var(--primary-blue)",
                           color: "white",
                           border: "none",
                           borderRadius: "3px",
@@ -777,7 +780,7 @@ export default function Profiles() {
                   {prof.bio && (
                     <p style={{ 
                       fontSize: "0.9rem",
-                      color: "#666",
+                      color: "var(--text-muted)",
                       textAlign: "center",
                       lineHeight: "1.4"
                     }}>
@@ -787,10 +790,10 @@ export default function Profiles() {
                   <div style={{ 
                     marginTop: "1rem",
                     padding: "0.5rem",
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "var(--surface-muted)",
                     borderRadius: "4px",
                     fontSize: "0.8rem",
-                    color: "#666",
+                    color: "var(--text-muted)",
                     textAlign: "center"
                   }}>
                     Joined: {new Date(prof.createdAt).toLocaleDateString()}
