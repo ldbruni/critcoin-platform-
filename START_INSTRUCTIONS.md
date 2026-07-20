@@ -1,107 +1,74 @@
-# 🚀 CritCoin Platform - Quick Start
+# CritCoin Platform — Local Quick Start
 
-## For University Windows Machines
+For running the platform **locally** during development, especially on restricted university networks.
 
-## Development Mode (University Networks)
+> Students don't need any of this — the live site at **https://critcoin.art** works from any browser with MetaMask. This document is for whoever is developing or demoing the platform.
 
-### 🎓 For University Windows Machines
-
-**If university firewall blocks the site, try these options:**
+## One-time setup
 
 ```bash
-# 1. Install dependencies (one-time setup)
-npm run setup
+npm install     # root: hardhat + concurrently
+npm run setup   # installs frontend/ and backend/ dependencies
+```
 
-# 2. Try different port configurations:
+You also need `backend/.env` and `frontend/.env` — see [README.md](README.md#2-environment-variables).
 
-# Option A: Standard web ports (most likely to work)
-npm run start-university
-# Access at: https://localhost:8080
+## Starting
 
-# Option B: Secure ports
-npm run start-secure  
-# Access at: https://localhost:8443
-
-# Option C: Default HTTPS
+```bash
 npm run start-dev
-# Access at: https://localhost:3000
 ```
 
-### 🔧 Windows Quick Setup
+Runs the backend on `:3001` and the frontend on `:3000` together, with HTTPS enabled and bound to `0.0.0.0`.
+Open **https://localhost:3000**.
 
-**Double-click:** `university-setup.bat` (Windows) or `university-setup.sh` (Mac/Linux)
-
-This script will:
-- Test different port configurations
-- Start the servers automatically
-- Give you the working URL
-
-### 🔍 Network Diagnostics
-
-**Open:** `network-test.html` in your browser to test which configurations work on your network.
-
-## Production Mode (Railway/Heroku)
-
-**Backend only** - Frontend should be deployed separately:
+### If a firewall blocks the default ports
 
 ```bash
-# Starts backend server only
-npm start
+npm run start-university   # frontend :8080, backend :8081
+npm run start-secure       # frontend :8443, backend :8444
 ```
 
----
+Or double-click `university-setup.bat` (Windows) / run `./university-setup.sh` (Mac/Linux) — these try the port configurations in turn and report which one works.
 
-## Alternative Commands
+To find out which configurations your network allows, open `network-test.html` in a browser.
 
-**If `npm start` doesn't work, try:**
+### Running the two servers separately
 
 ```bash
-# Backend (Terminal 1)
-cd backend
-npm run dev
+# Terminal 1
+cd backend && npm run dev      # nodemon, :3001
 
-# Frontend (Terminal 2)  
-cd frontend
-npm start
+# Terminal 2
+cd frontend && npm start       # :3000
 ```
 
-**For Windows-specific issues:**
+On Windows, if the cross-env HTTPS flags misbehave:
 ```bash
-cd frontend
-npm run start-windows
+cd frontend && npm run start-windows
 ```
 
----
+## Local blockchain (optional)
 
-## 🎯 What This Does
+The app points at the deployed **Sepolia** contract by default, so you don't need a local chain for normal development. To work against a local one:
 
-- ✅ **HTTPS enabled** - Works on university networks
-- ✅ **All interfaces** - Binds to 0.0.0.0 for network compatibility  
-- ✅ **Auto-configuration** - No manual setup required
-- ✅ **Cross-platform** - Works on Windows, Mac, Linux
+```bash
+npx hardhat node                                        # terminal 1
+npx hardhat run scripts/deploy.js --network localhost   # terminal 2
+```
 
----
+Then add the Hardhat network to MetaMask — RPC `http://localhost:8545`, chain ID `31337` — and point `frontend/src/contracts/sepolia.json` at the local address.
 
-## 🆘 Still Having Issues?
+## Troubleshooting
 
-1. **Try different URLs:**
-   - https://localhost:3000
-   - https://127.0.0.1:3000
-   - https://0.0.0.0:3000
+**Browser warns about the certificate** — expected. Local HTTPS uses a self-signed certificate; click through the warning.
 
-2. **Check Windows Firewall:**
-   - Allow Node.js and your browser through firewall
+**Backend exits immediately** — `MONGO_URI` or `ADMIN_WALLET` is missing or malformed in `backend/.env`. The console prints which.
 
-3. **Contact instructor** if still blocked
+**Frontend loads but no data** — confirm the backend is up (`curl http://localhost:3001/health`) and that `REACT_APP_API_URL` in `frontend/.env` matches its port. Restart the frontend after editing `.env` — React only reads it at startup.
 
----
+**Can't reach it at all** — try `https://127.0.0.1:3000`, and allow Node.js through Windows Firewall.
 
-## 🔒 Security Notes
+## Production
 
-- **HTTPS self-signed certificates**: Normal for development - accept browser warnings
-- **Network binding**: Configured for university compatibility (development only)
-- **Firewall settings**: May need to allow Node.js through Windows Firewall
-
----
-
-*The application is now configured to work out-of-the-box on university networks without any student configuration!*
+Production is Railway (backend) + Vercel (frontend), auto-deploying from `main`. `npm start` from the repo root runs the backend only. See [DEPLOYMENT.md](DEPLOYMENT.md).

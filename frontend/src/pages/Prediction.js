@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
 import { Link } from "react-router-dom";
-import deployed from "../contracts/sepolia.json";
+import { fetchBalance } from "../utils/balance";
 
 const API = {
   predictions: process.env.REACT_APP_API_URL
@@ -93,10 +92,8 @@ export default function Prediction() {
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWallet(addr);
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      const bal = await contract.balanceOf(addr);
-      setBalance(Number(bal.toString()));
+      // Balance comes from the database ledger, not the chain.
+      setBalance(await fetchBalance(addr));
 
       const res = await fetch(`${API.profiles}/${addr}`);
       if (res.ok) setProfile(await res.json());

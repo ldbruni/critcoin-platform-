@@ -1,9 +1,8 @@
 // src/pages/Profiles.js
 // Build: 2025-10-17-03:15 - Cloudinary direct URLs
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
 import { Link } from "react-router-dom";
-import deployed from "../contracts/sepolia.json";
+import { fetchBalance } from "../utils/balance";
 
 // Debug environment variables
 console.log("🔍 Environment debug:");
@@ -73,19 +72,11 @@ export default function Profiles() {
       
       setWallet(addr);
 
+      // Balance comes from the database ledger, not the chain.
       console.log("💰 Getting CritCoin balance...");
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      
-      try {
-        const bal = await contract.balanceOf(addr);
-        const balanceNumber = Number(bal.toString());
-        console.log("💰 CritCoin balance:", balanceNumber);
-        setBalance(balanceNumber);
-      } catch (contractError) {
-        console.error("❌ Contract error:", contractError);
-        setBalance(0);
-      }
+      const balanceNumber = await fetchBalance(addr);
+      console.log("💰 CritCoin balance:", balanceNumber);
+      setBalance(balanceNumber);
 
       console.log("👤 Fetching profile...");
       const res = await fetch(`${API.profiles}/${addr}`);
@@ -185,11 +176,10 @@ export default function Profiles() {
       return;
     }
 
-    // Check balance requirement for new profile creation
-    if (!profile && Number(balance) < 1) {
-      alert("You need at least 1 CritCoin to create a profile");
-      return;
-    }
+    // No balance gate on profile creation: a new student has no ledger history
+    // yet, so requiring a balance here could never be satisfied. Creating the
+    // profile issues a joining credit, which then covers the >=1 CritCoin
+    // requirement for posting, submitting projects and tipping.
 
     const endpoint = profile ? `${API.profiles}/update` : API.profiles;
 
@@ -209,8 +199,8 @@ export default function Profiles() {
       formData.append('name', form.name);
       formData.append('birthday', form.birthday);
       formData.append('starSign', form.starSign);
-      formData.append('balance', balance); // Pass current balance for backend validation
-      
+      // No balance field: the server computes it from the ledger itself.
+
       if (selectedPhoto) {
         console.log("📸 Adding photo to form data");
         formData.append('photo', selectedPhoto);
@@ -530,17 +520,17 @@ export default function Profiles() {
       ) : (
         <>
           <p>{profile ? "Edit your profile:" : "No profile found. Create one:"}</p>
-          {!profile && Number(balance) < 1 && (
-            <div style={{ 
-              backgroundColor: "#ffebee", 
-              border: "1px solid #f44336", 
-              borderRadius: "4px", 
-              padding: "1rem", 
+          {!profile && (
+            <div style={{
+              backgroundColor: "#e8f5e9",
+              border: "1px solid #4caf50",
+              borderRadius: "4px",
+              padding: "1rem",
               marginBottom: "1rem",
-              color: "#c62828"
+              color: "#2e7d32"
             }}>
-              <strong>⚠️ Insufficient Balance</strong>
-              <p>You need at least 1 CritCoin to create a profile. Your current balance: {balance} CritCoin</p>
+              <strong>Welcome</strong>
+              <p>Creating your profile grants you 1 CritCoin to get started.</p>
             </div>
           )}
           <form onSubmit={handleSubmit}>
@@ -557,9 +547,7 @@ export default function Profiles() {
                   border: "2px dashed #ccc",
                   borderRadius: "4px",
                   backgroundColor: "#f9f9f9"
-                }}
-                disabled={!profile && Number(balance) < 1}
-              />
+                }}              />
               <small style={{ display: "block", marginTop: "0.25rem", color: "#666" }}>
                 📱 Tap to select or take a photo (max 5MB) - JPEG, PNG, GIF, WebP only
               </small>
@@ -606,24 +594,18 @@ export default function Profiles() {
               value={form.name}
               onChange={handleChange}
               maxLength="50"
-              required
-              disabled={!profile && Number(balance) < 1}
-            /><br />
+              required            /><br />
             <input
               name="birthday"
               type="date"
               value={form.birthday}
               onChange={handleChange}
-              required
-              disabled={!profile && Number(balance) < 1}
-            /><br />
+              required            /><br />
             <select
               name="starSign"
               value={form.starSign}
               onChange={handleChange}
-              required
-              disabled={!profile && Number(balance) < 1}
-              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
+              required              style={{ width: "100%", padding: "8px", marginBottom: "10px" }}
             >
               <option value="">Select Star Sign</option>
               <option value="Aries">Aries</option>
@@ -639,14 +621,7 @@ export default function Profiles() {
               <option value="Aquarius">Aquarius</option>
               <option value="Pisces">Pisces</option>
             </select><br />
-            <button 
-              type="submit" 
-              disabled={!profile && Number(balance) < 1}
-              style={{ 
-                opacity: (!profile && Number(balance) < 1) ? 0.5 : 1,
-                cursor: (!profile && Number(balance) < 1) ? "not-allowed" : "pointer"
-              }}
-            >
+            <button type="submit" style={{ cursor: "pointer" }}>
               Save Profile
             </button>
             {profile && <button type="button" onClick={() => {

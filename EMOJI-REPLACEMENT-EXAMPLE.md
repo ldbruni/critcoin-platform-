@@ -1,5 +1,10 @@
 # Emoji to PNG Replacement Guide
 
+> **Status: proposed, not adopted.** `frontend/src/components/Emoji.js` exists, but the
+> only call site (in `FormPage.js`) is commented out and the PNG assets listed below were
+> never added. The app currently renders unicode emoji everywhere. This document is the
+> plan if someone wants to finish the swap — delete it if that's no longer wanted.
+
 ## Current Usage (Unicode Emojis):
 ```jsx
 // FormPage.js - Voting buttons

@@ -1,6 +1,7 @@
 // src/pages/Explorer.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { AddressLink, TxLink } from "../components/ChainLink";
 
 const API = {
   explorer: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/explorer` : "http://localhost:3001/api/explorer",
@@ -365,9 +366,10 @@ export default function Explorer() {
                       }}
                     />
                   )}
-                  <span title={tx.fromWallet}>
-                    {tx.fromName && tx.fromName !== tx.fromWallet ? tx.fromName : formatAddress(tx.fromWallet)}
-                  </span>
+                  <AddressLink
+                    address={tx.fromWallet}
+                    label={tx.fromName && tx.fromName !== tx.fromWallet ? tx.fromName : formatAddress(tx.fromWallet)}
+                  />
                 </div>
                 
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -383,9 +385,10 @@ export default function Explorer() {
                       }}
                     />
                   )}
-                  <span title={tx.toWallet}>
-                    {tx.toName && tx.toName !== tx.toWallet ? tx.toName : formatAddress(tx.toWallet)}
-                  </span>
+                  <AddressLink
+                    address={tx.toWallet}
+                    label={tx.toName && tx.toName !== tx.toWallet ? tx.toName : formatAddress(tx.toWallet)}
+                  />
                 </div>
                 
                 <span style={{ fontWeight: "bold", color: "#28a745" }}>
@@ -490,14 +493,16 @@ export default function Explorer() {
               </code>
             </div>
             
-            {selectedTransaction.txHash && (
-              <div style={{ marginBottom: "1rem" }}>
-                <strong>Transaction Hash:</strong><br />
-                <code style={{ fontSize: "0.9rem", backgroundColor: "#f8f9fa", padding: "0.25rem" }}>
-                  {selectedTransaction.txHash}
-                </code>
-              </div>
-            )}
+            <div style={{ marginBottom: "1rem" }}>
+              <strong>Transaction Hash:</strong><br />
+              <span style={{ fontSize: "0.9rem" }}>
+                <TxLink
+                  hash={selectedTransaction.txHash}
+                  fabricated={selectedTransaction.hashFabricated}
+                  short={false}
+                />
+              </span>
+            </div>
             
             <div style={{ marginBottom: "1rem" }}>
               <strong>Type:</strong> 
@@ -512,12 +517,16 @@ export default function Explorer() {
             
             <div style={{ marginBottom: "1rem" }}>
               <strong>From:</strong> {selectedTransaction.fromName}<br />
-              <code style={{ fontSize: "0.8rem" }}>{selectedTransaction.fromWallet}</code>
+              <span style={{ fontSize: "0.8rem" }}>
+                <AddressLink address={selectedTransaction.fromWallet} short={false} />
+              </span>
             </div>
-            
+
             <div style={{ marginBottom: "1rem" }}>
               <strong>To:</strong> {selectedTransaction.toName}<br />
-              <code style={{ fontSize: "0.8rem" }}>{selectedTransaction.toWallet}</code>
+              <span style={{ fontSize: "0.8rem" }}>
+                <AddressLink address={selectedTransaction.toWallet} short={false} />
+              </span>
             </div>
             
             <div style={{ marginBottom: "1rem" }}>

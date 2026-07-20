@@ -1,8 +1,7 @@
 // src/pages/Bounties.js
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
 import { Link } from "react-router-dom";
-import deployed from "../contracts/sepolia.json";
+import { fetchBalance } from "../utils/balance";
 
 const API = {
   bounties: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin/public/bounties` : "http://localhost:3001/api/admin/public/bounties",
@@ -26,11 +25,8 @@ export default function Bounties() {
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWallet(addr);
 
-      // Get balance
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      const bal = await contract.balanceOf(addr);
-      setBalance(Number(bal.toString()));
+      // Balance comes from the database ledger, not the chain.
+      setBalance(await fetchBalance(addr));
 
       // Load user's profile
       try {

@@ -4,11 +4,12 @@ const router = express.Router();
 const Project = require("../models/Project");
 const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
+const { REAL_TX_HASH } = require("../models/Transaction");
+const { getBalance } = require("../lib/balances");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
-const { ethers } = require("ethers");
 const cloudinary = require('cloudinary').v2;
 
 // Configure Cloudinary
@@ -17,9 +18,6 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
-
-// Load contract info
-const contractInfo = require("../sepolia.json");
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -151,7 +149,7 @@ router.get("/:projectNumber/:wallet", async (req, res) => {
 
 // POST create or update project submission
 router.post("/", upload.single('image'), async (req, res) => {
-  const { wallet, projectNumber, title, description, balance } = req.body;
+  const { wallet, projectNumber, title, description } = req.body;
   const projNum = parseInt(projectNumber);
 
   if (!wallet || !projNum || !title || !req.file) {
@@ -169,8 +167,11 @@ router.post("/", upload.single('image'), async (req, res) => {
       return res.status(400).send("Must have a profile to submit projects");
     }
 
-    // Check balance requirement
-    if (!balance || Number(balance) < 1) {
+    // Check balance requirement against the ledger. The client used to send its
+    // own balance, which the server simply trusted - never take the client's
+    // word for a balance.
+    const { balance } = await getBalance(wallet);
+    if (balance < 1) {
       return res.status(400).send("Need ≥1 CritCoin to submit projects");
     }
 
@@ -240,10 +241,19 @@ router.post("/", upload.single('image'), async (req, res) => {
 
 // POST send CritCoin to project author
 router.post("/send-coin", async (req, res) => {
-  const { fromWallet, toWallet, amount, projectId } = req.body;
-  
+  const { fromWallet, toWallet, amount, projectId, txHash } = req.body;
+
   if (!fromWallet || !toWallet || !amount || !projectId) {
     return res.status(400).send("Missing required fields");
+  }
+
+  // Record the real on-chain hash when the frontend supplies a well-formed one.
+  // Anything else is stored as null - never fabricate a hash. A null here means
+  // the tip has no verifiable on-chain record, which /api/admin/reconcile counts
+  // as a drift signal.
+  const realTxHash = REAL_TX_HASH.test(txHash || "") ? txHash.toLowerCase() : null;
+  if (!realTxHash) {
+    console.warn(`⚠️ Tip recorded without a usable txHash (received: ${txHash ?? "none"})`);
   }
 
   try {
@@ -253,8 +263,20 @@ router.post("/send-coin", async (req, res) => {
       return res.status(404).send("Project not found");
     }
 
-    // In a real implementation, you'd interact with the smart contract here
-    // For now, we'll just update the total received amount
+    // The on-chain transfer already happened in the browser before this call.
+    // If we've seen this hash before the tip is already recorded, so return the
+    // existing state rather than crediting the project twice.
+    if (realTxHash) {
+      const existing = await Transaction.findOne({ txHash: realTxHash });
+      if (existing) {
+        return res.json({
+          message: "CritCoin tip already recorded",
+          totalReceived: project.totalReceived,
+          transactionId: existing._id
+        });
+      }
+    }
+
     project.totalReceived += Number(amount);
     await project.save();
 
@@ -266,7 +288,7 @@ router.post("/send-coin", async (req, res) => {
       type: 'project_tip',
       description: `Tip for project: ${project.title}`,
       relatedId: projectId,
-      txHash: `0x${Math.random().toString(16).substr(2, 64)}` // Generate fake hash for demo
+      txHash: realTxHash
     });
     await transaction.save();
 

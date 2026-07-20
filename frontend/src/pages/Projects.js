@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
+import { fetchBalance } from "../utils/balance";
 
 const API = {
   profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
@@ -39,11 +40,8 @@ export default function Projects() {
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWallet(addr);
 
-      // Get balance
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      const bal = await contract.balanceOf(addr);
-      setBalance(Number(bal.toString()));
+      // Balance comes from the database ledger, not the chain.
+      setBalance(await fetchBalance(addr));
 
       // Load user's profile
       try {
@@ -138,8 +136,8 @@ export default function Projects() {
       formData.append('projectNumber', activeProject);
       formData.append('title', form.title);
       formData.append('description', form.description);
-      formData.append('balance', balance);
-      
+      // No balance field: the server computes it from the ledger itself.
+
       if (selectedImage) {
         formData.append('image', selectedImage);
       } else if (userSubmission) {
@@ -217,9 +215,8 @@ export default function Projects() {
       if (res.ok) {
         alert(`Successfully sent ${amount} CritCoin!\nTransaction: ${tx.hash}`);
 
-        // Update balance from blockchain
-        const newBalance = await contract.balanceOf(wallet);
-        setBalance(Number(newBalance.toString()));
+        // Re-read the ledger balance now that the tip is recorded.
+        setBalance(await fetchBalance(wallet));
 
         // Clear input and refresh projects
         setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
@@ -229,8 +226,7 @@ export default function Projects() {
         alert("Blockchain transfer succeeded but backend update failed: " + errorText);
 
         // Still update balance and clear input
-        const newBalance = await contract.balanceOf(wallet);
-        setBalance(Number(newBalance.toString()));
+        setBalance(await fetchBalance(wallet));
         setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
         fetchProjects();
       }
@@ -238,6 +234,16 @@ export default function Projects() {
       console.error("Send coin error:", err);
       if (err.code === 4001) {
         alert("Transaction cancelled by user");
+      } else if (err.message?.includes("Not enough tokens")) {
+        // The displayed balance is the ledger's, but the tip is a real on-chain
+        // transfer. If the wallet holds fewer tokens on Sepolia than the ledger
+        // credits, the contract reverts here. That gap is real and is reported
+        // in the admin reconciliation view - it is not corrected automatically.
+        alert(
+          "Your on-chain CritCoin balance is lower than your CritCoin balance shown here, " +
+          "so the transfer was rejected by the contract.\n\n" +
+          "Let your instructor know - they can check the reconciliation report."
+        );
       } else if (err.code === -32603 || err.message?.includes("insufficient funds")) {
         alert("Insufficient funds for transaction (including gas fees)");
       } else {

@@ -31,6 +31,7 @@ const commentRoutes = require("./routes/comments");
 const archiveRoutes = require("./routes/archive");
 const predictionRoutes = require("./routes/predictions");
 const Prediction = require("./models/Prediction");
+const Transaction = require("./models/Transaction");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -112,6 +113,17 @@ app.use(mongoSanitize({
   replaceWith: '_'
 }));
 
+// Health check endpoint - declared before the rate limiter so Railway's probe
+// is never throttled.
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Rate limiting - more lenient in development
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -130,16 +142,6 @@ app.use(express.json({ limit: '10mb' }));
 
 // Serve static files for profile photos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
 
 // Mount routes once
 app.use("/api/posts", postRoutes);
@@ -200,6 +202,30 @@ mongoose.connection.once('open', async () => {
   } catch (e) { /* index didn't exist, that's fine */ }
   const r = await Prediction.updateMany({ projectNumber: { $exists: false } }, { $set: { projectNumber: 2 } });
   if (r.modifiedCount) console.log(`✅ Migrated ${r.modifiedCount} predictions to projectNumber: 2`);
+
+  // One-time migration: the legacy txHash_1 index was unique but not partial, so
+  // only one document could ever carry txHash: null - which is why the old code
+  // fabricated hashes instead of storing null. Off-chain rows (deploy credits,
+  // joining credits, admin corrections) need null, so drop the legacy index and
+  // rebuild the partial one declared in models/Transaction.js.
+  //
+  // syncIndexes() is what actually reconciles the collection with the schema.
+  // Dropping alone is not enough: Mongoose's own autoIndex pass races this hook,
+  // and creating a partial txHash_1 while a non-partial one still exists fails
+  // with IndexOptionsConflict. Idempotent - a no-op once migrated.
+  try {
+    const indexes = await mongoose.connection.collection('transactions').indexes();
+    const legacy = indexes.find(
+      (i) => i.name === 'txHash_1' && !i.partialFilterExpression
+    );
+    if (legacy) {
+      await mongoose.connection.collection('transactions').dropIndex('txHash_1');
+      await Transaction.syncIndexes();
+      console.log('✅ Replaced legacy txHash_1 index with a partial unique index');
+    }
+  } catch (e) {
+    console.error('⚠️ txHash index migration failed:', e.message);
+  }
 });
 
 // Monitor MongoDB connection

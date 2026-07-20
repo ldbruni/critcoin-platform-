@@ -1,174 +1,183 @@
-# 🚀 CritCoin Platform Deployment Guide
+# CritCoin Platform — Deployment Guide
 
-## Overview
-
-This guide covers deploying the CritCoin platform to make it accessible at `https://critcoin.art` for university students.
+How the platform gets to **https://critcoin.art**. For architecture and known issues, see [HANDOFF.md](HANDOFF.md).
 
 ## Architecture
 
-- **Frontend**: Deployed to Vercel (critcoin.art domain)
-- **Backend**: Deployed to Railway (API server)
-- **Database**: MongoDB Atlas (cloud database)
+| Piece | Host | URL |
+|---|---|---|
+| Frontend (React SPA) | Vercel | https://critcoin.art |
+| Backend (Express API) | Railway | https://critcoin-platform-production.up.railway.app |
+| Database | MongoDB Atlas | — |
+| Images | Cloudinary | — |
+| Token contract | Sepolia testnet | `0x8e9A8155dD4f5F1b3f63461659b8C1B3232646d8` |
 
-## Deployment Steps
+Both frontend and backend **auto-deploy on push to `main`**. Manual deploys are only needed to override that.
 
-### 1. Backend Deployment (Railway)
+---
 
-```bash
-# Backend is already configured for Railway
-# Make sure these environment variables are set in Railway:
+## 1. Backend (Railway)
 
+Build is driven by [nixpacks.toml](nixpacks.toml); deploy settings by [railway.json](railway.json).
+
+Set these in the Railway dashboard:
+
+```
 NODE_ENV=production
-MONGO_URI=mongodb+srv://your-connection-string
+MONGO_URI=mongodb+srv://<your-atlas-connection-string>
 ADMIN_WALLET=0xYourAdminWalletAddress
 FRONTEND_URL=https://critcoin.art
-PORT=3001  # Railway will override this
+
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-key
+CLOUDINARY_API_SECRET=your-secret
+
+# Read-only Sepolia RPC. Required for deploy preflight and /api/admin/reconcile.
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
 ```
 
-The backend should be accessible at: `https://critcoin-platform-production.up.railway.app`
+`PORT` is injected by Railway — don't hardcode it.
 
-### 2. Frontend Deployment (Vercel)
+> **Never set `SEPOLIA_PRIVATE_KEY` (or any deployer key) in Railway.** The backend
+> does not sign transactions. Deploying CritCoin to students is signed in the
+> admin's MetaMask, in the browser. `SEPOLIA_RPC_URL` is read-only — it serves
+> `eth_call` and `eth_getBalance` for preflight and reconciliation, nothing more.
+> Without it, deploy refuses to run rather than deploying blind, and the
+> reconciliation report degrades to database-only figures.
+
+**After first deploying this version**, run the one-off hash migration once
+against production to label legacy fabricated hashes:
 
 ```bash
-# 1. Install Vercel CLI
-npm install -g vercel
-
-# 2. Build for production
-npm run build-production
-
-# 3. Deploy to Vercel
-npm run deploy-frontend
-
-# 4. Configure custom domain
-# In Vercel dashboard: Settings > Domains > Add critcoin.art
+cd backend && node migrations/flag-fabricated-hashes.js --dry-run   # inspect
+cd backend && node migrations/flag-fabricated-hashes.js             # apply
 ```
 
-### 3. Domain Configuration
+The index migration in `server.js` runs automatically on boot and is idempotent.
 
-#### DNS Settings for critcoin.art:
-```
-Type: CNAME
-Name: www
-Value: cname.vercel-dns.com
+The server **exits on startup** if `MONGO_URI` or `ADMIN_WALLET` are missing, or if `ADMIN_WALLET` isn't a valid `0x` + 40-hex address. Check the deploy logs first when a release fails to come up.
 
-Type: A  
-Name: @
-Value: 76.76.19.19
+The health check is `GET /api/health`, matching `healthcheckPath` in `railway.json`. It is declared ahead of the rate limiter so the probe is never throttled.
 
-Type: A
-Name: @  
-Value: 76.76.21.21
-```
+---
 
-### 4. Environment Variables
+## 2. Frontend (Vercel)
 
-#### Frontend (.env.production):
+[vercel.json](vercel.json) runs `bash build-for-vercel.sh`, which builds inside `frontend/` and copies the output to the repo root (`outputDirectory: "build"`).
+
+Environment variables — set in `vercel.json` and/or the Vercel dashboard:
+
 ```
 REACT_APP_API_URL=https://critcoin-platform-production.up.railway.app
+REACT_APP_ADMIN_WALLET=0xYourAdminWalletAddress
+CI=false
 GENERATE_SOURCEMAP=false
-PUBLIC_URL=https://critcoin.art
 ```
 
-#### Backend (Railway Dashboard):
-```
-NODE_ENV=production
-MONGO_URI=mongodb+srv://your-mongodb-atlas-connection
-ADMIN_WALLET=0xYourEthereumWalletAddress
-FRONTEND_URL=https://critcoin.art
-```
+`REACT_APP_*` variables are **inlined at build time**. Changing the backend URL requires a rebuild, not just an env-var edit.
 
-## University Network Compatibility
+`CI=false` is required — React build warnings are otherwise treated as errors and fail the deploy.
 
-### HTTPS by Default
-- ✅ All traffic uses HTTPS (port 443)
-- ✅ Standard web ports (80/443) work on all networks
-- ✅ Professional SSL certificates (no warnings)
-- ✅ CDN distribution for fast loading
+### Manual deploy
 
-### Domain-Based Access
-- ✅ Students access via `https://critcoin.art`
-- ✅ No localhost or custom ports required
-- ✅ Works on any device with internet access
-- ✅ Mobile-friendly responsive design
-
-## Testing
-
-### Production Testing:
 ```bash
-# Test API connectivity
-curl https://critcoin-platform-production.up.railway.app/api/health
-
-# Test frontend build
-npm run build-production
-npx serve -s frontend/build -l 3000
+npm install -g vercel
+npm run deploy-frontend      # build-production + vercel --prod
 ```
 
-### University Network Testing:
-1. Access `https://critcoin.art` from university Windows machine
-2. Test wallet connection (MetaMask)
-3. Test profile creation and project tipping
-4. Verify admin panel access (for instructors)
+---
 
-## Maintenance
+## 3. DNS for critcoin.art
 
-### Frontend Updates:
+```
+Type: CNAME    Name: www    Value: cname.vercel-dns.com
+Type: A        Name: @      Value: 76.76.19.19
+Type: A        Name: @      Value: 76.76.21.21
+```
+
+Then in Vercel: **Settings → Domains → Add `critcoin.art`**.
+
+---
+
+## 4. CORS
+
+Allowed origins are hardcoded in [backend/server.js](backend/server.js). Production currently allows:
+
+- `process.env.FRONTEND_URL`
+- `https://critcoin.art`, `https://www.critcoin.art`
+- `https://critcoin-platform.vercel.app`
+
+**Adding a new frontend domain requires a code change and a backend redeploy.** Preview deployments on Vercel's generated URLs will be blocked by CORS.
+
+---
+
+## 5. Smart contract
+
+The contract is already deployed to Sepolia and does not need redeploying for routine releases.
+
+If you do redeploy:
+
 ```bash
-# 1. Make changes to frontend code
-# 2. Test locally
-npm run start-dev
-
-# 3. Deploy to production
-npm run deploy-frontend
+# root .env needs ALCHEMY_API_KEY (full RPC URL) and SEPOLIA_PRIVATE_KEY
+npx hardhat run scripts/deploy.js --network sepolia
 ```
 
-### Backend Updates:
+Then:
+1. Verify `frontend/src/contracts/{Token.json,contract-address.json,sepolia.json}` were rewritten by the script.
+2. **Manually copy** the new address + ABI into `backend/sepolia.json` — the deploy script does not touch it.
+3. Update the address in README.md and HANDOFF.md.
+4. Redeploy the frontend so the new address is bundled.
+5. Note that existing student balances live on the **old** contract and do not carry over.
+
+---
+
+## 6. Verifying a release
+
 ```bash
-# 1. Push changes to main branch
-git push origin main
+# Backend up and connected to Mongo
+curl https://critcoin-platform-production.up.railway.app/health
 
-# 2. Railway auto-deploys from GitHub
-# 3. Monitor Railway dashboard for deployment status
+# A public data endpoint
+curl https://critcoin-platform-production.up.railway.app/api/profiles
 ```
 
-## Troubleshooting
+Then in a browser at https://critcoin.art:
+- [ ] Page loads over HTTPS with a valid certificate
+- [ ] MetaMask connects and shows a Sepolia CritCoin balance
+- [ ] Profiles, Projects, Leaderboard, Forum, Prediction, Archive all render
+- [ ] Creating a profile with a photo works (exercises Cloudinary)
+- [ ] Admin panel is reachable from the admin wallet and hidden from others
 
-### Frontend Issues:
-- Check Vercel deployment logs
-- Verify API URL in browser network tab
-- Ensure CORS is configured for critcoin.art
+---
 
-### Backend Issues:
-- Check Railway deployment logs
-- Verify MongoDB connection
-- Test API endpoints individually
+## 7. University network compatibility
 
-### University Access Issues:
-- Confirm HTTPS is working (green padlock)
-- Test from different browsers
-- Contact university IT if domain is blocked
+The production setup is deliberately boring so campus firewalls don't interfere:
 
-## Security
+- HTTPS on port 443 only, with real certificates
+- A normal public domain — no localhost, no custom ports
+- Static assets served from Vercel's CDN
+- Responsive layout for phones and lab machines
 
-### Production Security Features:
-- ✅ HTTPS encryption
-- ✅ CORS protection
-- ✅ Helmet security headers
-- ✅ Input sanitization
-- ✅ Rate limiting
-- ✅ Environment variable protection
+Students need nothing installed except MetaMask.
 
-### University Compliance:
-- ✅ Standard web protocols only
-- ✅ No custom ports or protocols
-- ✅ Professional domain and SSL
-- ✅ No localhost dependencies
+For **local development** on a restricted campus network, see [START_INSTRUCTIONS.md](START_INSTRUCTIONS.md).
 
-## Support
+---
 
-For deployment issues:
-1. Check deployment logs (Vercel/Railway)
-2. Test API connectivity
-3. Verify environment variables
-4. Contact platform maintainer
+## 8. Troubleshooting
 
-The live website at `https://critcoin.art` should work seamlessly on all university networks without any local setup required by students.
+**Frontend builds but the app can't reach the API**
+Check `REACT_APP_API_URL` in the built bundle (browser Network tab). If it points at localhost, the env var wasn't set at build time.
+
+**Requests blocked by CORS**
+The origin isn't in `allowedOrigins` in `backend/server.js`. Common on Vercel preview URLs.
+
+**Backend crash-loops on deploy**
+Almost always a missing/invalid `MONGO_URI` or `ADMIN_WALLET`. The Railway logs print exactly which one.
+
+**Images upload but don't display**
+Verify the three `CLOUDINARY_*` variables are set on Railway. Legacy images served from `backend/uploads/` also have to match a strict filename pattern — see [HANDOFF.md](HANDOFF.md) §7.
+
+**429 Too Many Requests**
+Global rate limit is 100 requests / 15 minutes per IP in production. A whole classroom behind one campus NAT can trip it; raise the limit in `backend/server.js` if that becomes routine.

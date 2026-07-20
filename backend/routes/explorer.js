@@ -3,6 +3,27 @@ const express = require("express");
 const router = express.Router();
 const Transaction = require("../models/Transaction");
 const Profile = require("../models/Profiles");
+const { getBalance } = require("../lib/balances");
+
+// GET the authoritative database balance for a wallet.
+//
+// This is the number shown everywhere in the app. On-chain balances are not
+// consulted - students verify those on Sepolia Etherscan. See ARCHITECTURE.md,
+// "Balance authority".
+//
+// Declared before /transactions and the param routes so it can never be
+// swallowed by them.
+router.get("/balance/:wallet", async (req, res) => {
+  try {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.wallet)) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+    res.json(await getBalance(req.params.wallet));
+  } catch (err) {
+    console.error("Balance fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch balance" });
+  }
+});
 
 // GET all transactions with pagination
 router.get("/transactions", async (req, res) => {

@@ -1,12 +1,23 @@
 const mongoose = require("mongoose");
 
+// A real Sepolia transaction hash: 0x followed by exactly 64 hex characters.
+// Used to tell genuine hashes from the fabricated ones written before the
+// ledger-authority refactor (those came from Math.random().toString(16) and
+// are roughly 19 characters long).
+const REAL_TX_HASH = /^0x[0-9a-f]{64}$/i;
+
 const transactionSchema = new mongoose.Schema({
-  txHash: { type: String, unique: true }, // For real blockchain transactions
+  // Null for off-chain rows (deploy credits, joining credits, admin corrections).
+  // Never fabricate a value here - a missing hash is a drift signal.
+  txHash: { type: String, default: null },
+  // Set by migrations/flag-fabricated-hashes.js on legacy rows whose hash was
+  // invented and resolves to nothing on Etherscan.
+  hashFabricated: { type: Boolean, default: false },
   fromWallet: { type: String, required: true },
   toWallet: { type: String, required: true },
   amount: { type: Number, required: true },
-  type: { 
-    type: String, 
+  type: {
+    type: String,
     required: true,
     enum: ['transfer', 'project_tip', 'forum_reward', 'system', 'mint', 'burn']
   },
@@ -14,8 +25,8 @@ const transactionSchema = new mongoose.Schema({
   relatedId: { type: String }, // ID of related post/project/etc
   blockNumber: { type: Number }, // For blockchain integration
   gasUsed: { type: Number }, // For blockchain integration
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     default: 'completed',
     enum: ['pending', 'completed', 'failed']
   },
@@ -27,4 +38,13 @@ transactionSchema.index({ fromWallet: 1, timestamp: -1 });
 transactionSchema.index({ toWallet: 1, timestamp: -1 });
 transactionSchema.index({ timestamp: -1 });
 
+// Real hashes stay unique, but any number of rows may carry txHash: null.
+// A plain `unique: true` would reject the second null row with E11000, which is
+// why the pre-refactor code fabricated hashes instead of storing null.
+transactionSchema.index(
+  { txHash: 1 },
+  { unique: true, partialFilterExpression: { txHash: { $type: 'string' } } }
+);
+
 module.exports = mongoose.model("Transaction", transactionSchema);
+module.exports.REAL_TX_HASH = REAL_TX_HASH;

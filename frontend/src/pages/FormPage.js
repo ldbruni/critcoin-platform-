@@ -1,9 +1,8 @@
 // src/pages/ForumPage.js
 // Build: 2025-10-27-05:00 - Added comments with replies and voting
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
 import { Link } from "react-router-dom";
-import deployed from "../contracts/sepolia.json";
+import { fetchBalance } from "../utils/balance";
 // import { UpvoteEmoji, DownvoteEmoji } from "../components/Emoji";
 
 export default function ForumPage() {
@@ -87,11 +86,8 @@ export default function ForumPage() {
       const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWallet(addr);
 
-      // Show balance from ERC20 (no decimals display)
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const contract = new ethers.Contract(deployed.address, deployed.abi, provider);
-      const bal = await contract.balanceOf(addr);
-      setBalance(Number(bal.toString()));
+      // Balance comes from the database ledger, not the chain.
+      setBalance(await fetchBalance(addr));
 
       // Load user’s profile by wallet (OK if 404)
       try {

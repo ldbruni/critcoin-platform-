@@ -3,6 +3,22 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
+import { AddressLink, TxLink } from "../components/ChainLink";
+
+// How each per-student deploy row reads in the status table.
+const DEPLOY_STATUS_LABELS = {
+  pending: "pending",
+  credited: "credited (awaiting chain)",
+  chain_confirmed: "confirmed on-chain",
+  chain_failed: "chain transfer failed"
+};
+
+const DEPLOY_STATUS_COLORS = {
+  pending: "#6c757d",
+  credited: "#fd7e14",
+  chain_confirmed: "#28a745",
+  chain_failed: "#dc3545"
+};
 
 const API = {
   admin: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin` : "http://localhost:3001/api/admin",
@@ -32,6 +48,9 @@ export default function Admin() {
   const [showDeployConfirm, setShowDeployConfirm] = useState(false);
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployProgress, setDeployProgress] = useState({ current: 0, total: 0, failed: [] });
+  const [latestDeploy, setLatestDeploy] = useState(null);
+  const [reconcile, setReconcile] = useState(null);
+  const [reconcileLoading, setReconcileLoading] = useState(false);
   
   // Bounty form
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
@@ -66,6 +85,8 @@ export default function Admin() {
       }
       if (activeTab === "predictions") fetchSettings();
       if (activeTab === "semester") fetchSemesterArchives();
+      if (activeTab === "deploy") fetchLatestDeploy();
+      if (activeTab === "reconcile") fetchReconcile();
     }
   }, [isAdmin, activeTab]);
 
@@ -530,8 +551,29 @@ export default function Admin() {
     }
   };
 
-  const handleDeployCritCoin = async () => {
-    if (!showDeployConfirm) {
+  // Load the most recent deploy round for the status table.
+  const fetchLatestDeploy = async () => {
+    try {
+      const res = await fetchWithSignature(`${API.admin}/deploy/latest/${wallet}`, 'admin_get_deploy_latest');
+      if (res.ok) {
+        const data = await res.json();
+        setLatestDeploy(data.deploy);
+      }
+    } catch (err) {
+      console.error("Deploy status fetch error:", err);
+    }
+  };
+
+  // Deploy CritCoin: credit the database ledger AND transfer real tokens.
+  //
+  // The backend runs preflight and credits Mongo; the browser signs each
+  // transfer with MetaMask and reports each outcome back. Transfers are strictly
+  // sequential - concurrent sends from one wallet collide on the nonce.
+  //
+  // Safe to re-run: chain_confirmed students are skipped, chain_failed students
+  // are retried, and the backend never credits a student twice.
+  const handleDeployCritCoin = async (resume = false) => {
+    if (!showDeployConfirm && !resume) {
       setShowDeployConfirm(true);
       return;
     }
@@ -545,61 +587,113 @@ export default function Admin() {
     setDeployProgress({ current: 0, total: 0, failed: [] });
 
     try {
-      // Fetch all active profiles excluding admin
-      const profilesRes = await fetch(API.profiles);
-      if (!profilesRes.ok) {
-        throw new Error("Failed to fetch profiles");
-      }
-      const allProfiles = await profilesRes.json();
-      const recipients = allProfiles.filter(p => p.wallet.toLowerCase() !== wallet.toLowerCase());
+      // Preflight + ledger credit. Nothing is written if preflight fails.
+      const startRes = await postWithSignature(`${API.admin}/deploy/start`, 'admin_post_deploy_start', {
+        confirmed: true,
+        resume
+      });
 
-      if (recipients.length === 0) {
-        alert("No active profiles to deploy to (excluding admin)");
+      if (!startRes.ok) {
+        const problem = await startRes.json().catch(() => ({ error: "Failed to start deploy" }));
+        // Preflight failures carry a detailed shortfall - show it verbatim.
+        const detail = [
+          problem.error,
+          problem.shortfall !== undefined
+            ? `Short by ${problem.shortfall} CritCoin (need ${problem.required}, wallet holds ${problem.available}).`
+            : null,
+          problem.requiredEth
+            ? `Need about ${problem.requiredEth} ETH for gas, wallet holds ${problem.availableEth} ETH.`
+            : null,
+          problem.hint
+        ].filter(Boolean).join("\n\n");
+
+        alert(`Deploy aborted.\n\n${detail}`);
         setDeployLoading(false);
         return;
       }
 
-      const amount = 10000;
+      const { deployId, amountPerStudent, rows } = await startRes.json();
+
+      // Only students without a confirmed transfer still need one.
+      const pending = rows.filter(r => r.status !== 'chain_confirmed');
+      if (pending.length === 0) {
+        alert("Every student already has a confirmed on-chain transfer. Nothing to do.");
+        setShowDeployConfirm(false);
+        await fetchLatestDeploy();
+        setDeployLoading(false);
+        return;
+      }
+
       const contract = new ethers.Contract(deployed.address, deployed.abi, signer);
       const failed = [];
+      setDeployProgress({ current: 0, total: pending.length, failed: [] });
 
-      setDeployProgress({ current: 0, total: recipients.length, failed: [] });
-
-      // Transfer to each profile
-      for (let i = 0; i < recipients.length; i++) {
-        const profile = recipients[i];
+      for (let i = 0; i < pending.length; i++) {
+        const row = pending[i];
         try {
-          console.log(`Transferring ${amount} CritCoin to ${profile.name} (${profile.wallet})`);
-          const tx = await contract.transfer(profile.wallet, amount);
-          await tx.wait(); // Wait for confirmation
-          console.log(`Transfer to ${profile.name} confirmed`);
+          console.log(`Transferring ${amountPerStudent} CritCoin to ${row.name} (${row.wallet})`);
+          const tx = await contract.transfer(row.wallet, amountPerStudent);
+          await tx.wait(); // one at a time: nonce safety
+
+          await postWithSignature(`${API.admin}/deploy/record`, 'admin_post_deploy_record', {
+            deployId,
+            wallet: row.wallet,
+            txHash: tx.hash
+          });
+          console.log(`Transfer to ${row.name} confirmed: ${tx.hash}`);
         } catch (err) {
-          console.error(`Failed to transfer to ${profile.name}:`, err);
-          failed.push({ name: profile.name, wallet: profile.wallet, error: err.message });
+          // Record the failure and keep going - one bad student must not stop
+          // the rest of the roster.
+          console.error(`Failed to transfer to ${row.name}:`, err);
+          failed.push({ name: row.name, wallet: row.wallet, error: err.message });
+
+          await postWithSignature(`${API.admin}/deploy/record`, 'admin_post_deploy_record', {
+            deployId,
+            wallet: row.wallet,
+            error: err.message
+          }).catch(recordErr => console.error("Failed to record failure:", recordErr));
         }
-        setDeployProgress({ current: i + 1, total: recipients.length, failed });
+        setDeployProgress({ current: i + 1, total: pending.length, failed });
       }
 
-      // Record transactions in database
-      if (recipients.length - failed.length > 0) {
-        await postWithSignature(`${API.admin}/deploy-critcoin`, 'admin_post_deploy_critcoin', {
-          confirmed: true,
-          successCount: recipients.length - failed.length,
-          amount: amount
-        });
-      }
-
+      const succeeded = pending.length - failed.length;
       if (failed.length === 0) {
-        alert(`CritCoin deployed successfully!\n${recipients.length} profiles received ${amount} CritCoin each.\nTotal deployed: ${recipients.length * amount} CritCoin`);
+        alert(`CritCoin deployed successfully!\n${succeeded} students received ${amountPerStudent} CritCoin each, on-chain and in the ledger.`);
       } else {
-        alert(`Deployment completed with ${failed.length} failures.\n${recipients.length - failed.length} profiles received ${amount} CritCoin.\nFailed: ${failed.map(f => f.name).join(', ')}`);
+        alert(
+          `Deployment finished with ${failed.length} failure(s).\n` +
+          `${succeeded} students confirmed on-chain.\n` +
+          `Failed: ${failed.map(f => f.name).join(', ')}\n\n` +
+          `All students were credited in the ledger. Re-run the deploy to retry the failed transfers.`
+        );
       }
+
       setShowDeployConfirm(false);
+      await fetchLatestDeploy();
     } catch (err) {
       console.error("Deploy CritCoin error:", err);
       alert("Error deploying CritCoin: " + err.message);
     } finally {
       setDeployLoading(false);
+    }
+  };
+
+  // Reconciliation report: database vs chain. Read-only diagnostic.
+  const fetchReconcile = async () => {
+    setReconcileLoading(true);
+    try {
+      const res = await fetchWithSignature(`${API.admin}/reconcile/${wallet}`, 'admin_get_reconcile');
+      if (res.ok) {
+        setReconcile(await res.json());
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch reconciliation' }));
+        alert(`Reconciliation error: ${error.error}`);
+      }
+    } catch (err) {
+      console.error("Reconcile fetch error:", err);
+      alert("Failed to fetch reconciliation report.");
+    } finally {
+      setReconcileLoading(false);
     }
   };
 
@@ -786,7 +880,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "projects", "bounties", "predictions", "whitelist", "semester", "deploy"].map(tab => (
+        {["dashboard", "profiles", "posts", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "reconcile"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1817,14 +1911,18 @@ export default function Admin() {
             margin: "0 auto 2rem"
           }}>
             <h3>⚠️ Warning</h3>
-            <p>This action will send <strong>10,000 CritCoin</strong> to all active profiles <strong>(excluding your admin profile)</strong>.</p>
+            <p>This credits <strong>10,000 CritCoin</strong> in the ledger <em>and</em> transfers real tokens on Sepolia to all active profiles <strong>(excluding your admin profile)</strong>.</p>
             <p>Total active profiles: <strong>{dashboard.profiles?.total || 0}</strong></p>
             <p>Recipients (excluding admin): <strong>{dashboard.profiles?.totalExcludingAdmin || 0}</strong></p>
             <p>Total CritCoin to be deployed: <strong>{(dashboard.profiles?.totalExcludingAdmin || 0) * 10000} CC</strong></p>
-            
+            <p style={{ fontSize: "0.85rem", color: "#666" }}>
+              Your wallet is checked for enough CritCoin and Sepolia ETH before anything is written.
+              Re-running is safe: confirmed students are skipped, failed ones retried, and nobody is credited twice.
+            </p>
+
             {!showDeployConfirm ? (
               <button
-                onClick={handleDeployCritCoin}
+                onClick={() => handleDeployCritCoin(false)}
                 style={{
                   padding: "1rem 2rem",
                   backgroundColor: "#ffc107",
@@ -1871,7 +1969,7 @@ export default function Admin() {
                   </div>
                 )}
                 <button
-                  onClick={handleDeployCritCoin}
+                  onClick={() => handleDeployCritCoin(false)}
                   disabled={deployLoading}
                   style={{
                     padding: "1rem 2rem",
@@ -1909,6 +2007,150 @@ export default function Admin() {
               </div>
             )}
           </div>
+
+          {/* Per-student status for the current/most recent deploy */}
+          {latestDeploy && (
+            <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "left" }}>
+              <h3>
+                Most recent deploy
+                <span style={{ fontWeight: "normal", fontSize: "0.9rem", color: "#666", marginLeft: "0.75rem" }}>
+                  {new Date(latestDeploy.createdAt).toLocaleString()} · {latestDeploy.amountPerStudent} CC each
+                </span>
+              </h3>
+
+              <p style={{ fontSize: "0.9rem" }}>
+                <strong>{latestDeploy.summary.confirmed}</strong> confirmed on-chain ·{" "}
+                <strong style={{ color: latestDeploy.summary.failed ? "#dc3545" : "inherit" }}>
+                  {latestDeploy.summary.failed}
+                </strong>{" "}
+                failed ·{" "}
+                <strong>{latestDeploy.summary.awaiting}</strong> awaiting ·{" "}
+                {latestDeploy.summary.total} total
+              </p>
+
+              {latestDeploy.status === 'in_progress' && (
+                <button
+                  onClick={() => handleDeployCritCoin(true)}
+                  disabled={deployLoading}
+                  style={{
+                    padding: "0.6rem 1.2rem",
+                    backgroundColor: "#0d6efd",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: deployLoading ? "not-allowed" : "pointer",
+                    marginBottom: "1rem",
+                    opacity: deployLoading ? 0.6 : 1
+                  }}
+                >
+                  ▶ Resume deploy ({latestDeploy.summary.awaiting + latestDeploy.summary.failed} remaining)
+                </button>
+              )}
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8f9fa", textAlign: "left" }}>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Student</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Wallet</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Status</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Transaction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {latestDeploy.rows.map(row => (
+                      <tr key={row.wallet}>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{row.name || "—"}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                          <AddressLink address={row.wallet} />
+                        </td>
+                        <td style={{
+                          padding: "0.5rem",
+                          border: "1px solid #dee2e6",
+                          color: DEPLOY_STATUS_COLORS[row.status] || "inherit",
+                          fontWeight: "bold"
+                        }}>
+                          {DEPLOY_STATUS_LABELS[row.status] || row.status}
+                        </td>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                          {row.status === 'chain_failed'
+                            ? <span style={{ color: "#dc3545", fontSize: "0.85rem" }}>{row.error}</span>
+                            : <TxLink hash={row.txHash} />}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Reconciliation Tab - read-only diagnostic */}
+      {activeTab === "reconcile" && (
+        <div>
+          <h2>Reconciliation</h2>
+          <p style={{ fontSize: "0.9rem", color: "#666", maxWidth: "800px" }}>
+            The database ledger is authoritative for every balance in the app. This compares it against
+            live on-chain balances so drift is visible. It is read-only — nothing here writes to the
+            database or sends a transaction, and drift is never corrected automatically.
+          </p>
+
+          <button onClick={fetchReconcile} disabled={reconcileLoading} style={{ marginBottom: "1rem" }}>
+            {reconcileLoading ? "Loading..." : "Refresh"}
+          </button>
+
+          {reconcile && (
+            <>
+              {!reconcile.chainAvailable && (
+                <p style={{ color: "#856404", backgroundColor: "#fff3cd", padding: "0.75rem", borderRadius: "4px" }}>
+                  ⚠️ Sepolia RPC unavailable — database balances shown, chain values unavailable.
+                </p>
+              )}
+
+              <p style={{ fontSize: "0.9rem" }}>
+                Transactions with no hash: <strong>{reconcile.transactionHashes.missing}</strong> ·
+                {" "}legacy fabricated hashes: <strong>{reconcile.transactionHashes.fabricated}</strong>
+              </p>
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8f9fa", textAlign: "left" }}>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Student</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Wallet</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Database</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Chain</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Drift</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reconcile.students.map(s => (
+                      <tr key={s.wallet}>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{s.name}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                          <AddressLink address={s.wallet} />
+                        </td>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{s.dbBalance}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                          {s.chainBalance === null ? "unavailable" : s.chainBalance}
+                        </td>
+                        <td style={{
+                          padding: "0.5rem",
+                          border: "1px solid #dee2e6",
+                          fontWeight: s.drift ? "bold" : "normal",
+                          color: s.drift ? "#dc3545" : "inherit"
+                        }}>
+                          {s.drift === null ? "—" : s.drift}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
