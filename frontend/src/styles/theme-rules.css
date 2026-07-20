@@ -1,0 +1,552 @@
+/* CritCoin — themed rule bodies (shared by every theme)
+ *
+ * These are the rules that were artistic.css. What differs between themes is
+ * the *token values* (theme-v1.css / theme-v2.css), not these rule bodies.
+ * Where v2 needs a rule to be absent rather than re-valued (the retired
+ * animations), theme-v2.css overrides it explicitly.
+ *
+ * SCOPING: every selector is wrapped in :where(), which contributes ZERO
+ * specificity. `:where(.theme-v1, .theme-v2) h1` weighs exactly as much as a
+ * bare `h1` did, so bootstrap.css — which loads after this file — keeps
+ * winning precisely the ties it wins today (h1 font-size/weight, body font and
+ * colour, and so on). Using a plain `.theme-v1 h1` prefix would flip all of
+ * them and resurrect a design that has never rendered. See TOKENS.md.
+ *
+ * Theme scopes are siblings, never nested. A v1 scope inside a v2 scope would
+ * make these equal-specificity rules resolve by file order instead of by
+ * proximity.
+ */
+
+/* --------------------------------------------------------------- body ---- */
+/* Visual body treatment. Every declaration here is beaten by bootstrap's own
+   `body` rule (same specificity, loaded later) — which is exactly why the app
+   renders light instead of dark. Preserved verbatim so v1 stays faithful. */
+body:where(.theme-page-v1, .theme-page-v2) {
+  font-family: var(--font-body);
+  background: var(--body-bg);
+  color: var(--body-color);
+  line-height: var(--body-line-height);
+}
+
+/* Animated background blobs */
+body:where(.theme-page-v1, .theme-page-v2)::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--atmos-blobs);
+  animation: backgroundShift 25s ease-in-out infinite;
+  z-index: -1;
+}
+
+/* Grid overlay */
+body:where(.theme-page-v1, .theme-page-v2)::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: var(--atmos-grid);
+  background-size: var(--atmos-grid-size);
+  pointer-events: none;
+  z-index: -2;
+  animation: gridMove 20s linear infinite;
+}
+
+/* --------------------------------------------------------- typography ---- */
+:where(.theme-v1, .theme-v2) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  margin: 0 0 1.2rem 0;
+  letter-spacing: var(--heading-letter-spacing);
+  position: relative;
+}
+
+:where(.theme-v1, .theme-v2) h1 {
+  font-size: var(--h1-size);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: var(--h1-shadow);
+  position: relative;
+  font-weight: 400;
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) h2 {
+  font-size: var(--h2-size);
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: var(--h2-shadow);
+  font-weight: 400;
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) h3 {
+  font-size: var(--h3-size);
+  /* --accent-light is never defined, in any theme. The declaration is
+     therefore invalid at computed-value time and h3 inherits its colour. That
+     is what v1 renders; see TOKENS.md, "Ghost variables". Do not define it. */
+  color: var(--accent-light);
+  text-shadow: var(--h3-shadow);
+  font-weight: 400;
+}
+
+/* Shimmer sweep for main titles */
+:where(.theme-v1, .theme-v2) .gothic-title {
+  position: relative;
+  overflow: hidden;
+}
+
+:where(.theme-v1, .theme-v2) .gothic-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--shimmer-1),
+    var(--shimmer-2),
+    var(--shimmer-3),
+    transparent
+  );
+  animation: gothicShimmer 3s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+:where(.theme-v1, .theme-v2) .float-gentle {
+  animation: floatGentle 6s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------- navigation ---- */
+:where(.theme-v1, .theme-v2) .artistic-nav {
+  background: var(--nav-bg);
+  backdrop-filter: blur(15px);
+  border-bottom: 3px solid transparent;
+  border-image: var(--gradient-shimmer) 1;
+  padding: 1.2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--nav-shadow);
+  animation: navShimmer 8s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .nav-row {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+:where(.theme-v1, .theme-v2) .nav-link {
+  font-family: var(--font-heading);
+  text-decoration: none;
+  color: var(--nav-link-color);
+  padding: 0.7rem 1.2rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  background: var(--nav-link-bg);
+  overflow: hidden;
+}
+
+:where(.theme-v1, .theme-v2) .nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: all 0.4s ease;
+  z-index: -1;
+}
+
+:where(.theme-v1, .theme-v2) .nav-link:hover::before {
+  left: 0;
+  opacity: 0.15;
+}
+
+:where(.theme-v1, .theme-v2) .nav-link:hover {
+  color: var(--primary-blue-lighter);
+  border-color: var(--primary-blue-light);
+  box-shadow:
+    0 4px 15px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(96, 165, 250, 0.2);
+  transform: translateY(-3px);
+}
+
+:where(.theme-v1, .theme-v2) .nav-link.active {
+  background: var(--gradient-accent);
+  border-color: var(--accent-orange);
+  color: var(--neutral-white);
+  box-shadow:
+    0 4px 20px rgba(234, 88, 12, 0.4),
+    0 0 15px rgba(59, 130, 246, 0.2);
+  animation: activeGlow 3s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------- cards ---- */
+:where(.theme-v1, .theme-v2) .artistic-card {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  position: relative;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  background-size: 200% 200%;
+  animation: cardGradient 10s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-card:hover {
+  border-color: var(--primary-blue-light);
+  box-shadow: var(--card-hover-shadow);
+  transform: translateY(-4px);
+}
+
+:where(.theme-v1, .theme-v2) .artistic-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: var(--gradient-shimmer);
+  border-radius: 12px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-card:hover::before {
+  opacity: 0.3;
+}
+
+/* ------------------------------------------------------------ buttons ---- */
+:where(.theme-v1, .theme-v2) .artistic-btn {
+  font-family: var(--font-display);
+  background: var(--gradient-primary);
+  border: 2px solid var(--primary-blue-light);
+  color: var(--neutral-white);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background-size: 200% 200%;
+  animation: buttonGradient 6s ease-in-out infinite;
+  z-index: 1;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(234, 88, 12, 0.4),
+    0 0 20px rgba(249, 115, 22, 0.3);
+  border-color: var(--accent-orange-light);
+  color: var(--neutral-white);
+  background: var(--gradient-secondary);
+  animation: buttonHoverGlow 2s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn:active {
+  transform: translateY(0);
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-btn:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* ------------------------------------------------------------- inputs ---- */
+:where(.theme-v1, .theme-v2) .artistic-input {
+  font-family: var(--font-mono);
+  background: var(--input-bg);
+  border: 2px solid var(--dark-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: white;
+  width: 100%;
+  margin: 0.5rem 0;
+  transition: all 0.4s ease;
+  position: relative;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-input:focus {
+  outline: none;
+  /* --accent-bright is never defined, in any theme: the focus border keeps its
+     unfocused colour. Preserved deliberately; see TOKENS.md. */
+  border-color: var(--accent-bright);
+  background: var(--input-focus-bg);
+  box-shadow:
+    0 0 25px rgba(59, 130, 246, 0.4),
+    inset 0 0 15px rgba(249, 115, 22, 0.15),
+    0 0 40px rgba(147, 197, 253, 0.2);
+  animation: inputGlow 2s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* -------------------------------------------------------------- forms ---- */
+:where(.theme-v1, .theme-v2) .artistic-form {
+  background: var(--form-bg);
+  border: 2px solid var(--primary-blue-light);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 1rem 0;
+  box-shadow: var(--form-shadow);
+  background-size: 200% 200%;
+  animation: formGradient 12s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-form::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: var(--form-border-shimmer);
+  background-size: 600% 600%;
+  animation: formBorderShimmer 10s ease infinite;
+  z-index: -1;
+  border-radius: 12px;
+}
+
+/* ----------------------------------------------------- profile images ---- */
+:where(.theme-v1, .theme-v2) .artistic-profile-img {
+  border: 3px solid var(--primary-blue-light);
+  border-radius: 50%;
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.5),
+    inset 0 0 10px rgba(249, 115, 22, 0.2);
+  transition: all 0.3s ease;
+}
+
+:where(.theme-v1, .theme-v2) .artistic-profile-img:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 30px rgba(234, 88, 12, 0.8),
+    inset 0 0 15px rgba(147, 197, 253, 0.3);
+}
+
+:where(.theme-v1, .theme-v2) .loading-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------- text helpers ---- */
+:where(.theme-v1, .theme-v2) .gothic-text {
+  color: var(--text-gothic);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+:where(.theme-v1, .theme-v2) .ember-text {
+  color: var(--text-ember);
+  text-shadow: 0 1px 3px rgba(249, 115, 22, 0.4);
+}
+
+:where(.theme-v1, .theme-v2) .silver-text {
+  color: var(--text-silver);
+  text-shadow: 0 1px 2px rgba(147, 197, 253, 0.3);
+}
+
+:where(.theme-v1, .theme-v2) .copper-text {
+  color: var(--text-copper);
+  text-shadow: 0 1px 3px rgba(234, 88, 12, 0.4);
+}
+
+:where(.theme-v1, .theme-v2) .sage-text {
+  color: var(--text-sage);
+  text-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
+}
+
+:where(.theme-v1, .theme-v2) .royal-text {
+  color: var(--text-royal);
+  text-shadow: 0 1px 3px rgba(30, 64, 175, 0.4);
+}
+
+/* ---------------------------------------------------------- container ---- */
+:where(.theme-v1, .theme-v2) .artistic-container {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Pulsing hairline at the top of every page */
+:where(.theme-v1, .theme-v2) .artistic-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Floating particles */
+:where(.theme-v1, .theme-v2) .artistic-container::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background: var(--atmos-particles);
+  animation: enhancedFloat 18s ease-in-out infinite;
+  z-index: -1;
+  opacity: 0.4;
+}
+
+/* --------------------------------------------------------------- code ---- */
+/* Written as two rules, not a `code, .matrix-text` list: :is() would raise
+   `code` to class specificity and steal bootstrap's `code` colour. */
+:where(.theme-v1, .theme-v2) code {
+  position: relative;
+  font-family: var(--font-mono);
+  background: var(--code-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  border: 1px solid var(--primary-blue-light);
+}
+
+:where(.theme-v1, .theme-v2) .matrix-text {
+  position: relative;
+  font-family: var(--font-mono);
+  background: var(--code-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  border: 1px solid var(--primary-blue-light);
+}
+
+:where(.theme-v1, .theme-v2) code::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--accent-orange-light);
+  animation: matrixScan 3s linear infinite;
+}
+
+/* --------------------------------------- animated background utilities --- */
+/* No call sites remain; kept so v1 is a complete record of the stylesheet. */
+:where(.theme-v1, .theme-v2) .animated-light-bg {
+  background: var(--gradient-animated-light);
+  background-size: 300% 300%;
+  animation: lightGradientMove 8s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .animated-bright-bg {
+  background: var(--gradient-animated-bright);
+  background-size: 400% 400%;
+  animation: brightGradientMove 6s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .content-animated-bg {
+  background: linear-gradient(135deg,
+    rgba(254, 247, 237, 0.9),
+    rgba(253, 186, 116, 0.8),
+    rgba(254, 243, 199, 0.9),
+    rgba(96, 165, 250, 0.1),
+    rgba(251, 146, 60, 0.2)
+  );
+  background-size: 200% 200%;
+  animation: contentBackgroundShift 12s ease-in-out infinite;
+}
+
+:where(.theme-v1, .theme-v2) .parchment-animated-bg {
+  background: linear-gradient(45deg,
+    #fef7ed,
+    #fed7aa,
+    #fef3c7,
+    rgba(59, 130, 246, 0.05),
+    #fbbf24,
+    rgba(249, 115, 22, 0.08),
+    #fef7ed
+  );
+  background-size: 350% 350%;
+  animation: parchmentFlow 10s linear infinite;
+}
+
+/* --------------------------------------------------------- responsive ---- */
+@media (max-width: 768px) {
+  :where(.theme-v1, .theme-v2) .nav-row {
+    gap: 1rem;
+  }
+
+  :where(.theme-v1, .theme-v2) .nav-link {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  :where(.theme-v1, .theme-v2) h1 {
+    font-size: 2rem;
+  }
+
+  :where(.theme-v1, .theme-v2) .artistic-card {
+    padding: 1rem;
+  }
+}

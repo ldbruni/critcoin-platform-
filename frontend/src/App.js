@@ -10,7 +10,14 @@ import Admin from "./pages/Admin";
 import Leaderboard from "./pages/Leaderboard";
 import Archive from "./pages/Archive";
 import Prediction from "./pages/Prediction";
-import './styles/artistic.css';
+import ThemeScope from "./theme/ThemeScope";
+// Order matters, and so does the fact that index.js imports this module before
+// bootstrap.css: the theme rules must keep landing ahead of bootstrap so it
+// wins the same element-selector ties it wins today. See styles/TOKENS.md.
+import './styles/base.css';
+import './styles/theme-rules.css';
+import './styles/theme-v1.css';
+import './styles/theme-v2.css';
 
 // Replace with your actual admin wallet address
 const ADMIN_WALLET = process.env.REACT_APP_ADMIN_WALLET?.toLowerCase() || "0xc69c361d300aeaad0aee95bd1c753e62298f92e9";
@@ -97,21 +104,33 @@ export default function App() {
     }
   }, []);
 
+  // One page-level scope per route. The chrome gets its own sibling scope so
+  // it can be themed independently of the page below it — that is what lets a
+  // Classic Mode archive page sit under v2 chrome. Archive is deliberately
+  // absent here: it owns its scope so its toggle can switch it.
+  const page = (element) => (
+    <ThemeScope theme="v1" pageLevel>
+      {element}
+    </ThemeScope>
+  );
+
   return (
     <Router>
-      <Navigation isAdmin={isAdmin} />
+      <ThemeScope theme="v1">
+        <Navigation isAdmin={isAdmin} />
+      </ThemeScope>
       <Routes>
-        <Route path="/" element={<Dapp />} />
-        <Route path="/bounties" element={<Bounties />} />
-        <Route path="/profiles" element={<Profiles />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/explorer" element={<Explorer />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/forum" element={<FormPage />} />
+        <Route path="/" element={page(<Dapp />)} />
+        <Route path="/bounties" element={page(<Bounties />)} />
+        <Route path="/profiles" element={page(<Profiles />)} />
+        <Route path="/projects" element={page(<Projects />)} />
+        <Route path="/leaderboard" element={page(<Leaderboard />)} />
+        <Route path="/explorer" element={page(<Explorer />)} />
+        <Route path="/admin" element={page(<Admin />)} />
+        <Route path="/forum" element={page(<FormPage />)} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/archive/:archiveId" element={<Archive />} />
-        <Route path="/prediction" element={<Prediction />} />
+        <Route path="/prediction" element={page(<Prediction />)} />
       </Routes>
     </Router>
   );

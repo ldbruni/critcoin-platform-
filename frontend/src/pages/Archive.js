@@ -1,7 +1,8 @@
 // src/pages/Archive.js
 // Semester Archive Viewer - matches live site styling
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
+import ThemeScope from "../theme/ThemeScope";
 
 const API_URL = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/api/archive`
@@ -9,6 +10,44 @@ const API_URL = process.env.REACT_APP_API_URL
 
 export default function Archive() {
   const { archiveId } = useParams();
+  // Classic Mode lives in the URL (?view=classic) rather than in localStorage,
+  // so it survives a refresh and can be linked to, and so leaving the archive
+  // always returns to the current design.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const classic = searchParams.get("view") === "classic";
+  const theme = classic ? "v1" : "v2";
+
+  const toggleClassic = () => {
+    setSearchParams(
+      (params) => {
+        if (classic) params.delete("view");
+        else params.set("view", "classic");
+        return params;
+      },
+      { replace: true }
+    );
+  };
+
+  // Keeps the mode across list <-> detail navigation.
+  const withView = (pathname) => ({ pathname, search: searchParams.toString() });
+
+  const classicToggle = (
+    <button
+      type="button"
+      className="classic-toggle"
+      aria-pressed={classic}
+      onClick={toggleClassic}
+      title={
+        classic
+          ? "Showing this archive in the original CritCoin design"
+          : "View this archive in the original CritCoin design"
+      }
+    >
+      <span className="classic-toggle__dot" aria-hidden="true" />
+      Classic Mode
+    </button>
+  );
+
   const [archives, setArchives] = useState([]);
   const [selectedArchive, setSelectedArchive] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
@@ -116,7 +155,9 @@ export default function Archive() {
   // Archive List View
   if (!archiveId) {
     return (
+      <ThemeScope theme={theme} pageLevel>
       <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="classic-toggle-row" style={{ display: "flex", justifyContent: "flex-end" }}>{classicToggle}</div>
         <h1 className="gothic-title gothic-text">Semester Archives</h1>
         <p className="sage-text" style={{ fontFamily: "Crimson Text, serif", marginBottom: "2rem", textAlign: "center" }}>
           Browse past semesters and view historical data from previous classes.
@@ -145,7 +186,7 @@ export default function Archive() {
             {archives.map((archive) => (
               <Link
                 key={archive._id}
-                to={`/archive/${archive._id}`}
+                to={withView(`/archive/${archive._id}`)}
                 style={{ textDecoration: "none" }}
               >
                 <div className="artistic-card" style={{
@@ -195,15 +236,18 @@ export default function Archive() {
           </div>
         )}
       </div>
+      </ThemeScope>
     );
   }
 
   // Archive Detail View
   return (
+    <ThemeScope theme={theme} pageLevel>
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
-        <Link to="/archive" className="artistic-btn" style={{
+        <div className="classic-toggle-row" style={{ display: "flex", justifyContent: "flex-end" }}>{classicToggle}</div>
+        <Link to={withView("/archive")} className="artistic-btn" style={{
           display: "inline-block",
           marginBottom: "1rem",
           background: 'rgba(37, 99, 235, 0.1)',
@@ -1019,5 +1063,6 @@ export default function Archive() {
         </>
       )}
     </div>
+    </ThemeScope>
   );
 }

@@ -1,0 +1,134 @@
+/* CritCoin — theme-v1 token values  ❄ FROZEN ARCHIVAL ARTIFACT ❄
+ *
+ * These values reproduce the design as it rendered at git tag `design-v1`.
+ * They are a historical record, not living code: never "modernise" them, never
+ * refactor them for consistency, never fix a value because it looks wrong.
+ * Several of them ARE wrong, on purpose — see "the accident" below.
+ *
+ * Reached in the app only through Classic Mode on past-semester archive pages.
+ *
+ * The accident this file preserves: artistic.css was written for a dark app,
+ * but index.js loads it before bootstrap.css, so bootstrap's `body` rule wins
+ * and the app renders light — dark chrome and dark card islands floating on a
+ * pale blue/orange wash. --body-bg below is therefore never seen; it is kept
+ * because removing it would change what the cascade computes.
+ *
+ * Equally load-bearing: the ~11 CSS variables the pages reference and nothing
+ * defines (--accent-gold, --neon-cyan, --complement-green, --accent-light,
+ * --accent-bright, …). Their absence erases borders and re-inherits colours.
+ * Defining any of them here would change the v1 look. Don't. See TOKENS.md.
+ */
+
+/* Defined on the region wrapper AND on <body> when this theme is page-level.
+ * Custom properties inherit downwards only, so the body-level rules (page
+ * background, the fixed atmosphere layers in body::before / body::after) can
+ * only see tokens that are defined on <body> itself, never ones defined on a
+ * wrapper inside it. A region scope nested below re-declares its own values
+ * and wins for its subtree by proximity. */
+.theme-v1,
+body.theme-page-v1 {
+  /* -- palette: blue ------------------------------------------------------ */
+  --primary-blue: #1e40af;
+  --primary-blue-light: #3b82f6;
+  --primary-blue-lighter: #60a5fa;
+  --primary-blue-lightest: #93c5fd;
+
+  /* -- palette: orange ---------------------------------------------------- */
+  --accent-orange: #ea580c;
+  --accent-orange-light: #f97316;
+  --accent-orange-lighter: #fb923c;
+  --accent-orange-lightest: #fdba74;
+
+  --neutral-white: #ffffff;
+
+  /* -- palette: gothic tones ---------------------------------------------- */
+  --dark-bg: #0f1729;
+  --dark-surface: #1a2332;
+  --dark-elevated: #243242;
+  --dark-border: #2563eb;
+  --parchment: #fef7ed;
+  --ink: #1e293b;
+
+  /* -- gradients ---------------------------------------------------------- */
+  --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light), var(--primary-blue-lighter));
+  --gradient-secondary: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-light), var(--accent-orange-lighter));
+  --gradient-accent: linear-gradient(135deg, var(--primary-blue-light), var(--accent-orange-light));
+  --gradient-parchment: linear-gradient(145deg, var(--parchment), #fed7aa, #fef3c7);
+  --gradient-dark: linear-gradient(135deg, var(--dark-bg), var(--primary-blue), var(--accent-orange));
+  --gradient-bright: linear-gradient(135deg, var(--primary-blue-lighter), var(--accent-orange-lighter), var(--neutral-white));
+  --gradient-animated-light: linear-gradient(45deg, #fef7ed, #fed7aa, #fef3c7, #fbbf24, #fef7ed);
+  --gradient-animated-bright: linear-gradient(45deg, var(--primary-blue-lightest), var(--accent-orange-lightest), var(--neutral-white), var(--primary-blue-lighter), var(--accent-orange-lighter));
+  --gradient-shimmer: linear-gradient(45deg, var(--primary-blue-light), var(--accent-orange-light), var(--primary-blue-lighter), var(--accent-orange-lighter), var(--primary-blue-light));
+
+  --shimmer-1: rgba(59, 130, 246, 0.3);
+  --shimmer-2: rgba(249, 115, 22, 0.2);
+  --shimmer-3: rgba(147, 197, 253, 0.25);
+
+  /* -- typography --------------------------------------------------------- */
+  --font-display: 'Uncial Antiqua', 'Almendra', 'Cinzel', serif;
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Crimson Text', serif;
+  --font-mono: 'Fira Code', monospace;      /* never loaded; falls back to system mono */
+
+  --h1-size: 3.2rem;                        /* bootstrap's 2.5rem wins; kept for parity */
+  --h2-size: 2.4rem;
+  --h3-size: 1.8rem;
+  --heading-letter-spacing: 2px;
+  --h1-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(59, 130, 246, 0.3);
+  --h2-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --h3-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+
+  /* -- text helper colours ------------------------------------------------ */
+  --text-gothic: var(--primary-blue-lighter);
+  --text-ember: var(--accent-orange-light);
+  --text-silver: var(--primary-blue-lightest);
+  --text-copper: var(--accent-orange);
+  --text-sage: var(--primary-blue-light);
+  --text-royal: var(--primary-blue);
+
+  /* -- body treatment (overridden by bootstrap — see header) -------------- */
+  --body-bg: var(--dark-bg);
+  --body-color: #ffffff;
+  --body-line-height: 1.7;
+
+  /* -- atmosphere --------------------------------------------------------- */
+  --atmos-blobs:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 80%, rgba(147, 197, 253, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(234, 88, 12, 0.08) 0%, transparent 50%);
+  --atmos-grid:
+    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249, 115, 22, 0.04) 1px, transparent 1px);
+  --atmos-grid-size: 50px 50px;
+  --atmos-particles:
+    radial-gradient(4px 4px at 20% 30%, var(--accent-orange-light), transparent),
+    radial-gradient(3px 3px at 40% 70%, var(--primary-blue-light), transparent),
+    radial-gradient(5px 5px at 90% 40%, var(--accent-orange-lighter), transparent),
+    radial-gradient(2px 2px at 50% 50%, var(--primary-blue-lighter), transparent),
+    radial-gradient(3px 3px at 10% 80%, var(--primary-blue-lightest), transparent),
+    radial-gradient(2px 2px at 80% 10%, var(--accent-orange), transparent);
+
+  /* -- navigation --------------------------------------------------------- */
+  --nav-bg: linear-gradient(135deg, rgba(15, 23, 41, 0.95), rgba(26, 35, 50, 0.9), rgba(36, 50, 66, 0.85));
+  --nav-shadow: 0 4px 20px rgba(15, 23, 41, 0.4), inset 0 1px 0 rgba(59, 130, 246, 0.1);
+  --nav-link-color: #ffffff;
+  --nav-link-bg: rgba(26, 35, 50, 0.6);
+
+  /* -- surfaces ----------------------------------------------------------- */
+  --card-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.8), rgba(15, 23, 41, 0.9), rgba(36, 50, 66, 0.7));
+  --card-border-color: var(--dark-border);
+  --card-hover-shadow: 0 8px 32px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  --input-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.8), rgba(15, 23, 41, 0.9));
+  --input-focus-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.9), rgba(36, 50, 66, 0.8));
+
+  --form-bg: linear-gradient(135deg, rgba(15, 23, 41, 0.9), rgba(26, 35, 50, 0.85), rgba(36, 50, 66, 0.9));
+  --form-shadow: 0 8px 32px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(249, 115, 22, 0.1);
+  --form-border-shimmer: linear-gradient(45deg,
+    var(--accent-orange-light), var(--primary-blue-light), var(--primary-blue-lighter), var(--accent-orange-lighter),
+    var(--primary-blue-lightest), var(--accent-orange-light), var(--primary-blue-light), var(--primary-blue-lighter)
+  );
+
+  --code-bg: rgba(15, 23, 41, 0.7);
+}

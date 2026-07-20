@@ -6,7 +6,24 @@
   the authoritative copy of the original design.
 - **In-app preservation:** past-semester archive pages (`/archive`,
   `/archive/:archiveId`) offer a **Classic Mode** toggle that renders them in
-  the v1 design.
+  the v1 design. The mode lives in the URL (`?view=classic`), so it survives a
+  refresh and can be linked to; leaving the archive returns to the current
+  design.
+
+## Classic Mode fidelity
+
+Verified by comparing computed styles — not pixels, since a dozen infinite
+animations make raw screenshot diffs meaningless — against this branch running
+side by side. Across the archive list, the detail view and all six tabs, at
+desktop and mobile widths, there are **zero computed-style differences**. The
+only measured delta is the page being 34px taller, which is the toggle itself.
+The method is written up in
+[frontend/src/styles/TOKENS.md](../../frontend/src/styles/TOKENS.md).
+
+**What Classic Mode cannot reproduce:** the custom scrollbar. A document has
+exactly one viewport scrollbar, painted on the root element above every theme
+scope, so it cannot be v1 in one region and v2 in another. It stays global and
+follows whatever the live app uses.
 
 ## What the v1 design was doing
 
