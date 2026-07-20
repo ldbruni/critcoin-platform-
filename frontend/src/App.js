@@ -104,18 +104,10 @@ export default function App() {
     }
   }, []);
 
-  // One page-level scope per route. The chrome gets its own sibling scope so
-  // it can be themed independently of the page below it — that is what lets a
-  // Classic Mode archive page sit under v2 chrome. Archive is deliberately
-  // absent here: it owns its scope so its toggle can switch it.
-  const page = (element) => (
-    <ThemeScope theme="v1" pageLevel>
-      {element}
-    </ThemeScope>
-  );
-
-  // Pages flip to v2 as they are converted (one commit per page). The rest stay
-  // v1 until their turn. The nav chrome is v2 for everyone once it is converted.
+  // Every live route renders under a v2 page-level scope. The chrome gets its
+  // own sibling v2 scope. Archive is deliberately absent here: it owns its
+  // scope so its Classic Mode toggle can switch that page (and only that page)
+  // to v1 while the chrome stays v2.
   const pageV2 = (element) => (
     <ThemeScope theme="v2" pageLevel>
       {element}
@@ -128,7 +120,7 @@ export default function App() {
         <Navigation isAdmin={isAdmin} />
       </ThemeScope>
       <Routes>
-        <Route path="/" element={page(<Dapp />)} />
+        <Route path="/" element={pageV2(<Dapp />)} />
         <Route path="/bounties" element={pageV2(<Bounties />)} />
         <Route path="/profiles" element={pageV2(<Profiles />)} />
         <Route path="/projects" element={pageV2(<Projects />)} />

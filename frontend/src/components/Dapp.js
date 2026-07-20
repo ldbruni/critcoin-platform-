@@ -54,16 +54,16 @@ export class Dapp extends React.Component {
           </h1>
           <div style={{ 
             background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(220, 38, 38, 0.05))', 
-            border: '2px solid var(--accent-gold)', 
+            border: '2px solid var(--accent-orange)', 
             borderRadius: '8px', 
             padding: '1.5rem',
             margin: '1rem 0'
           }}>
-            <p style={{ fontSize: '1.1rem', fontFamily: 'Crimson Text, serif' }}>
-              <span className="sage-text" style={{ fontWeight: '600' }}>Connected:</span> <code style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{this.state.selectedAddress}</code>
+            <p style={{ fontSize: '1.1rem', fontFamily: 'var(--font-body)' }}>
+              <span className="sage-text" style={{ fontWeight: '600' }}>Connected:</span> <code style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>{this.state.selectedAddress}</code>
             </p>
-            <p style={{ fontSize: '1.3rem', fontFamily: 'Crimson Text, serif' }}>
-              <span className="ember-text" style={{ fontWeight: '600' }}>Balance:</span> <span className="gothic-text" style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>{this.state.balance.toString()}</span> <span className="copper-text">{this.state.tokenData.symbol}</span>
+            <p style={{ fontSize: '1.3rem', fontFamily: 'var(--font-body)' }}>
+              <span className="ember-text" style={{ fontWeight: '600' }}>Balance:</span> <span className="gothic-text ledger-num" style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>{this.state.balance.toString()}</span> <span className="copper-text">{this.state.tokenData.symbol}</span>
             </p>
           </div>
           
@@ -84,7 +84,7 @@ export class Dapp extends React.Component {
             </a>
             <p style={{ 
               color: "rgba(255, 255, 255, 0.6)", 
-              fontFamily: 'Crimson Text, serif',
+              fontFamily: 'var(--font-body)',
               fontSize: '0.9rem',
               fontStyle: 'italic'
             }}>
