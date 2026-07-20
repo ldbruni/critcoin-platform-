@@ -129,7 +129,7 @@ export default function App() {
       </ThemeScope>
       <Routes>
         <Route path="/" element={page(<Dapp />)} />
-        <Route path="/bounties" element={page(<Bounties />)} />
+        <Route path="/bounties" element={pageV2(<Bounties />)} />
         <Route path="/profiles" element={page(<Profiles />)} />
         <Route path="/projects" element={pageV2(<Projects />)} />
         <Route path="/leaderboard" element={pageV2(<Leaderboard />)} />

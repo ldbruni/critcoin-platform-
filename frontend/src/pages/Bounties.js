@@ -79,11 +79,11 @@ export default function Bounties() {
 
   const getStatusColor = (status) => {
     const colors = {
-      'active': '#28a745',
-      'completed': '#007bff',
-      'cancelled': '#dc3545'
+      'active': 'var(--status-positive)',
+      'completed': 'var(--primary-blue)',
+      'cancelled': 'var(--status-negative)'
     };
-    return colors[status] || '#6c757d';
+    return colors[status] || 'var(--text-muted)';
   };
 
   const getStatusIcon = (status) => {
@@ -97,11 +97,14 @@ export default function Bounties() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text">Active Bounties</h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Bounties</div>
+        <h1 className="gothic-title gothic-text">Active Bounties</h1>
+      </div>
 
       {!wallet ? (
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "2rem", 
           borderRadius: "8px", 
           textAlign: "center",
@@ -113,7 +116,7 @@ export default function Bounties() {
             onClick={connectWallet}
             style={{
               padding: "0.75rem 1.5rem",
-              backgroundColor: "#007bff",
+              backgroundColor: "var(--primary-blue)",
               color: "white",
               border: "none",
               borderRadius: "0.375rem",
@@ -126,7 +129,7 @@ export default function Bounties() {
         </div>
       ) : (
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "1rem", 
           borderRadius: "8px", 
           marginBottom: "2rem",
@@ -136,7 +139,7 @@ export default function Bounties() {
         }}>
           <div>
             <strong>{profile?.name || wallet}</strong>
-            <span style={{ marginLeft: "1rem", color: "#666" }}>
+            <span style={{ marginLeft: "1rem", color: "var(--text-muted)" }}>
               Balance: {balance} CritCoin
             </span>
           </div>
@@ -145,7 +148,7 @@ export default function Bounties() {
               to="/profiles"
               style={{
                 padding: "0.5rem 1rem",
-                backgroundColor: "#28a745",
+                backgroundColor: "var(--status-positive)",
                 color: "white",
                 textDecoration: "none",
                 borderRadius: "0.25rem",
@@ -167,7 +170,7 @@ export default function Bounties() {
           marginBottom: "1rem" 
         }}>
           <h2>Available Bounties</h2>
-          <span style={{ color: "#6c757d" }}>
+          <span style={{ color: "var(--text-muted)" }}>
             {bounties.length} active bounties
           </span>
         </div>
@@ -178,14 +181,14 @@ export default function Bounties() {
           </div>
         ) : bounties.length === 0 ? (
           <div style={{
-            backgroundColor: "#f8f9fa",
-            border: "1px solid #dee2e6",
+            backgroundColor: "var(--surface-muted)",
+            border: "1px solid var(--surface-card-border)",
             borderRadius: "8px",
             padding: "3rem",
             textAlign: "center"
           }}>
-            <h3 style={{ color: "#6c757d" }}>No Active Bounties</h3>
-            <p style={{ color: "#6c757d" }}>
+            <h3 style={{ color: "var(--text-muted)" }}>No Active Bounties</h3>
+            <p style={{ color: "var(--text-muted)" }}>
               Check back later for new bounties from your instructor!
             </p>
           </div>
@@ -199,15 +202,14 @@ export default function Bounties() {
               <div 
                 key={bounty._id}
                 style={{
-                  backgroundColor: "white",
-                  border: "1px solid #dee2e6",
-                  borderRadius: "8px",
+                  backgroundColor: "var(--surface-card)",
+                  border: "1px solid var(--surface-card-border)",
+                  borderRadius: "3px",
                   padding: "1.5rem",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  transition: "transform 0.2s ease-in-out",
+                  transition: "border-color 0.2s ease-in-out",
                 }}
-                onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = "var(--primary-blue)"}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = "var(--surface-card-border)"}
               >
                 {/* Bounty Header */}
                 <div style={{ 
@@ -219,14 +221,14 @@ export default function Bounties() {
                   <div style={{ flex: 1 }}>
                     <h3 style={{ 
                       margin: "0 0 0.5rem 0", 
-                      color: "#333",
+                      color: "var(--text-body)",
                       fontSize: "1.25rem"
                     }}>
                       {bounty.title}
                     </h3>
                     <div style={{ 
                       fontSize: "0.85rem", 
-                      color: "#6c757d",
+                      color: "var(--text-muted)",
                       marginBottom: "0.5rem"
                     }}>
                       Created {formatDate(bounty.createdAt)}
@@ -259,7 +261,7 @@ export default function Bounties() {
                   lineHeight: "1.5"
                 }}>
                   <p style={{ 
-                    color: "#555", 
+                    color: "var(--text-muted)", 
                     margin: 0,
                     fontSize: "0.95rem"
                   }}>
@@ -269,7 +271,7 @@ export default function Bounties() {
 
                 {/* Bounty Reward */}
                 <div style={{
-                  borderTop: "1px solid #e9ecef",
+                  borderTop: "1px solid var(--surface-card-border)",
                   paddingTop: "1rem",
                   display: "flex",
                   justifyContent: "space-between",
@@ -277,7 +279,7 @@ export default function Bounties() {
                 }}>
                   <div>
                     <span style={{ 
-                      color: "#6c757d", 
+                      color: "var(--text-muted)", 
                       fontSize: "0.9rem",
                       fontWeight: "500"
                     }}>
@@ -287,11 +289,12 @@ export default function Bounties() {
                   <div style={{
                     fontSize: "1.5rem",
                     fontWeight: "bold",
-                    color: "#28a745",
+                    color: "var(--status-positive)",
                     display: "flex",
-                    alignItems: "center"
+                    alignItems: "center",
+                    gap: "0.4rem"
                   }}>
-                    💰 {bounty.reward} CC
+                    💰 <span className="ledger-num">{bounty.reward}</span> CC
                   </div>
                 </div>
 
@@ -300,11 +303,11 @@ export default function Bounties() {
                   <div style={{
                     marginTop: "1rem",
                     padding: "0.75rem",
-                    backgroundColor: "#d4edda",
-                    border: "1px solid #c3e6cb",
+                    backgroundColor: "var(--tint-positive)",
+                    border: "1px solid var(--status-positive)",
                     borderRadius: "0.375rem"
                   }}>
-                    <small style={{ color: "#155724", fontWeight: "500" }}>
+                    <small style={{ color: "var(--status-positive)", fontWeight: "500" }}>
                       ✅ Completed by {bounty.completedBy}
                       {bounty.completedAt && ` on ${formatDate(bounty.completedAt)}`}
                     </small>
@@ -316,11 +319,11 @@ export default function Bounties() {
                   <div style={{
                     marginTop: "1rem",
                     padding: "0.75rem",
-                    backgroundColor: "#fff3cd",
-                    border: "1px solid #ffeaa7",
+                    backgroundColor: "var(--tint-warning)",
+                    border: "1px solid var(--status-warning)",
                     borderRadius: "0.375rem"
                   }}>
-                    <small style={{ color: "#856404" }}>
+                    <small style={{ color: "var(--status-warning)" }}>
                       💡 Contact your instructor when you complete this bounty to claim the reward!
                     </small>
                   </div>
@@ -335,12 +338,12 @@ export default function Bounties() {
       <div style={{
         marginTop: "3rem",
         padding: "1.5rem",
-        backgroundColor: "#f8f9fa",
+        backgroundColor: "var(--surface-muted)",
         borderRadius: "8px",
-        border: "1px solid #dee2e6"
+        border: "1px solid var(--surface-card-border)"
       }}>
-        <h4 style={{ marginTop: 0, color: "#495057" }}>📋 How Bounties Work</h4>
-        <ul style={{ color: "#6c757d", paddingLeft: "1.5rem" }}>
+        <h4 style={{ marginTop: 0, color: "var(--text-muted)" }}>📋 How Bounties Work</h4>
+        <ul style={{ color: "var(--text-muted)", paddingLeft: "1.5rem" }}>
           <li>Bounties are special tasks created by your instructor</li>
           <li>Complete the task described in the bounty</li>
           <li>Contact your instructor to verify completion and claim your CritCoin reward</li>
