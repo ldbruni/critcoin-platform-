@@ -180,10 +180,10 @@ export default function Prediction() {
           background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(249, 115, 22, 0.1))',
           border: '2px solid var(--primary-blue-light)'
         }}>
-          <h2 style={{ fontFamily: 'Cinzel, serif', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', marginBottom: '0.5rem' }}>
             Project {projectNum}
           </h2>
-          <p style={{ fontFamily: 'Cinzel, serif', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
             Who will earn the most CritCoin in Project {projectNum}?
           </p>
           <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-orange)', marginBottom: '0.5rem' }}>
@@ -193,8 +193,8 @@ export default function Prediction() {
             <p style={{
               display: 'inline-block',
               background: 'rgba(220,53,69,0.15)',
-              border: '1px solid #dc3545',
-              color: '#dc3545',
+              border: '1px solid var(--status-negative)',
+              color: 'var(--status-negative)',
               borderRadius: '6px',
               padding: '0.25rem 0.75rem',
               fontSize: '0.9rem'
@@ -218,9 +218,9 @@ export default function Prediction() {
                 textAlign: 'center',
                 marginBottom: '1.5rem',
                 background: 'rgba(22, 163, 74, 0.1)',
-                border: '2px solid var(--complement-green)'
+                border: '2px solid var(--status-positive)'
               }}>
-                <h3 style={{ color: 'var(--complement-green)' }}>Your Prediction is Locked In!</h3>
+                <h3 style={{ color: 'var(--status-positive)' }}>Your Prediction is Locked In!</h3>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '0.75rem' }}>
                   {userPred.predictedPhoto && (
                     <img
@@ -284,7 +284,7 @@ export default function Prediction() {
 
         {/* All profiles grid */}
         <div className="artistic-card">
-          <h3 style={{ marginBottom: '1.25rem', fontFamily: 'Cinzel, serif' }}>
+          <h3 style={{ marginBottom: '1.25rem', fontFamily: 'var(--font-heading)' }}>
             All Profiles & Predictions ({predictions.length} / {allProfiles.length} submitted)
           </h3>
           {loading ? (
@@ -365,7 +365,7 @@ export default function Prediction() {
                           No prediction yet
                         </div>
                       )}
-                      <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: votesReceived > 0 ? 'var(--complement-green)' : 'rgba(255,255,255,0.4)' }}>
+                      <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: votesReceived > 0 ? 'var(--status-positive)' : 'rgba(255,255,255,0.4)' }}>
                         {votesReceived} prediction{votesReceived !== 1 ? 's' : ''} received
                       </div>
                     </div>
@@ -381,9 +381,10 @@ export default function Prediction() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text" style={{ textAlign: "center" }}>
-        Prediction Market
-      </h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Prediction Market</div>
+        <h1 className="gothic-title gothic-text">Prediction Market</h1>
+      </div>
 
       {/* Wallet connection */}
       {!wallet && (
@@ -400,7 +401,7 @@ export default function Prediction() {
         <div className="artistic-card" style={{ marginBottom: "1.5rem" }}>
           <p style={{ margin: 0 }}>
             <strong>Connected:</strong> {profile?.name || wallet.slice(0, 10) + '...'}
-            <span style={{ marginLeft: '1rem' }}>Balance: {balance} CritCoin</span>
+            <span style={{ marginLeft: '1rem' }}>Balance: <span className="ledger-num">{balance}</span> CritCoin</span>
           </p>
         </div>
       )}

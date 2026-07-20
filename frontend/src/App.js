@@ -138,7 +138,7 @@ export default function App() {
         <Route path="/forum" element={page(<FormPage />)} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/archive/:archiveId" element={<Archive />} />
-        <Route path="/prediction" element={page(<Prediction />)} />
+        <Route path="/prediction" element={pageV2(<Prediction />)} />
       </Routes>
     </Router>
   );
