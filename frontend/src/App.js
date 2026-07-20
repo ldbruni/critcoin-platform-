@@ -132,7 +132,7 @@ export default function App() {
         <Route path="/bounties" element={page(<Bounties />)} />
         <Route path="/profiles" element={page(<Profiles />)} />
         <Route path="/projects" element={pageV2(<Projects />)} />
-        <Route path="/leaderboard" element={page(<Leaderboard />)} />
+        <Route path="/leaderboard" element={pageV2(<Leaderboard />)} />
         <Route path="/explorer" element={page(<Explorer />)} />
         <Route path="/admin" element={page(<Admin />)} />
         <Route path="/forum" element={page(<FormPage />)} />

@@ -73,6 +73,12 @@ body.theme-page-v2 {
   --status-warning: #ffb454;
   --status-info: var(--primary-blue);
 
+  /* low-alpha tints for alert / callout backgrounds on the dark ground */
+  --tint-positive: rgba(62, 207, 142, 0.12);
+  --tint-negative: rgba(255, 95, 86, 0.12);
+  --tint-warning: rgba(255, 180, 84, 0.12);
+  --tint-info: rgba(91, 140, 255, 0.12);
+
   /* == gradients: a sharp duotone bar, used sparingly ===================== */
   --gradient-primary: linear-gradient(135deg, var(--primary-blue-strong), var(--primary-blue));
   --gradient-secondary: linear-gradient(135deg, var(--accent-orange-strong), var(--accent-orange));

@@ -35,10 +35,10 @@ export default function Leaderboard() {
 
     return (
       <div style={{
-        border: "2px solid #ddd",
+        border: "2px solid var(--surface-card-border)",
         borderRadius: "8px",
         padding: "1rem",
-        backgroundColor: rank === 0 ? "#fff9e6" : rank === 1 ? "#f5f5f5" : "#fafafa",
+        backgroundColor: rank === 0 ? "var(--tint-warning)" : rank === 1 ? "var(--surface-muted)" : "var(--surface-muted)",
         boxShadow: rank === 0 ? "0 4px 6px rgba(0,0,0,0.1)" : "0 2px 4px rgba(0,0,0,0.05)"
       }}>
         <div style={{
@@ -62,7 +62,7 @@ export default function Leaderboard() {
             objectFit: "contain",
             borderRadius: "8px",
             marginBottom: "1rem",
-            backgroundColor: "#f0f0f0"
+            backgroundColor: "var(--surface-muted)"
           }}
           onError={(e) => {
             console.error("Failed to load project image:", project.title);
@@ -94,11 +94,11 @@ export default function Leaderboard() {
 
         <p style={{
           fontSize: "1.1rem",
-          color: "#007bff",
+          color: "var(--primary-blue)",
           fontWeight: "bold",
           margin: "0.5rem 0"
         }}>
-          {project.totalReceived} CritCoin
+          <span className="ledger-num">{project.totalReceived}</span> CritCoin
         </p>
       </div>
     );
@@ -107,7 +107,10 @@ export default function Leaderboard() {
   if (loading) {
     return (
       <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-        <h1 className="gothic-title gothic-text">Leaderboard</h1>
+        <div className="v2-masthead">
+          <div className="v2-kicker">CritCoin · Leaderboard</div>
+          <h1 className="gothic-title gothic-text">Leaderboard</h1>
+        </div>
         <p>Loading...</p>
       </div>
     );
@@ -115,11 +118,12 @@ export default function Leaderboard() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text" style={{ textAlign: "center", marginBottom: "2rem" }}>
-        CritCoin Leaderboard
-      </h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Leaderboard</div>
+        <h1 className="gothic-title gothic-text">Leaderboard</h1>
+      </div>
 
-      <p style={{ textAlign: "center", marginBottom: "3rem", fontSize: "1.1rem", color: "#666" }}>
+      <p style={{ marginBottom: "3rem", fontSize: "1.1rem", color: "var(--text-muted)" }}>
         Top 3 projects with the most CritCoin received in each category
       </p>
 
@@ -136,7 +140,7 @@ export default function Leaderboard() {
               fontSize: "2rem",
               marginBottom: "1.5rem",
               paddingBottom: "0.5rem",
-              borderBottom: "3px solid #007bff"
+              borderBottom: "3px solid var(--primary-blue)"
             }}>
               Project {num}
             </h2>
@@ -155,7 +159,7 @@ export default function Leaderboard() {
       })}
 
       {leaderboard && Object.values(leaderboard).every(projects => projects.length === 0) && (
-        <p style={{ textAlign: "center", color: "#999", fontSize: "1.2rem" }}>
+        <p style={{ textAlign: "center", color: "var(--text-faint)", fontSize: "1.2rem" }}>
           No projects submitted yet. Be the first!
         </p>
       )}
