@@ -135,14 +135,14 @@ export default function Explorer() {
 
   const getTypeColor = (type) => {
     const colors = {
-      'project_tip': '#28a745',
-      'transfer': '#007bff',
-      'forum_reward': '#ffc107',
-      'system': '#6c757d',
-      'mint': '#17a2b8',
-      'burn': '#dc3545'
+      'project_tip': 'var(--status-positive)',
+      'transfer': 'var(--primary-blue)',
+      'forum_reward': 'var(--status-warning)',
+      'system': 'var(--text-muted)',
+      'mint': 'var(--primary-blue-lighter)',
+      'burn': 'var(--status-negative)'
     };
-    return colors[type] || '#6c757d';
+    return colors[type] || 'var(--text-muted)';
   };
 
   const getTypeIcon = (type) => {
@@ -158,8 +158,11 @@ export default function Explorer() {
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-      <h1>🔍 CritCoin Explorer</h1>
+    <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Explorer</div>
+        <h1 className="gothic-title gothic-text">🔍 CritCoin Explorer</h1>
+      </div>
 
       {/* Statistics Dashboard */}
       <div style={{ 
@@ -169,49 +172,49 @@ export default function Explorer() {
         marginBottom: "2rem" 
       }}>
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "1rem", 
           borderRadius: "8px", 
-          border: "1px solid #dee2e6" 
+          border: "1px solid var(--surface-card-border)" 
         }}>
           <h4>Total Transactions</h4>
-          <p style={{ fontSize: "1.5rem", margin: 0, color: "#007bff" }}>
+          <p style={{ fontSize: "1.5rem", margin: 0, fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--primary-blue)" }}>
             {stats.totalTransactions?.toLocaleString() || 0}
           </p>
         </div>
         
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "1rem", 
           borderRadius: "8px", 
-          border: "1px solid #dee2e6" 
+          border: "1px solid var(--surface-card-border)" 
         }}>
           <h4>Total Volume</h4>
-          <p style={{ fontSize: "1.5rem", margin: 0, color: "#28a745" }}>
+          <p style={{ fontSize: "1.5rem", margin: 0, fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--status-positive)" }}>
             {stats.totalVolume?.toLocaleString() || 0} CC
           </p>
         </div>
         
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "1rem", 
           borderRadius: "8px", 
-          border: "1px solid #dee2e6" 
+          border: "1px solid var(--surface-card-border)" 
         }}>
           <h4>24h Transactions</h4>
-          <p style={{ fontSize: "1.5rem", margin: 0, color: "#ffc107" }}>
+          <p style={{ fontSize: "1.5rem", margin: 0, fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--status-warning)" }}>
             {stats.last24h?.transactions || 0}
           </p>
         </div>
         
         <div style={{ 
-          backgroundColor: "#f8f9fa", 
+          backgroundColor: "var(--surface-muted)", 
           padding: "1rem", 
           borderRadius: "8px", 
-          border: "1px solid #dee2e6" 
+          border: "1px solid var(--surface-card-border)" 
         }}>
           <h4>24h Volume</h4>
-          <p style={{ fontSize: "1.5rem", margin: 0, color: "#dc3545" }}>
+          <p style={{ fontSize: "1.5rem", margin: 0, fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--status-negative)" }}>
             {stats.last24h?.volume || 0} CC
           </p>
         </div>
@@ -219,11 +222,11 @@ export default function Explorer() {
 
       {/* Filters */}
       <div style={{ 
-        backgroundColor: "#f8f9fa", 
+        backgroundColor: "var(--surface-muted)", 
         padding: "1rem", 
         borderRadius: "8px", 
         marginBottom: "2rem",
-        border: "1px solid #dee2e6"
+        border: "1px solid var(--surface-card-border)"
       }}>
         <h4>Filters</h4>
         <div style={{ 
@@ -237,14 +240,14 @@ export default function Explorer() {
             placeholder="Wallet Address"
             value={filters.wallet}
             onChange={handleFilterChange}
-            style={{ padding: "0.5rem" }}
+            style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           />
           
           <select
             name="type"
             value={filters.type}
             onChange={handleFilterChange}
-            style={{ padding: "0.5rem" }}
+            style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           >
             <option value="">All Types</option>
             <option value="project_tip">Project Tips</option>
@@ -260,7 +263,7 @@ export default function Explorer() {
             name="from"
             value={filters.from}
             onChange={handleFilterChange}
-            style={{ padding: "0.5rem" }}
+            style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           />
           
           <input
@@ -268,7 +271,7 @@ export default function Explorer() {
             name="to"
             value={filters.to}
             onChange={handleFilterChange}
-            style={{ padding: "0.5rem" }}
+            style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           />
         </div>
         
@@ -277,7 +280,7 @@ export default function Explorer() {
           style={{
             marginTop: "1rem",
             padding: "0.5rem 1rem",
-            backgroundColor: "#6c757d",
+            backgroundColor: "var(--text-muted)",
             color: "white",
             border: "none",
             borderRadius: "4px",
@@ -289,11 +292,11 @@ export default function Explorer() {
       </div>
 
       {/* Transaction List */}
-      <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+      <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
         <div style={{ 
           padding: "1rem", 
-          borderBottom: "1px solid #dee2e6",
-          backgroundColor: "#f8f9fa",
+          borderBottom: "1px solid var(--surface-card-border)",
+          backgroundColor: "var(--surface-muted)",
           fontWeight: "bold"
         }}>
           <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 120px 80px", gap: "1rem" }}>
@@ -324,7 +327,7 @@ export default function Explorer() {
               onClick={createSampleData}
               style={{
                 padding: "0.75rem 1.5rem",
-                backgroundColor: "#007bff",
+                backgroundColor: "var(--primary-blue)",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
@@ -341,8 +344,8 @@ export default function Explorer() {
               key={tx._id}
               style={{ 
                 padding: "1rem", 
-                borderBottom: index < transactions.length - 1 ? "1px solid #e9ecef" : "none",
-                backgroundColor: index % 2 === 0 ? "#ffffff" : "#f8f9fa"
+                borderBottom: index < transactions.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                backgroundColor: index % 2 === 0 ? "var(--surface-card)" : "var(--surface-muted)"
               }}
             >
               <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 120px 80px", gap: "1rem", alignItems: "center" }}>
@@ -391,11 +394,11 @@ export default function Explorer() {
                   />
                 </div>
                 
-                <span style={{ fontWeight: "bold", color: "#28a745" }}>
+                <span style={{ fontWeight: "bold", color: "var(--status-positive)" }}>
                   {tx.amount} CC
                 </span>
                 
-                <span style={{ fontSize: "0.9rem", color: "#6c757d" }}>
+                <span style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
                   {formatDate(tx.timestamp)}
                 </span>
                 
@@ -403,7 +406,7 @@ export default function Explorer() {
                   onClick={() => fetchTransactionDetails(tx._id)}
                   style={{
                     padding: "0.25rem 0.5rem",
-                    backgroundColor: "#007bff",
+                    backgroundColor: "var(--primary-blue)",
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
@@ -433,7 +436,7 @@ export default function Explorer() {
             disabled={!pagination.hasPrev}
             style={{
               padding: "0.5rem 1rem",
-              backgroundColor: pagination.hasPrev ? "#007bff" : "#6c757d",
+              backgroundColor: pagination.hasPrev ? "var(--primary-blue)" : "var(--text-muted)",
               color: "white",
               border: "none",
               borderRadius: "4px",
@@ -450,7 +453,7 @@ export default function Explorer() {
             disabled={!pagination.hasNext}
             style={{
               padding: "0.5rem 1rem",
-              backgroundColor: pagination.hasNext ? "#007bff" : "#6c757d",
+              backgroundColor: pagination.hasNext ? "var(--primary-blue)" : "var(--text-muted)",
               color: "white",
               border: "none",
               borderRadius: "4px",
@@ -477,7 +480,7 @@ export default function Explorer() {
           zIndex: 1000
         }}>
           <div style={{
-            backgroundColor: "white",
+            backgroundColor: "var(--surface-card)",
             padding: "2rem",
             borderRadius: "8px",
             maxWidth: "600px",
@@ -488,7 +491,7 @@ export default function Explorer() {
             <h3>Transaction Details</h3>
             <div style={{ marginBottom: "1rem" }}>
               <strong>Transaction ID:</strong><br />
-              <code style={{ fontSize: "0.9rem", backgroundColor: "#f8f9fa", padding: "0.25rem" }}>
+              <code style={{ fontSize: "0.9rem", backgroundColor: "var(--surface-muted)", padding: "0.25rem" }}>
                 {selectedTransaction._id}
               </code>
             </div>
@@ -531,7 +534,7 @@ export default function Explorer() {
             
             <div style={{ marginBottom: "1rem" }}>
               <strong>Amount:</strong> 
-              <span style={{ fontSize: "1.2rem", color: "#28a745", marginLeft: "0.5rem" }}>
+              <span style={{ fontSize: "1.2rem", color: "var(--status-positive)", marginLeft: "0.5rem" }}>
                 {selectedTransaction.amount} CritCoin
               </span>
             </div>
@@ -549,7 +552,7 @@ export default function Explorer() {
             <div style={{ marginBottom: "1rem" }}>
               <strong>Status:</strong> 
               <span style={{ 
-                color: selectedTransaction.status === 'completed' ? '#28a745' : '#ffc107',
+                color: selectedTransaction.status === 'completed' ? 'var(--status-positive)' : 'var(--status-warning)',
                 marginLeft: "0.5rem",
                 fontWeight: "bold"
               }}>
@@ -561,7 +564,7 @@ export default function Explorer() {
               onClick={() => setSelectedTransaction(null)}
               style={{
                 padding: "0.5rem 1rem",
-                backgroundColor: "#6c757d",
+                backgroundColor: "var(--text-muted)",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
