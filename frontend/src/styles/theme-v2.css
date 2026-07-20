@@ -342,6 +342,23 @@ body.theme-page-v2::after {
 }
 .theme-v2 code::before { display: none; }
 
+/* Safety net: any bare form control (no .artistic-input, no inline background)
+   renders dark instead of a stark white browser default. Class and inline
+   styles both out-rank this, so intentionally-styled controls are unaffected. */
+.theme-v2 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.theme-v2 select,
+.theme-v2 textarea {
+  background-color: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+.theme-v2 input::placeholder,
+.theme-v2 textarea::placeholder { color: var(--text-faint); }
+.theme-v2 input:focus,
+.theme-v2 select:focus,
+.theme-v2 textarea:focus { outline: none; border-color: var(--primary-blue); }
+
 /* Nav: a crisp dark bar; links are uppercase grotesque; the active link gets a
    sharp orange underline instead of a glowing pill. */
 .theme-v2 .artistic-nav {

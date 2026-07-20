@@ -134,7 +134,7 @@ export default function App() {
         <Route path="/projects" element={pageV2(<Projects />)} />
         <Route path="/leaderboard" element={pageV2(<Leaderboard />)} />
         <Route path="/explorer" element={pageV2(<Explorer />)} />
-        <Route path="/admin" element={page(<Admin />)} />
+        <Route path="/admin" element={pageV2(<Admin />)} />
         <Route path="/forum" element={pageV2(<FormPage />)} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/archive/:archiveId" element={<Archive />} />

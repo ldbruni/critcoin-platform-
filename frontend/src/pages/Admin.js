@@ -14,10 +14,10 @@ const DEPLOY_STATUS_LABELS = {
 };
 
 const DEPLOY_STATUS_COLORS = {
-  pending: "#6c757d",
-  credited: "#fd7e14",
-  chain_confirmed: "#28a745",
-  chain_failed: "#dc3545"
+  pending: "var(--text-muted)",
+  credited: "var(--accent-orange)",
+  chain_confirmed: "var(--status-positive)",
+  chain_failed: "var(--status-negative)"
 };
 
 const API = {
@@ -862,7 +862,7 @@ export default function Admin() {
         <p><strong>Connected wallet:</strong> {wallet}</p>
         <p><strong>Expected admin wallet:</strong> {ADMIN_WALLET}</p>
         <p><strong>Wallet match:</strong> {wallet?.toLowerCase() === ADMIN_WALLET ? "✅ Yes" : "❌ No"}</p>
-        <div style={{ marginTop: "1rem", fontSize: "0.9rem", color: "#666" }}>
+        <div style={{ marginTop: "1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
           <p>Debug info:</p>
           <p>Connected (lowercase): {wallet?.toLowerCase()}</p>
           <p>Expected (lowercase): {ADMIN_WALLET}</p>
@@ -873,9 +873,12 @@ export default function Admin() {
   }
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-      <h1>🛡️ Admin Panel</h1>
-      
+    <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Admin</div>
+        <h1 className="gothic-title gothic-text">🛡️ Admin Panel</h1>
+      </div>
+
       <p><strong>Admin:</strong> {wallet}</p>
 
       {/* Navigation Tabs */}
@@ -887,9 +890,9 @@ export default function Admin() {
             style={{
               margin: "0 0.5rem",
               padding: "0.5rem 1rem",
-              backgroundColor: activeTab === tab ? "#007bff" : "#f8f9fa",
+              backgroundColor: activeTab === tab ? "var(--primary-blue)" : "var(--surface-muted)",
               color: activeTab === tab ? "white" : "black",
-              border: "1px solid #ddd",
+              border: "1px solid var(--surface-card-border)",
               borderRadius: "4px",
               cursor: "pointer",
               textTransform: "capitalize"
@@ -909,22 +912,22 @@ export default function Admin() {
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
             gap: "1rem" 
           }}>
-            <div style={{ backgroundColor: "#f8f9fa", padding: "1rem", borderRadius: "8px" }}>
+            <div style={{ backgroundColor: "var(--surface-muted)", padding: "1rem", borderRadius: "8px" }}>
               <h4>Profiles</h4>
               <p>Active: {dashboard.profiles?.total || 0}</p>
               <p>Archived: {dashboard.profiles?.archived || 0}</p>
             </div>
-            <div style={{ backgroundColor: "#f8f9fa", padding: "1rem", borderRadius: "8px" }}>
+            <div style={{ backgroundColor: "var(--surface-muted)", padding: "1rem", borderRadius: "8px" }}>
               <h4>Posts</h4>
               <p>Total: {dashboard.posts?.total || 0}</p>
               <p>Hidden: {dashboard.posts?.hidden || 0}</p>
             </div>
-            <div style={{ backgroundColor: "#f8f9fa", padding: "1rem", borderRadius: "8px" }}>
+            <div style={{ backgroundColor: "var(--surface-muted)", padding: "1rem", borderRadius: "8px" }}>
               <h4>Bounties</h4>
               <p>Total: {dashboard.bounties?.total || 0}</p>
               <p>Active: {dashboard.bounties?.active || 0}</p>
             </div>
-            <div style={{ backgroundColor: "#f8f9fa", padding: "1rem", borderRadius: "8px" }}>
+            <div style={{ backgroundColor: "var(--surface-muted)", padding: "1rem", borderRadius: "8px" }}>
               <h4>Projects</h4>
               <p>Total: {dashboard.projects?.total || 0}</p>
               <p>Archived: {dashboard.projects?.archived || 0}</p>
@@ -940,11 +943,11 @@ export default function Admin() {
           {loading ? (
             <p>Loading profiles...</p>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{ 
                 padding: "1rem", 
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 100px 100px", gap: "1rem" }}>
@@ -959,8 +962,8 @@ export default function Admin() {
                   key={profile._id}
                   style={{ 
                     padding: "1rem", 
-                    borderBottom: index < profiles.length - 1 ? "1px solid #e9ecef" : "none",
-                    backgroundColor: profile.archived ? "#fff3cd" : "white"
+                    borderBottom: index < profiles.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                    backgroundColor: profile.archived ? "var(--tint-warning)" : "white"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 100px 100px", gap: "1rem", alignItems: "center" }}>
@@ -979,12 +982,12 @@ export default function Admin() {
                       )}
                       <div>
                         <div><strong>{profile.name}</strong></div>
-                        <div style={{ fontSize: "0.8rem", color: "#666" }}>{profile.starSign}</div>
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{profile.starSign}</div>
                       </div>
                     </div>
                     <code style={{ fontSize: "0.8rem" }}>{profile.wallet.slice(0, 10)}...</code>
                     <span style={{ 
-                      color: profile.archived ? "#856404" : "#155724",
+                      color: profile.archived ? "var(--status-warning)" : "var(--status-positive)",
                       fontWeight: "bold"
                     }}>
                       {profile.archived ? "Archived" : "Active"}
@@ -993,7 +996,7 @@ export default function Admin() {
                       onClick={() => handleArchiveProfile(profile.wallet, !profile.archived)}
                       style={{
                         padding: "0.25rem 0.5rem",
-                        backgroundColor: profile.archived ? "#28a745" : "#dc3545",
+                        backgroundColor: profile.archived ? "var(--status-positive)" : "var(--status-negative)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -1018,11 +1021,11 @@ export default function Admin() {
           {loading ? (
             <p>Loading posts...</p>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{ 
                 padding: "1rem", 
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px", gap: "1rem" }}>
@@ -1037,14 +1040,14 @@ export default function Admin() {
                   key={post._id}
                   style={{ 
                     padding: "1rem", 
-                    borderBottom: index < posts.length - 1 ? "1px solid #e9ecef" : "none",
-                    backgroundColor: post.hidden ? "#f8d7da" : "white"
+                    borderBottom: index < posts.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                    backgroundColor: post.hidden ? "var(--tint-negative)" : "white"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px", gap: "1rem", alignItems: "center" }}>
                     <div>
                       <strong>{post.authorName}</strong>
-                      <div style={{ fontSize: "0.7rem", color: "#666" }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                         {new Date(post.createdAt).toLocaleDateString()}
                       </div>
                     </div>
@@ -1052,12 +1055,12 @@ export default function Admin() {
                       maxHeight: "60px", 
                       overflow: "hidden",
                       textDecoration: post.hidden ? "line-through" : "none",
-                      color: post.hidden ? "#721c24" : "inherit"
+                      color: post.hidden ? "var(--status-negative)" : "inherit"
                     }}>
                       {post.content}
                     </div>
                     <span style={{ 
-                      color: post.hidden ? "#721c24" : "#155724",
+                      color: post.hidden ? "var(--status-negative)" : "var(--status-positive)",
                       fontWeight: "bold"
                     }}>
                       {post.hidden ? "Hidden" : "Visible"}
@@ -1066,7 +1069,7 @@ export default function Admin() {
                       onClick={() => handleHidePost(post._id, !post.hidden)}
                       style={{
                         padding: "0.25rem 0.5rem",
-                        backgroundColor: post.hidden ? "#28a745" : "#dc3545",
+                        backgroundColor: post.hidden ? "var(--status-positive)" : "var(--status-negative)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -1091,11 +1094,11 @@ export default function Admin() {
           {loading ? (
             <p>Loading projects...</p>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{ 
                 padding: "1rem", 
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px 120px", gap: "1rem" }}>
@@ -1111,24 +1114,24 @@ export default function Admin() {
                   key={project._id}
                   style={{ 
                     padding: "1rem", 
-                    borderBottom: index < projects.length - 1 ? "1px solid #e9ecef" : "none",
-                    backgroundColor: project.archived ? "#fff3cd" : "white"
+                    borderBottom: index < projects.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                    backgroundColor: project.archived ? "var(--tint-warning)" : "white"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 100px 100px 120px", gap: "1rem", alignItems: "center" }}>
                     <div>
                       <strong>{project.authorName}</strong>
-                      <div style={{ fontSize: "0.7rem", color: "#666" }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                         {new Date(project.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     <div style={{ 
                       textDecoration: project.archived ? "line-through" : "none",
-                      color: project.archived ? "#856404" : "inherit"
+                      color: project.archived ? "var(--status-warning)" : "inherit"
                     }}>
                       <div><strong>{project.title}</strong></div>
-                      <div style={{ fontSize: "0.8rem", color: "#666" }}>{project.description}</div>
-                      <div style={{ fontSize: "0.7rem", color: "#28a745", marginTop: "0.25rem" }}>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{project.description}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--status-positive)", marginTop: "0.25rem" }}>
                         {project.totalReceived} CC received
                       </div>
                     </div>
@@ -1136,7 +1139,7 @@ export default function Admin() {
                       Project {project.projectNumber}
                     </span>
                     <span style={{ 
-                      color: project.archived ? "#856404" : "#155724",
+                      color: project.archived ? "var(--status-warning)" : "var(--status-positive)",
                       fontWeight: "bold"
                     }}>
                       {project.archived ? "Archived" : "Active"}
@@ -1145,7 +1148,7 @@ export default function Admin() {
                       onClick={() => handleArchiveProject(project._id, !project.archived)}
                       style={{
                         padding: "0.25rem 0.5rem",
-                        backgroundColor: project.archived ? "#28a745" : "#dc3545",
+                        backgroundColor: project.archived ? "var(--status-positive)" : "var(--status-negative)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -1170,11 +1173,11 @@ export default function Admin() {
           
           {/* Bounty Form */}
           <div style={{ 
-            backgroundColor: "#f8f9fa", 
+            backgroundColor: "var(--surface-muted)", 
             padding: "1rem", 
             borderRadius: "8px", 
             marginBottom: "2rem",
-            border: "1px solid #dee2e6"
+            border: "1px solid var(--surface-card-border)"
           }}>
             <h4>{editingBounty ? "Edit Bounty" : "Create New Bounty"}</h4>
             <form onSubmit={handleBountySubmit}>
@@ -1207,7 +1210,7 @@ export default function Admin() {
                 type="submit"
                 style={{
                   padding: "0.5rem 1rem",
-                  backgroundColor: "#007bff",
+                  backgroundColor: "var(--primary-blue)",
                   color: "white",
                   border: "none",
                   borderRadius: "4px",
@@ -1226,7 +1229,7 @@ export default function Admin() {
                   }}
                   style={{
                     padding: "0.5rem 1rem",
-                    backgroundColor: "#6c757d",
+                    backgroundColor: "var(--text-muted)",
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
@@ -1243,11 +1246,11 @@ export default function Admin() {
           {loading ? (
             <p>Loading bounties...</p>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{ 
                 padding: "1rem", 
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 200px", gap: "1rem" }}>
@@ -1262,23 +1265,23 @@ export default function Admin() {
                   key={bounty._id}
                   style={{ 
                     padding: "1rem", 
-                    borderBottom: index < bounties.length - 1 ? "1px solid #e9ecef" : "none",
-                    backgroundColor: bounty.crossedOut ? "#f8d7da" : "white"
+                    borderBottom: index < bounties.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                    backgroundColor: bounty.crossedOut ? "var(--tint-negative)" : "white"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 100px 200px", gap: "1rem", alignItems: "center" }}>
                     <div style={{ 
                       textDecoration: bounty.crossedOut ? "line-through" : "none",
-                      color: bounty.crossedOut ? "#721c24" : "inherit"
+                      color: bounty.crossedOut ? "var(--status-negative)" : "inherit"
                     }}>
                       <div><strong>{bounty.title}</strong></div>
-                      <div style={{ fontSize: "0.8rem", color: "#666" }}>{bounty.description}</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{bounty.description}</div>
                     </div>
-                    <span style={{ fontWeight: "bold", color: "#28a745" }}>
+                    <span style={{ fontWeight: "bold", color: "var(--status-positive)" }}>
                       {bounty.reward} CC
                     </span>
                     <span style={{ 
-                      color: bounty.crossedOut ? "#721c24" : "#155724",
+                      color: bounty.crossedOut ? "var(--status-negative)" : "var(--status-positive)",
                       fontWeight: "bold"
                     }}>
                       {bounty.crossedOut ? "Crossed" : bounty.status}
@@ -1295,7 +1298,7 @@ export default function Admin() {
                         }}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: "#007bff",
+                          backgroundColor: "var(--primary-blue)",
                           color: "white",
                           border: "none",
                           borderRadius: "4px",
@@ -1310,7 +1313,7 @@ export default function Admin() {
                         onClick={() => handleCrossOutBounty(bounty._id, !bounty.crossedOut)}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: bounty.crossedOut ? "#28a745" : "#dc3545",
+                          backgroundColor: bounty.crossedOut ? "var(--status-positive)" : "var(--status-negative)",
                           color: "white",
                           border: "none",
                           borderRadius: "4px",
@@ -1325,7 +1328,7 @@ export default function Admin() {
                         onClick={() => handleDeleteBounty(bounty._id, bounty.title)}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: "#6c757d",
+                          backgroundColor: "var(--text-muted)",
                           color: "white",
                           border: "none",
                           borderRadius: "4px",
@@ -1355,20 +1358,20 @@ export default function Admin() {
             const isEnabled = settings[key] !== false;
             return (
               <div key={projectNum} style={{
-                backgroundColor: isEnabled ? "#d4edda" : "#fff3cd",
+                backgroundColor: isEnabled ? "var(--tint-positive)" : "var(--tint-warning)",
                 padding: "1.25rem 1.5rem",
                 borderRadius: "8px",
                 marginBottom: "1rem",
-                border: `1px solid ${isEnabled ? "#c3e6cb" : "#ffeaa7"}`,
+                border: `1px solid ${isEnabled ? "var(--status-positive)" : "var(--status-warning)"}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between"
               }}>
                 <div>
                   <h4 style={{ margin: "0 0 0.25rem 0" }}>
-                    Project {projectNum} — <span style={{ color: isEnabled ? "#155724" : "#856404" }}>{isEnabled ? "OPEN" : "CLOSED"}</span>
+                    Project {projectNum} — <span style={{ color: isEnabled ? "var(--status-positive)" : "var(--status-warning)" }}>{isEnabled ? "OPEN" : "CLOSED"}</span>
                   </h4>
-                  <p style={{ margin: 0, color: "#555", fontSize: "0.9rem" }}>
+                  <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
                     Who will earn the most CritCoin in Project {projectNum}?
                   </p>
                 </div>
@@ -1376,7 +1379,7 @@ export default function Admin() {
                   onClick={() => handleTogglePrediction(projectNum, isEnabled)}
                   style={{
                     padding: "0.75rem 1.5rem",
-                    backgroundColor: isEnabled ? "#dc3545" : "#28a745",
+                    backgroundColor: isEnabled ? "var(--status-negative)" : "var(--status-positive)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -1401,18 +1404,18 @@ export default function Admin() {
           
           {/* Whitelist Mode Toggle */}
           <div style={{ 
-            backgroundColor: settings.whitelistMode ? "#d1ecf1" : "#fff3cd", 
+            backgroundColor: settings.whitelistMode ? "var(--tint-info)" : "var(--tint-warning)", 
             padding: "1rem", 
             borderRadius: "8px", 
             marginBottom: "2rem",
-            border: `1px solid ${settings.whitelistMode ? "#bee5eb" : "#ffeaa7"}`
+            border: `1px solid ${settings.whitelistMode ? "var(--primary-blue)" : "var(--status-warning)"}`
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <h4 style={{ margin: "0 0 0.5rem 0" }}>
                   {settings.whitelistMode ? "🔒 Whitelist Mode: ENABLED" : "🔓 Whitelist Mode: DISABLED"}
                 </h4>
-                <p style={{ margin: 0, color: "#666" }}>
+                <p style={{ margin: 0, color: "var(--text-muted)" }}>
                   {settings.whitelistMode 
                     ? "Only whitelisted wallets can create new profiles. Existing profiles can still access the platform."
                     : "Anyone with ≥1 CritCoin can create profiles. Perfect for first day of class."
@@ -1423,7 +1426,7 @@ export default function Admin() {
                 onClick={handleToggleWhitelistMode}
                 style={{
                   padding: "0.75rem 1.5rem",
-                  backgroundColor: settings.whitelistMode ? "#dc3545" : "#28a745",
+                  backgroundColor: settings.whitelistMode ? "var(--status-negative)" : "var(--status-positive)",
                   color: "white",
                   border: "none",
                   borderRadius: "6px",
@@ -1438,11 +1441,11 @@ export default function Admin() {
 
           {/* Add to Whitelist Form */}
           <div style={{ 
-            backgroundColor: "#f8f9fa", 
+            backgroundColor: "var(--surface-muted)", 
             padding: "1rem", 
             borderRadius: "8px", 
             marginBottom: "2rem",
-            border: "1px solid #dee2e6"
+            border: "1px solid var(--surface-card-border)"
           }}>
             <h4>Add Wallet to Whitelist</h4>
             <form onSubmit={handleAddToWhitelist}>
@@ -1461,7 +1464,7 @@ export default function Admin() {
                       width: "100%", 
                       padding: "0.5rem", 
                       borderRadius: "4px", 
-                      border: "1px solid #ced4da"
+                      border: "1px solid var(--surface-card-border)"
                     }}
                   />
                 </div>
@@ -1478,7 +1481,7 @@ export default function Admin() {
                       width: "100%", 
                       padding: "0.5rem", 
                       borderRadius: "4px", 
-                      border: "1px solid #ced4da"
+                      border: "1px solid var(--surface-card-border)"
                     }}
                   />
                 </div>
@@ -1486,7 +1489,7 @@ export default function Admin() {
                   type="submit"
                   style={{
                     padding: "0.5rem 1rem",
-                    backgroundColor: "#007bff",
+                    backgroundColor: "var(--primary-blue)",
                     color: "white",
                     border: "none",
                     borderRadius: "4px",
@@ -1506,20 +1509,20 @@ export default function Admin() {
             <p>Loading whitelist...</p>
           ) : whitelist.length === 0 ? (
             <div style={{ 
-              backgroundColor: "#f8f9fa", 
+              backgroundColor: "var(--surface-muted)", 
               padding: "2rem", 
               textAlign: "center", 
               borderRadius: "8px",
-              border: "1px solid #dee2e6"
+              border: "1px solid var(--surface-card-border)"
             }}>
-              <p style={{ margin: 0, color: "#666" }}>No wallets in whitelist yet</p>
+              <p style={{ margin: 0, color: "var(--text-muted)" }}>No wallets in whitelist yet</p>
             </div>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{ 
                 padding: "1rem", 
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem" }}>
@@ -1534,7 +1537,7 @@ export default function Admin() {
                   key={entry._id}
                   style={{ 
                     padding: "1rem", 
-                    borderBottom: index < whitelist.length - 1 ? "1px solid #e9ecef" : "none"
+                    borderBottom: index < whitelist.length - 1 ? "1px solid var(--surface-card-border)" : "none"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem", alignItems: "center" }}>
@@ -1542,16 +1545,16 @@ export default function Admin() {
                       {entry.wallet}
                     </code>
                     <span style={{ fontSize: "0.9rem" }}>
-                      {entry.notes || <em style={{ color: "#999" }}>No notes</em>}
+                      {entry.notes || <em style={{ color: "var(--text-faint)" }}>No notes</em>}
                     </span>
-                    <span style={{ fontSize: "0.8rem", color: "#666" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {new Date(entry.addedAt).toLocaleDateString()}
                     </span>
                     <button
                       onClick={() => handleRemoveFromWhitelist(entry.wallet)}
                       style={{
                         padding: "0.25rem 0.5rem",
-                        backgroundColor: "#dc3545",
+                        backgroundColor: "var(--status-negative)",
                         color: "white",
                         border: "none",
                         borderRadius: "4px",
@@ -1573,14 +1576,14 @@ export default function Admin() {
       {activeTab === "semester" && (
         <div>
           <h2>📦 Semester Archive</h2>
-          <p style={{ color: "#666", marginBottom: "2rem" }}>
+          <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
             Archive the current semester's data before starting a new class. This preserves all profiles, projects, posts, and transactions for future reference.
           </p>
 
           {/* Create New Archive */}
           <div style={{
-            backgroundColor: "#e7f3ff",
-            border: "1px solid #b3d9ff",
+            backgroundColor: "var(--tint-info)",
+            border: "1px solid var(--primary-blue)",
             borderRadius: "8px",
             padding: "1.5rem",
             marginBottom: "2rem"
@@ -1602,7 +1605,7 @@ export default function Admin() {
                     maxWidth: "400px",
                     padding: "0.5rem",
                     borderRadius: "4px",
-                    border: "1px solid #ced4da"
+                    border: "1px solid var(--surface-card-border)"
                   }}
                 />
               </div>
@@ -1620,7 +1623,7 @@ export default function Admin() {
                     maxWidth: "400px",
                     padding: "0.5rem",
                     borderRadius: "4px",
-                    border: "1px solid #ced4da"
+                    border: "1px solid var(--surface-card-border)"
                   }}
                 />
               </div>
@@ -1631,7 +1634,7 @@ export default function Admin() {
                   disabled={archiveLoading || !archiveForm.name.trim()}
                   style={{
                     padding: "0.75rem 1.5rem",
-                    backgroundColor: editingArchive ? "#007bff" : "#28a745",
+                    backgroundColor: editingArchive ? "var(--primary-blue)" : "var(--status-positive)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -1645,13 +1648,13 @@ export default function Admin() {
                 </button>
               ) : (
                 <div style={{
-                  backgroundColor: "#fff3cd",
-                  border: "1px solid #ffc107",
+                  backgroundColor: "var(--tint-warning)",
+                  border: "1px solid var(--status-warning)",
                   borderRadius: "8px",
                   padding: "1rem",
                   marginTop: "1rem"
                 }}>
-                  <h4 style={{ color: "#856404", marginTop: 0 }}>⚠️ Confirm Archive</h4>
+                  <h4 style={{ color: "var(--status-warning)", marginTop: 0 }}>⚠️ Confirm Archive</h4>
                   <p>This will create a snapshot of all current data:</p>
                   <ul style={{ textAlign: "left" }}>
                     <li>{archivePreview?.profiles || 0} profiles</li>
@@ -1666,7 +1669,7 @@ export default function Admin() {
                     disabled={archiveLoading}
                     style={{
                       padding: "0.75rem 1.5rem",
-                      backgroundColor: "#28a745",
+                      backgroundColor: "var(--status-positive)",
                       color: "white",
                       border: "none",
                       borderRadius: "6px",
@@ -1682,7 +1685,7 @@ export default function Admin() {
                     onClick={() => setShowArchiveConfirm(false)}
                     style={{
                       padding: "0.75rem 1.5rem",
-                      backgroundColor: "#6c757d",
+                      backgroundColor: "var(--text-muted)",
                       color: "white",
                       border: "none",
                       borderRadius: "6px",
@@ -1703,7 +1706,7 @@ export default function Admin() {
                   }}
                   style={{
                     padding: "0.75rem 1.5rem",
-                    backgroundColor: "#6c757d",
+                    backgroundColor: "var(--text-muted)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -1718,14 +1721,14 @@ export default function Admin() {
 
           {/* Clear Current Site Data */}
           <div style={{
-            backgroundColor: "#f8d7da",
-            border: "1px solid #f5c6cb",
+            backgroundColor: "var(--tint-negative)",
+            border: "1px solid var(--status-negative)",
             borderRadius: "8px",
             padding: "1.5rem",
             marginBottom: "2rem"
           }}>
-            <h3 style={{ marginTop: 0, color: "#721c24" }}>🗑️ Clear Current Site Data</h3>
-            <p style={{ color: "#721c24" }}>
+            <h3 style={{ marginTop: 0, color: "var(--status-negative)" }}>🗑️ Clear Current Site Data</h3>
+            <p style={{ color: "var(--status-negative)" }}>
               After archiving, you can clear the current site data to start fresh for a new semester.
               <br /><strong>Warning:</strong> This will permanently delete all current profiles (except admin), projects, posts, comments, transactions, and bounties.
             </p>
@@ -1735,7 +1738,7 @@ export default function Admin() {
                 onClick={handleClearSiteData}
                 style={{
                   padding: "0.75rem 1.5rem",
-                  backgroundColor: "#dc3545",
+                  backgroundColor: "var(--status-negative)",
                   color: "white",
                   border: "none",
                   borderRadius: "6px",
@@ -1747,13 +1750,13 @@ export default function Admin() {
               </button>
             ) : (
               <div style={{
-                backgroundColor: "#fff",
-                border: "2px solid #dc3545",
+                backgroundColor: "var(--surface-card)",
+                border: "2px solid var(--status-negative)",
                 borderRadius: "8px",
                 padding: "1rem",
                 marginTop: "1rem"
               }}>
-                <h4 style={{ color: "#dc3545", marginTop: 0 }}>⚠️ DANGER ZONE</h4>
+                <h4 style={{ color: "var(--status-negative)", marginTop: 0 }}>⚠️ DANGER ZONE</h4>
                 <p><strong>Are you absolutely sure?</strong> This action cannot be undone!</p>
                 <p>Make sure you have archived the current semester first.</p>
                 <button
@@ -1761,7 +1764,7 @@ export default function Admin() {
                   disabled={archiveLoading}
                   style={{
                     padding: "0.75rem 1.5rem",
-                    backgroundColor: "#dc3545",
+                    backgroundColor: "var(--status-negative)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -1776,7 +1779,7 @@ export default function Admin() {
                   onClick={() => setShowClearConfirm(false)}
                   style={{
                     padding: "0.75rem 1.5rem",
-                    backgroundColor: "#6c757d",
+                    backgroundColor: "var(--text-muted)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -1795,20 +1798,20 @@ export default function Admin() {
             <p>Loading archives...</p>
           ) : semesterArchives.length === 0 ? (
             <div style={{
-              backgroundColor: "#f8f9fa",
+              backgroundColor: "var(--surface-muted)",
               padding: "2rem",
               textAlign: "center",
               borderRadius: "8px",
-              border: "1px solid #dee2e6"
+              border: "1px solid var(--surface-card-border)"
             }}>
-              <p style={{ margin: 0, color: "#666" }}>No semester archives yet</p>
+              <p style={{ margin: 0, color: "var(--text-muted)" }}>No semester archives yet</p>
             </div>
           ) : (
-            <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #ddd" }}>
+            <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
               <div style={{
                 padding: "1rem",
-                borderBottom: "1px solid #ddd",
-                backgroundColor: "#f8f9fa",
+                borderBottom: "1px solid var(--surface-card-border)",
+                backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 150px 200px", gap: "1rem" }}>
@@ -1823,14 +1826,14 @@ export default function Admin() {
                   key={archive._id}
                   style={{
                     padding: "1rem",
-                    borderBottom: index < semesterArchives.length - 1 ? "1px solid #e9ecef" : "none"
+                    borderBottom: index < semesterArchives.length - 1 ? "1px solid var(--surface-card-border)" : "none"
                   }}
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 150px 200px", gap: "1rem", alignItems: "center" }}>
                     <div>
                       <div style={{ fontWeight: "bold", fontSize: "1.1rem" }}>{archive.name}</div>
                       {archive.description && (
-                        <div style={{ fontSize: "0.9rem", color: "#666" }}>{archive.description}</div>
+                        <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>{archive.description}</div>
                       )}
                     </div>
                     <div style={{ fontSize: "0.85rem" }}>
@@ -1838,7 +1841,7 @@ export default function Admin() {
                       <div>{archive.stats?.totalProjects || 0} projects</div>
                       <div>{archive.stats?.totalPosts || 0} posts</div>
                     </div>
-                    <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
                       {new Date(archive.archivedAt).toLocaleDateString()}
                     </div>
                     <div>
@@ -1846,7 +1849,7 @@ export default function Admin() {
                         to={`/archive/${archive._id}`}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: "#007bff",
+                          backgroundColor: "var(--primary-blue)",
                           color: "white",
                           border: "none",
                           borderRadius: "4px",
@@ -1864,8 +1867,8 @@ export default function Admin() {
                         }}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: "#ffc107",
-                          color: "#212529",
+                          backgroundColor: "var(--status-warning)",
+                          color: "var(--text-body)",
                           border: "none",
                           borderRadius: "4px",
                           cursor: "pointer",
@@ -1879,7 +1882,7 @@ export default function Admin() {
                         onClick={() => handleDeleteArchive(archive._id, archive.name)}
                         style={{
                           padding: "0.25rem 0.5rem",
-                          backgroundColor: "#dc3545",
+                          backgroundColor: "var(--status-negative)",
                           color: "white",
                           border: "none",
                           borderRadius: "4px",
@@ -1903,8 +1906,8 @@ export default function Admin() {
         <div style={{ textAlign: "center", padding: "2rem" }}>
           <h2>🚀 Deploy CritCoin</h2>
           <div style={{ 
-            backgroundColor: "#fff3cd", 
-            border: "1px solid #ffeaa7", 
+            backgroundColor: "var(--tint-warning)", 
+            border: "1px solid var(--status-warning)", 
             borderRadius: "8px", 
             padding: "2rem", 
             maxWidth: "600px", 
@@ -1915,7 +1918,7 @@ export default function Admin() {
             <p>Total active profiles: <strong>{dashboard.profiles?.total || 0}</strong></p>
             <p>Recipients (excluding admin): <strong>{dashboard.profiles?.totalExcludingAdmin || 0}</strong></p>
             <p>Total CritCoin to be deployed: <strong>{(dashboard.profiles?.totalExcludingAdmin || 0) * 10000} CC</strong></p>
-            <p style={{ fontSize: "0.85rem", color: "#666" }}>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
               Your wallet is checked for enough CritCoin and Sepolia ETH before anything is written.
               Re-running is safe: confirmed students are skipped, failed ones retried, and nobody is credited twice.
             </p>
@@ -1925,8 +1928,8 @@ export default function Admin() {
                 onClick={() => handleDeployCritCoin(false)}
                 style={{
                   padding: "1rem 2rem",
-                  backgroundColor: "#ffc107",
-                  color: "#212529",
+                  backgroundColor: "var(--status-warning)",
+                  color: "var(--text-body)",
                   border: "none",
                   borderRadius: "8px",
                   cursor: "pointer",
@@ -1938,9 +1941,9 @@ export default function Admin() {
               </button>
             ) : (
               <div>
-                <h4 style={{ color: "#d73527" }}>Are you absolutely sure?</h4>
+                <h4 style={{ color: "var(--status-negative)" }}>Are you absolutely sure?</h4>
                 <p>This action cannot be undone!</p>
-                <p style={{ fontSize: "0.9rem", color: "#666" }}>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
                   Each transfer requires a blockchain transaction. You will need to confirm each in your wallet.
                 </p>
                 {deployLoading && deployProgress.total > 0 && (
@@ -1948,7 +1951,7 @@ export default function Admin() {
                     <div style={{
                       width: "100%",
                       height: "20px",
-                      backgroundColor: "#e0e0e0",
+                      backgroundColor: "var(--surface-card-border)",
                       borderRadius: "10px",
                       overflow: "hidden",
                       marginBottom: "0.5rem"
@@ -1956,14 +1959,14 @@ export default function Admin() {
                       <div style={{
                         width: `${(deployProgress.current / deployProgress.total) * 100}%`,
                         height: "100%",
-                        backgroundColor: deployProgress.failed.length > 0 ? "#ffc107" : "#28a745",
+                        backgroundColor: deployProgress.failed.length > 0 ? "var(--status-warning)" : "var(--status-positive)",
                         transition: "width 0.3s ease"
                       }} />
                     </div>
                     <p style={{ margin: 0 }}>
                       Progress: {deployProgress.current} / {deployProgress.total}
                       {deployProgress.failed.length > 0 && (
-                        <span style={{ color: "#dc3545" }}> ({deployProgress.failed.length} failed)</span>
+                        <span style={{ color: "var(--status-negative)" }}> ({deployProgress.failed.length} failed)</span>
                       )}
                     </p>
                   </div>
@@ -1973,7 +1976,7 @@ export default function Admin() {
                   disabled={deployLoading}
                   style={{
                     padding: "1rem 2rem",
-                    backgroundColor: "#dc3545",
+                    backgroundColor: "var(--status-negative)",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
@@ -1993,7 +1996,7 @@ export default function Admin() {
                   disabled={deployLoading}
                   style={{
                     padding: "1rem 2rem",
-                    backgroundColor: "#6c757d",
+                    backgroundColor: "var(--text-muted)",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
@@ -2013,14 +2016,14 @@ export default function Admin() {
             <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "left" }}>
               <h3>
                 Most recent deploy
-                <span style={{ fontWeight: "normal", fontSize: "0.9rem", color: "#666", marginLeft: "0.75rem" }}>
+                <span style={{ fontWeight: "normal", fontSize: "0.9rem", color: "var(--text-muted)", marginLeft: "0.75rem" }}>
                   {new Date(latestDeploy.createdAt).toLocaleString()} · {latestDeploy.amountPerStudent} CC each
                 </span>
               </h3>
 
               <p style={{ fontSize: "0.9rem" }}>
                 <strong>{latestDeploy.summary.confirmed}</strong> confirmed on-chain ·{" "}
-                <strong style={{ color: latestDeploy.summary.failed ? "#dc3545" : "inherit" }}>
+                <strong style={{ color: latestDeploy.summary.failed ? "var(--status-negative)" : "inherit" }}>
                   {latestDeploy.summary.failed}
                 </strong>{" "}
                 failed ·{" "}
@@ -2034,7 +2037,7 @@ export default function Admin() {
                   disabled={deployLoading}
                   style={{
                     padding: "0.6rem 1.2rem",
-                    backgroundColor: "#0d6efd",
+                    backgroundColor: "var(--primary-blue)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
@@ -2050,31 +2053,31 @@ export default function Admin() {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f8f9fa", textAlign: "left" }}>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Student</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Wallet</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Status</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Transaction</th>
+                    <tr style={{ backgroundColor: "var(--surface-muted)", textAlign: "left" }}>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Student</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Wallet</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Status</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Transaction</th>
                     </tr>
                   </thead>
                   <tbody>
                     {latestDeploy.rows.map(row => (
                       <tr key={row.wallet}>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{row.name || "—"}</td>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>{row.name || "—"}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
                           <AddressLink address={row.wallet} />
                         </td>
                         <td style={{
                           padding: "0.5rem",
-                          border: "1px solid #dee2e6",
+                          border: "1px solid var(--surface-card-border)",
                           color: DEPLOY_STATUS_COLORS[row.status] || "inherit",
                           fontWeight: "bold"
                         }}>
                           {DEPLOY_STATUS_LABELS[row.status] || row.status}
                         </td>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
                           {row.status === 'chain_failed'
-                            ? <span style={{ color: "#dc3545", fontSize: "0.85rem" }}>{row.error}</span>
+                            ? <span style={{ color: "var(--status-negative)", fontSize: "0.85rem" }}>{row.error}</span>
                             : <TxLink hash={row.txHash} />}
                         </td>
                       </tr>
@@ -2091,7 +2094,7 @@ export default function Admin() {
       {activeTab === "reconcile" && (
         <div>
           <h2>Reconciliation</h2>
-          <p style={{ fontSize: "0.9rem", color: "#666", maxWidth: "800px" }}>
+          <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", maxWidth: "800px" }}>
             The database ledger is authoritative for every balance in the app. This compares it against
             live on-chain balances so drift is visible. It is read-only — nothing here writes to the
             database or sends a transaction, and drift is never corrected automatically.
@@ -2104,7 +2107,7 @@ export default function Admin() {
           {reconcile && (
             <>
               {!reconcile.chainAvailable && (
-                <p style={{ color: "#856404", backgroundColor: "#fff3cd", padding: "0.75rem", borderRadius: "4px" }}>
+                <p style={{ color: "var(--status-warning)", backgroundColor: "var(--tint-warning)", padding: "0.75rem", borderRadius: "4px" }}>
                   ⚠️ Sepolia RPC unavailable — database balances shown, chain values unavailable.
                 </p>
               )}
@@ -2117,30 +2120,30 @@ export default function Admin() {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#f8f9fa", textAlign: "left" }}>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Student</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Wallet</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Database</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Chain</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>Drift</th>
+                    <tr style={{ backgroundColor: "var(--surface-muted)", textAlign: "left" }}>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Student</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Wallet</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Database</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Chain</th>
+                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Drift</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reconcile.students.map(s => (
                       <tr key={s.wallet}>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{s.name}</td>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>{s.name}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
                           <AddressLink address={s.wallet} />
                         </td>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>{s.dbBalance}</td>
-                        <td style={{ padding: "0.5rem", border: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>{s.dbBalance}</td>
+                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
                           {s.chainBalance === null ? "unavailable" : s.chainBalance}
                         </td>
                         <td style={{
                           padding: "0.5rem",
-                          border: "1px solid #dee2e6",
+                          border: "1px solid var(--surface-card-border)",
                           fontWeight: s.drift ? "bold" : "normal",
-                          color: s.drift ? "#dc3545" : "inherit"
+                          color: s.drift ? "var(--status-negative)" : "inherit"
                         }}>
                           {s.drift === null ? "—" : s.drift}
                         </td>
