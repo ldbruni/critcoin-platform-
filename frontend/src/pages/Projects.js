@@ -257,7 +257,7 @@ export default function Projects() {
       <h1 className="gothic-title gothic-text">Projects</h1>
 
       {!wallet ? (
-        <button onClick={connectWallet}>Connect Wallet</button>
+        <button className="artistic-btn" onClick={connectWallet}>Connect Wallet</button>
       ) : (
         <>
           <p><strong>{profile?.name || wallet}</strong> — {balance} CritCoin</p>
@@ -272,10 +272,11 @@ export default function Projects() {
                 style={{
                   margin: "0 0.5rem",
                   padding: "0.5rem 1rem",
-                  backgroundColor: activeProject === num ? "#007bff" : "#f8f9fa",
-                  color: activeProject === num ? "white" : "black",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
+                  fontFamily: "var(--font-heading)",
+                  backgroundColor: activeProject === num ? "var(--primary-blue)" : "var(--surface-muted)",
+                  color: activeProject === num ? "var(--neutral-white)" : "var(--text-body)",
+                  border: activeProject === num ? "1px solid var(--primary-blue)" : "1px solid var(--surface-card-border)",
+                  borderRadius: "6px",
                   cursor: "pointer"
                 }}
               >
@@ -285,15 +286,15 @@ export default function Projects() {
           </div>
 
           {/* User's Submission Section */}
-          <div style={{ marginBottom: "2rem", padding: "1rem", border: "2px solid #007bff", borderRadius: "8px" }}>
+          <div style={{ marginBottom: "2rem", padding: "1.25rem", background: "var(--surface-card)", border: "1px solid var(--surface-card-border)", borderRadius: "10px", boxShadow: "var(--card-shadow)" }}>
             <h3>Your Submission for Project {activeProject}</h3>
-            
+
             {!profile ? (
-              <p style={{ color: "red" }}>
+              <p style={{ color: "var(--status-negative)" }}>
                 <Link to="/profiles">Create a profile</Link> to submit projects.
               </p>
             ) : Number(balance) < 1 ? (
-              <p style={{ color: "red" }}>
+              <p style={{ color: "var(--status-negative)" }}>
                 You need ≥1 CritCoin to submit projects.
               </p>
             ) : userSubmission && !editing ? (
@@ -308,7 +309,7 @@ export default function Projects() {
                     objectFit: "contain",
                     borderRadius: "8px",
                     marginBottom: "1rem",
-                    backgroundColor: "#f0f0f0"
+                    backgroundColor: "var(--surface-muted)"
                   }}
                   onError={(e) => {
                     console.error("❌ Failed to load your submission image");
@@ -320,7 +321,7 @@ export default function Projects() {
                 <h4>{userSubmission.title}</h4>
                 <p>{userSubmission.description}</p>
                 <p><strong>Total Received:</strong> {userSubmission.totalReceived} CritCoin</p>
-                <button onClick={() => setEditing(true)}>Edit Submission</button>
+                <button className="artistic-btn" onClick={() => setEditing(true)}>Edit Submission</button>
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
@@ -345,8 +346,8 @@ export default function Projects() {
                           maxHeight: "400px",
                           objectFit: "contain",
                           borderRadius: "8px",
-                          border: "2px solid #ddd",
-                          backgroundColor: "#f0f0f0"
+                          border: "1px solid var(--surface-card-border)",
+                          backgroundColor: "var(--surface-muted)"
                         }}
                         onError={(e) => {
                           console.error("❌ Failed to load preview image");
@@ -356,31 +357,33 @@ export default function Projects() {
                     </div>
                   )}
                 </div>
-                
+
                 <input
+                  className="artistic-input"
                   name="title"
                   placeholder="Project Title"
                   value={form.title}
                   onChange={handleChange}
                   required
-                  style={{ width: "100%", padding: "0.5rem", marginBottom: "1rem" }}
+                  style={{ marginBottom: "1rem" }}
                 /><br />
-                
+
                 <textarea
+                  className="artistic-input"
                   name="description"
                   placeholder="Materials (optional)"
                   value={form.description}
                   onChange={handleChange}
                   rows={3}
-                  style={{ width: "100%", padding: "0.5rem", marginBottom: "1rem" }}
+                  style={{ marginBottom: "1rem" }}
                 /><br />
-                
-                <button type="submit" style={{ marginRight: "1rem" }}>
+
+                <button className="artistic-btn" type="submit" style={{ marginRight: "1rem" }}>
                   {userSubmission ? "Update" : "Submit"} Project
                 </button>
-                
+
                 {editing && (
-                  <button type="button" onClick={() => {
+                  <button className="artistic-btn" type="button" onClick={() => {
                     setEditing(false);
                     setSelectedImage(null);
                     setImagePreview(null);
@@ -397,11 +400,12 @@ export default function Projects() {
             <h3>All Submissions - Project {activeProject}</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               {projects.map((project) => (
-                <div key={project._id} style={{ 
-                  border: "1px solid #ddd", 
-                  borderRadius: "8px", 
+                <div key={project._id} style={{
+                  border: "1px solid var(--surface-card-border)",
+                  borderRadius: "10px",
                   padding: "1rem",
-                  backgroundColor: "#f9f9f9"
+                  backgroundColor: "var(--surface-card)",
+                  boxShadow: "var(--card-shadow)"
                 }}>
                   <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
                     {project.authorPhoto && (
@@ -434,7 +438,7 @@ export default function Projects() {
                       objectFit: "contain",
                       borderRadius: "8px",
                       marginBottom: "1rem",
-                      backgroundColor: "#f0f0f0"
+                      backgroundColor: "var(--surface-muted)"
                     }}
                     onError={(e) => {
                       console.error("❌ Failed to load project image");
@@ -444,12 +448,12 @@ export default function Projects() {
                       placeholder.style.cssText = `
                         width: 100%;
                         height: 200px;
-                        background-color: #f0f0f0;
+                        background-color: var(--surface-muted);
                         border-radius: 8px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        color: #999;
+                        color: var(--text-muted);
                         font-size: 1rem;
                         margin-bottom: 1rem;
                       `;
@@ -477,11 +481,12 @@ export default function Projects() {
                       <button
                         onClick={() => handleSendCoin(project._id, project.authorWallet)}
                         style={{
-                          backgroundColor: "#28a745",
-                          color: "white",
+                          backgroundColor: "var(--status-positive)",
+                          color: "var(--neutral-white)",
                           border: "none",
                           padding: "0.5rem 1rem",
-                          borderRadius: "4px",
+                          borderRadius: "6px",
+                          fontFamily: "var(--font-heading)",
                           cursor: "pointer"
                         }}
                       >

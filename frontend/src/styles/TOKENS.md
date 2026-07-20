@@ -141,3 +141,25 @@ Classic Mode toggle row.
 ## Per-page literal → token mappings
 
 *(Added one page at a time during the v2 rollout.)*
+
+### Projects.js (Phase 3 pilot)
+
+Projects renders under a v2 scope only (no Classic Mode counterpart), so these
+are intentional v2 changes, not byte-identical swaps.
+
+| v1 literal | → token | Role |
+|---|---|---|
+| `#007bff` (active tab, section border) | `var(--primary-blue)` / `var(--primary-blue-light)` | primary action |
+| `#28a745` (send button) | `var(--status-positive)` | money / success |
+| `#f8f9fa`, `#f0f0f0` (idle tab, image bg) | `var(--surface-muted)` | inset surface |
+| `#f9f9f9` (submission card) | `var(--surface-card)` | card surface |
+| `#ddd` (borders) | `var(--surface-card-border)` | hairline |
+| `"red"` (warnings) | `var(--status-negative)` | danger |
+| `"black"` (idle tab text) | `var(--text-body)` | body text |
+| `#999` (placeholder text) | `var(--text-muted)` | muted text |
+| `"white"` (button text) | `var(--neutral-white)` | on-color text |
+
+Layout properties (padding/margin/width) left as literals — mobile-fix.css
+matches on those inline-style strings. Bare `<button>`/`<input>`/`<textarea>`
+gained `artistic-btn` / `artistic-input` (RETIRE #5: unstyled defaults join the
+theme).

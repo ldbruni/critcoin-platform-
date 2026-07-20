@@ -1,39 +1,30 @@
-/* CritCoin — theme-v2 token values
+/* CritCoin — theme-v2 token values + v2-only rule overrides
  *
- * STATUS: Phase 2 stub. Every value is currently identical to theme-v1, which
- * makes the Classic Mode toggle visually inert on purpose: it proves the
- * plumbing (scoping, body class, URL param, fidelity) without any design
- * change confusing the comparison. Real v2 values arrive in Phase 3 alongside
- * DESIGN-V2.md.
+ * The calmer design. See DESIGN-V2.md for the rationale behind every value.
  *
- * Two rules for when this file grows up:
+ * Two parts:
+ *   1. Tokens on `.theme-v2, body.theme-page-v2`. These feed the shared rule
+ *      layer (theme-rules.css) and any inline style that references a token.
+ *   2. v2-only rule overrides, written with plain `.theme-v2` selectors (real
+ *      specificity). v2 has no fidelity obligation, so it may — and must —
+ *      beat both the zero-specificity shared layer and bootstrap. This is how
+ *      v2 turns off the animation zoo, drops blackletter below the h1, and
+ *      makes the parchment ground intentional instead of a cascade accident.
  *
- * 1. Every token theme-v1 defines must also be defined here. Pages that have
- *    not yet been converted still reference legacy names (--dark-border,
- *    --gradient-primary, …) directly from their inline styles; if v2 omits one,
- *    those pages break the moment their route flips to v2.
- *
- * 2. Never define the ghost variables (--accent-gold, --neon-cyan,
- *    --complement-green, --primary-red, --accent-light, --accent-bright, …).
- *    They are undefined in v1 by accident, and their absence is part of what
- *    Classic Mode reproduces. In v2 the fix is to replace each *reference*
- *    during that page's conversion, not to define the name here. See TOKENS.md.
- *
- * Unlike theme-v1.css, v2 rule overrides may use plain `.theme-v2` selectors
- * (real specificity) so they can beat bootstrap where v1 deliberately loses.
+ * Never define the ghost variables (--accent-gold, --neon-cyan,
+ * --complement-green, --primary-red, --accent-light, --accent-bright, …). They
+ * are undefined in v1 by accident and Classic Mode reproduces that. In v2 the
+ * fix is to replace each *reference* during a page's conversion. See TOKENS.md.
  */
 
-/* Also declared on <body> for page-level scopes — see the note in theme-v1.css:
- * body::before / body::after cannot read tokens defined on a wrapper below. */
 .theme-v2,
 body.theme-page-v2 {
-  /* -- palette: blue ------------------------------------------------------ */
+  /* == palette: hues unchanged from v1 (KEEP #4), saturation disciplined ==== */
   --primary-blue: #1e40af;
-  --primary-blue-light: #3b82f6;
+  --primary-blue-light: #2563eb;
   --primary-blue-lighter: #60a5fa;
   --primary-blue-lightest: #93c5fd;
 
-  /* -- palette: orange ---------------------------------------------------- */
   --accent-orange: #ea580c;
   --accent-orange-light: #f97316;
   --accent-orange-lighter: #fb923c;
@@ -41,15 +32,29 @@ body.theme-page-v2 {
 
   --neutral-white: #ffffff;
 
-  /* -- palette: gothic tones ---------------------------------------------- */
-  --dark-bg: #0f1729;
+  /* == v2 semantic surfaces / text / status (DESIGN-V2 §2.1) =============== */
+  --surface-page: #fbf7f0;
+  --surface-page-wash: linear-gradient(135deg, #eff4fb 0%, #fbf7f0 45%, #fdf1e7 100%);
+  --surface-card: #ffffff;
+  --surface-card-border: #e8ddca;
+  --surface-muted: #f5eee1;
+  --text-body: #2b2620;
+  --text-muted: #7a7264;
+  --status-positive: #2f8f4e;
+  --status-negative: #c0392b;
+  --status-warning: #e0921f;
+  --status-info: var(--primary-blue);
+
+  /* == legacy tones — kept defined for the shared rule layer and for not-yet-
+   *    converted pages that still reference these names inline. ============= */
+  --dark-bg: #0f1729;               /* nav ground — KEEP #3 stays dark */
   --dark-surface: #1a2332;
   --dark-elevated: #243242;
   --dark-border: #2563eb;
   --parchment: #fef7ed;
   --ink: #1e293b;
 
-  /* -- gradients ---------------------------------------------------------- */
+  /* == gradients: identity gradients unchanged (KEEP) ====================== */
   --gradient-primary: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light), var(--primary-blue-lighter));
   --gradient-secondary: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-light), var(--accent-orange-lighter));
   --gradient-accent: linear-gradient(135deg, var(--primary-blue-light), var(--accent-orange-light));
@@ -64,71 +69,212 @@ body.theme-page-v2 {
   --shimmer-2: rgba(249, 115, 22, 0.2);
   --shimmer-3: rgba(147, 197, 253, 0.25);
 
-  /* -- typography --------------------------------------------------------- */
-  --font-display: 'Uncial Antiqua', 'Almendra', 'Cinzel', serif;
-  --font-heading: 'Cinzel', serif;
+  /* == typography: blackletter is h1-only now (TAME #1) ==================== */
+  --font-display: 'Uncial Antiqua', 'Almendra', 'Cinzel', serif;   /* h1 only */
+  --font-heading: 'Cinzel', serif;                                 /* h2–h4, nav, labels, buttons */
   --font-body: 'Crimson Text', serif;
-  --font-mono: 'Fira Code', monospace;
+  --font-mono: 'Space Mono', ui-monospace, 'Cascadia Code', monospace;
 
-  --h1-size: 3.2rem;
-  --h2-size: 2.4rem;
-  --h3-size: 1.8rem;
-  --heading-letter-spacing: 2px;
-  --h1-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(59, 130, 246, 0.3);
-  --h2-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  --h3-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --h1-size: 2.75rem;
+  --h2-size: 1.75rem;
+  --h3-size: 1.25rem;
+  --heading-letter-spacing: 1px;
+  --h1-shadow: 0 1px 2px rgba(43, 38, 32, 0.18);
+  --h2-shadow: none;
+  --h3-shadow: none;
 
-  /* -- text helper colours ------------------------------------------------ */
-  --text-gothic: var(--primary-blue-lighter);
-  --text-ember: var(--accent-orange-light);
-  --text-silver: var(--primary-blue-lightest);
+  /* == text helpers: recolored to read on parchment ======================= */
+  --text-gothic: var(--primary-blue);
+  --text-ember: var(--accent-orange);
+  --text-silver: var(--text-muted);
   --text-copper: var(--accent-orange);
   --text-sage: var(--primary-blue-light);
   --text-royal: var(--primary-blue);
 
-  /* -- body treatment ----------------------------------------------------- */
-  --body-bg: var(--dark-bg);
-  --body-color: #ffffff;
-  --body-line-height: 1.7;
+  /* == body: the parchment ground, on purpose (KEEP #4) =================== */
+  --body-bg: var(--surface-page-wash);
+  --body-color: var(--text-body);
+  --body-line-height: 1.6;
 
-  /* -- atmosphere --------------------------------------------------------- */
+  /* == atmosphere: one slow, dim wash (TAME #3) =========================== */
   --atmos-blobs:
-    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(249, 115, 22, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 80%, rgba(147, 197, 253, 0.10) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 60%, rgba(234, 88, 12, 0.08) 0%, transparent 50%);
-  --atmos-grid:
-    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(249, 115, 22, 0.04) 1px, transparent 1px);
+    radial-gradient(ellipse at 22% 40%, rgba(37, 99, 235, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 30%, rgba(234, 88, 12, 0.05) 0%, transparent 55%);
+  --atmos-grid: none;                 /* grid retired (RETIRE #1) */
   --atmos-grid-size: 50px 50px;
-  --atmos-particles:
-    radial-gradient(4px 4px at 20% 30%, var(--accent-orange-light), transparent),
-    radial-gradient(3px 3px at 40% 70%, var(--primary-blue-light), transparent),
-    radial-gradient(5px 5px at 90% 40%, var(--accent-orange-lighter), transparent),
-    radial-gradient(2px 2px at 50% 50%, var(--primary-blue-lighter), transparent),
-    radial-gradient(3px 3px at 10% 80%, var(--primary-blue-lightest), transparent),
-    radial-gradient(2px 2px at 80% 10%, var(--accent-orange), transparent);
+  --atmos-particles: none;            /* particles retired (RETIRE #1) */
 
-  /* -- navigation --------------------------------------------------------- */
+  /* == navigation: KEEP #3, tokens identical to v1 ======================== */
   --nav-bg: linear-gradient(135deg, rgba(15, 23, 41, 0.95), rgba(26, 35, 50, 0.9), rgba(36, 50, 66, 0.85));
   --nav-shadow: 0 4px 20px rgba(15, 23, 41, 0.4), inset 0 1px 0 rgba(59, 130, 246, 0.1);
   --nav-link-color: #ffffff;
   --nav-link-bg: rgba(26, 35, 50, 0.6);
+  --admin-link-bg: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-light));  /* was magenta (TAME #7) */
 
-  /* -- surfaces ----------------------------------------------------------- */
-  --card-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.8), rgba(15, 23, 41, 0.9), rgba(36, 50, 66, 0.7));
-  --card-border-color: var(--dark-border);
-  --card-hover-shadow: 0 8px 32px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* == surfaces: one light card everywhere (TAME #6) ====================== */
+  --card-bg: var(--surface-card);
+  --card-border-color: var(--surface-card-border);
+  --card-shadow: 0 1px 3px rgba(43, 38, 32, 0.08), 0 4px 12px rgba(43, 38, 32, 0.05);
+  --card-hover-shadow: 0 4px 16px rgba(43, 38, 32, 0.12);
+  --card-hover-lift: translateY(-2px);
+  --radius-card: 10px;
 
-  --input-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.8), rgba(15, 23, 41, 0.9));
-  --input-focus-bg: linear-gradient(135deg, rgba(26, 35, 50, 0.9), rgba(36, 50, 66, 0.8));
+  --input-bg: var(--surface-card);
+  --input-focus-bg: var(--surface-card);
+  --input-border: var(--surface-card-border);
+  --input-focus-border: var(--primary-blue-light);
 
-  --form-bg: linear-gradient(135deg, rgba(15, 23, 41, 0.9), rgba(26, 35, 50, 0.85), rgba(36, 50, 66, 0.9));
-  --form-shadow: 0 8px 32px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(249, 115, 22, 0.1);
-  --form-border-shimmer: linear-gradient(45deg,
-    var(--accent-orange-light), var(--primary-blue-light), var(--primary-blue-lighter), var(--accent-orange-lighter),
-    var(--primary-blue-lightest), var(--accent-orange-light), var(--primary-blue-light), var(--primary-blue-lighter)
-  );
+  --form-bg: var(--surface-card);
+  --form-shadow: var(--card-shadow);
+  --form-border-shimmer: none;
 
-  --code-bg: rgba(15, 23, 41, 0.7);
+  --code-bg: var(--surface-muted);
+  --code-color: var(--text-body);
+  --code-border: var(--surface-card-border);
+}
+
+/* ============================================================================
+ * v2 rule overrides — real specificity, so they beat the shared :where() layer
+ * and bootstrap where v1 deliberately loses.
+ * ========================================================================== */
+
+/* Parchment ground made intentional (beats bootstrap's white body). */
+body.theme-page-v2 {
+  background: var(--surface-page-wash);
+  background-attachment: fixed;
+  color: var(--text-body);
+  font-family: var(--font-body);
+}
+
+/* One slow, dim blob wash; grid + particles + pulsing hairline removed. */
+body.theme-page-v2::before {
+  animation-duration: 90s;
+  opacity: 0.7;
+}
+body.theme-page-v2::after {
+  display: none;
+}
+.theme-v2 .artistic-container::before {
+  display: none;
+}
+.theme-v2 .artistic-container::after {
+  display: none;
+}
+
+/* Headings: h1 keeps the blackletter gradient (KEEP #1) but stops drifting;
+   h2–h4 drop to calm Cinzel in ink (TAME #1/#2). */
+.theme-v2 h1 {
+  animation: none;
+  letter-spacing: var(--heading-letter-spacing);
+}
+.theme-v2 h2,
+.theme-v2 h3,
+.theme-v2 h4,
+.theme-v2 h5,
+.theme-v2 h6 {
+  font-family: var(--font-heading);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text-body);
+  animation: none;
+  text-shadow: none;
+  letter-spacing: 0.5px;
+}
+.theme-v2 h2 { font-size: var(--h2-size); font-weight: 600; }
+.theme-v2 h3 { font-size: var(--h3-size); font-weight: 600; }
+.theme-v2 h4 { font-size: var(--h4-size, 1.05rem); font-weight: 600; }
+
+/* Title shimmer sweep retired. */
+.theme-v2 .gothic-title::before {
+  display: none;
+}
+
+/* Cards: light surface, one soft shadow, one hover lift; gradients/animation
+   and the shimmer ::before retired. */
+.theme-v2 .artistic-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: none;
+  animation: none;
+  background-size: auto;
+}
+.theme-v2 .artistic-card::before {
+  display: none;
+}
+.theme-v2 .artistic-card:hover {
+  border-color: var(--surface-card-border);
+  box-shadow: var(--card-hover-shadow);
+  transform: var(--card-hover-lift);
+}
+
+/* Buttons: solid, calm; gradient drift + ripple + hover-glow retired. */
+.theme-v2 .artistic-btn {
+  font-family: var(--font-heading);
+  background: var(--gradient-primary);
+  background-size: auto;
+  border: 1px solid var(--primary-blue);
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  animation: none;
+}
+.theme-v2 .artistic-btn:hover {
+  background: var(--gradient-secondary);
+  box-shadow: var(--card-hover-shadow);
+  transform: var(--card-hover-lift);
+  animation: none;
+}
+.theme-v2 .artistic-btn::before,
+.theme-v2 .artistic-btn::after {
+  display: none;
+}
+
+/* Inputs: light field, calm focus; the pulsing glow retired. */
+.theme-v2 .artistic-input {
+  font-family: var(--font-mono);
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  color: var(--text-body);
+}
+.theme-v2 .artistic-input::placeholder {
+  color: var(--text-muted);
+}
+.theme-v2 .artistic-input:focus {
+  border-color: var(--primary-blue-light);
+  background: var(--surface-card);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  animation: none;
+}
+
+/* Forms: light surface; animated shimmer border retired. */
+.theme-v2 .artistic-form {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-card-border);
+  box-shadow: var(--card-shadow);
+  background-size: auto;
+  animation: none;
+}
+.theme-v2 .artistic-form::before {
+  display: none;
+}
+
+/* Code: warm inset chip; the matrix scanline retired. */
+.theme-v2 code,
+.theme-v2 .matrix-text {
+  font-family: var(--font-mono);
+  background: var(--surface-muted);
+  color: var(--text-body);
+  border: 1px solid var(--surface-card-border);
+}
+.theme-v2 code::before {
+  display: none;
+}
+
+/* Nav: KEEP #3 look, but the shimmer/glow animations quieted (RETIRE #1). */
+.theme-v2 .artistic-nav {
+  animation: none;
+}
+.theme-v2 .nav-link.active {
+  animation: none;
 }

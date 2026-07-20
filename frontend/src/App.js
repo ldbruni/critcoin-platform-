@@ -47,7 +47,7 @@ function Navigation({ isAdmin }) {
         <Link to="/archive" className={`nav-link ${isActive('/archive') ? 'active' : ''}`}>Archive</Link>
         {isAdmin && (
           <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`} style={{
-            background: 'linear-gradient(135deg, #ff6600, #ff0080)',
+            background: 'var(--admin-link-bg, linear-gradient(135deg, #ff6600, #ff0080))',
             color: 'white',
             fontWeight: 'bold'
           }}>
@@ -114,16 +114,24 @@ export default function App() {
     </ThemeScope>
   );
 
+  // Pages flip to v2 as they are converted (one commit per page). The rest stay
+  // v1 until their turn. The nav chrome is v2 for everyone once it is converted.
+  const pageV2 = (element) => (
+    <ThemeScope theme="v2" pageLevel>
+      {element}
+    </ThemeScope>
+  );
+
   return (
     <Router>
-      <ThemeScope theme="v1">
+      <ThemeScope theme="v2">
         <Navigation isAdmin={isAdmin} />
       </ThemeScope>
       <Routes>
         <Route path="/" element={page(<Dapp />)} />
         <Route path="/bounties" element={page(<Bounties />)} />
         <Route path="/profiles" element={page(<Profiles />)} />
-        <Route path="/projects" element={page(<Projects />)} />
+        <Route path="/projects" element={pageV2(<Projects />)} />
         <Route path="/leaderboard" element={page(<Leaderboard />)} />
         <Route path="/explorer" element={page(<Explorer />)} />
         <Route path="/admin" element={page(<Admin />)} />
