@@ -254,13 +254,16 @@ export default function Projects() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text">Projects</h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Projects</div>
+        <h1 className="gothic-title gothic-text">Projects</h1>
+      </div>
 
       {!wallet ? (
         <button className="artistic-btn" onClick={connectWallet}>Connect Wallet</button>
       ) : (
         <>
-          <p><strong>{profile?.name || wallet}</strong> — {balance} CritCoin</p>
+          <p><strong>{profile?.name || wallet}</strong> — <span className="ledger-num">{balance}</span> CritCoin</p>
 
           {/* Project Navigation */}
           <div style={{ marginBottom: "2rem" }}>
@@ -273,10 +276,14 @@ export default function Projects() {
                   margin: "0 0.5rem",
                   padding: "0.5rem 1rem",
                   fontFamily: "var(--font-heading)",
-                  backgroundColor: activeProject === num ? "var(--primary-blue)" : "var(--surface-muted)",
-                  color: activeProject === num ? "var(--neutral-white)" : "var(--text-body)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  fontSize: "0.8rem",
+                  backgroundColor: activeProject === num ? "var(--primary-blue)" : "transparent",
+                  color: activeProject === num ? "var(--neutral-white)" : "var(--text-muted)",
                   border: activeProject === num ? "1px solid var(--primary-blue)" : "1px solid var(--surface-card-border)",
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                   cursor: "pointer"
                 }}
               >
@@ -320,7 +327,7 @@ export default function Projects() {
                 />
                 <h4>{userSubmission.title}</h4>
                 <p>{userSubmission.description}</p>
-                <p><strong>Total Received:</strong> {userSubmission.totalReceived} CritCoin</p>
+                <p><strong>Total Received:</strong> <span className="ledger-num">{userSubmission.totalReceived}</span> CritCoin</p>
                 <button className="artistic-btn" onClick={() => setEditing(true)}>Edit Submission</button>
               </div>
             ) : (
@@ -465,30 +472,24 @@ export default function Projects() {
                   
                   <h4>{project.title}</h4>
                   <p>{project.description}</p>
-                  <p><strong>Received:</strong> {project.totalReceived} CritCoin</p>
+                  <p><strong>Received:</strong> <span className="ledger-num">{project.totalReceived}</span> CritCoin</p>
                   
                   {wallet && project.authorWallet.toLowerCase() !== wallet.toLowerCase() && (
                     <div style={{ marginTop: "1rem" }}>
                       <input
+                        className="artistic-input"
                         type="number"
                         placeholder="Amount"
                         value={sendAmounts[project._id] || ""}
                         onChange={(e) => setSendAmounts(prev => ({ ...prev, [project._id]: e.target.value }))}
                         min="1"
                         max={balance}
-                        style={{ width: "80px", marginRight: "0.5rem" }}
+                        style={{ width: "96px", marginRight: "0.5rem", padding: "0.5rem", display: "inline-block" }}
                       />
                       <button
+                        className="artistic-btn btn-coin"
                         onClick={() => handleSendCoin(project._id, project.authorWallet)}
-                        style={{
-                          backgroundColor: "var(--status-positive)",
-                          color: "var(--neutral-white)",
-                          border: "none",
-                          padding: "0.5rem 1rem",
-                          borderRadius: "6px",
-                          fontFamily: "var(--font-heading)",
-                          cursor: "pointer"
-                        }}
+                        style={{ padding: "0.5rem 1rem" }}
                       >
                         Send CritCoin
                       </button>

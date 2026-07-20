@@ -9,7 +9,11 @@
  * element-selector ties it wins today. See styles/TOKENS.md, "Cascade".
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Almendra:ital,wght@0,400;0,700;1,400;1,700&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+/* v1 faces (Uncial/Almendra/Cinzel/Crimson) + v2 faces (Grenze Gotisch =
+   sharp modern blackletter masthead, Archivo = grotesque UI/body, Space Mono =
+   ledger numerals). v1 references none of the v2 faces, so loading them here is
+   inert for theme-v1. */
+@import url('https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Almendra:ital,wght@0,400;0,700;1,400;1,700&family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Grenze+Gotisch:wght@400;500;600;700;800&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 * {
   box-sizing: border-box;
