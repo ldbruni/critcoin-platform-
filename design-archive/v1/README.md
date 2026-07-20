@@ -10,5 +10,17 @@
 
 ## What the v1 design was doing
 
-*(To be filled in after the Phase 1 design-DNA analysis — see
-[DESIGN-DNA.md](DESIGN-DNA.md).)*
+v1 is three design eras rendered at once: a medieval-manuscript chrome
+(blackletter Uncial Antiqua headings with gradient-clipped text, a dark Cinzel
+nav, and a zoo of ~24 ambient animations — drifting blobs, a marching grid,
+floating particles, shimmer sweeps), a Bootstrap-era light content layer
+(white cards, `#007bff`/`#28a745` state colors) living in ~620 inline styles,
+and a broken neon-cyberpunk remnant (Orbitron, undefined `--neon-*` variables,
+"Initialize Identity Matrix" copy). Its most defining trait is accidental: the
+intended dark gothic body is overridden by Bootstrap's white body via CSS
+import order, so the app actually renders as a light parchment wash under a
+dark nav, with dark card "islands" floating in it — and roughly eleven CSS
+variables that were never defined silently erase borders and recolor text.
+The full mechanism inventory, frequency map, and structural-vs-skin analysis
+are in [DESIGN-DNA.md](DESIGN-DNA.md); as-rendered captures of every page are
+in [screenshots/](screenshots/).
