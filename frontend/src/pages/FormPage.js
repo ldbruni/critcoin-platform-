@@ -312,27 +312,30 @@ export default function ForumPage() {
 
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h1 className="gothic-title gothic-text">CritCoin Forum</h1>
+      <div className="v2-masthead">
+        <div className="v2-kicker">CritCoin · Forum</div>
+        <h1 className="gothic-title gothic-text">CritCoin Forum</h1>
+      </div>
 
       {!wallet ? (
         <div className="artistic-card" style={{ textAlign: "center", padding: "2rem" }}>
           <h3 className="royal-text">Wallet Connection Required</h3>
-          <p style={{ marginBottom: "1.5rem", fontFamily: 'Crimson Text, serif', fontStyle: 'italic' }}>Connect your wallet to access the forum</p>
+          <p style={{ marginBottom: "1.5rem", fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>Connect your wallet to access the forum</p>
           <button onClick={connectWallet} className="artistic-btn">Connect Wallet</button>
         </div>
       ) : (
         <>
-          <div className="artistic-card" style={{ marginBottom: "1.5rem", background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(37, 99, 235, 0.03))', border: '2px solid var(--complement-green)' }}>
-            <p style={{ fontFamily: 'Crimson Text, serif', fontSize: '1.1rem' }}>
-              <span className="sage-text" style={{ fontWeight: '600' }}>User:</span> <code style={{ color: 'var(--accent-gold)', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>{profile?.name || wallet}</code> 
+          <div className="artistic-card" style={{ marginBottom: "1.5rem", background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(37, 99, 235, 0.03))', border: '2px solid var(--status-positive)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '1.1rem' }}>
+              <span className="sage-text" style={{ fontWeight: '600' }}>User:</span> <code style={{ color: 'var(--accent-orange)', background: 'rgba(0,0,0,0.3)', padding: '0.2rem 0.5rem', borderRadius: '3px' }}>{profile?.name || wallet}</code> 
               <span style={{ margin: '0 1rem', color: 'rgba(255,255,255,0.5)' }}>•</span>
-              <span className="royal-text" style={{ fontWeight: '600' }}>Balance:</span> <span style={{ color: 'var(--accent-copper)', fontWeight: 'bold' }}>{balance}</span> <span className="silver-text">CritCoin</span>
+              <span className="royal-text" style={{ fontWeight: '600' }}>Balance:</span> <span style={{ color: 'var(--accent-orange)', fontWeight: 'bold' }}>{balance}</span> <span className="silver-text">CritCoin</span>
             </p>
           </div>
 
           {profile && Number(balance) >= 1 ? (
             <div className="artistic-form">
-              <h3 className="copper-text" style={{ marginBottom: '1rem', fontFamily: 'Cinzel, serif' }}>Share Your Thoughts</h3>
+              <h3 className="copper-text" style={{ marginBottom: '1rem', fontFamily: 'var(--font-heading)' }}>Share Your Thoughts</h3>
               <textarea
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
@@ -341,13 +344,13 @@ export default function ForumPage() {
                 maxLength="2000"
                 required
                 className="artistic-input"
-                style={{ fontFamily: 'Crimson Text, serif', minHeight: '120px', resize: 'vertical' }}
+                style={{ fontFamily: 'var(--font-body)', minHeight: '120px', resize: 'vertical' }}
               />
               <div style={{ 
                 fontSize: "0.8em", 
-                color: newPost.length > 1800 ? "var(--accent-copper)" : "rgba(255,255,255,0.6)", 
+                color: newPost.length > 1800 ? "var(--accent-orange)" : "rgba(255,255,255,0.6)", 
                 textAlign: "right",
-                fontFamily: 'Crimson Text, serif',
+                fontFamily: 'var(--font-body)',
                 marginTop: '0.5rem'
               }}>
                 {newPost.length}/2000 characters
@@ -358,13 +361,13 @@ export default function ForumPage() {
             </div>
           ) : (
             <div className="artistic-card" style={{ 
-              border: '2px solid var(--neon-orange)', 
+              border: '2px solid var(--accent-orange)', 
               background: 'rgba(255, 102, 0, 0.1)',
               textAlign: 'center'
             }}>
-              <p style={{ color: "var(--neon-orange)", fontFamily: 'Orbitron, monospace', fontWeight: 'bold' }}>
+              <p style={{ color: "var(--accent-orange)", fontFamily: 'var(--font-mono)', fontWeight: 'bold' }}>
                 { !profile
-                  ? <>⚠️ PROFILE REQUIRED — <Link to="/profiles" style={{ color: 'var(--neon-pink)' }}>Initialize Identity Matrix</Link> to broadcast</>
+                  ? <>⚠️ PROFILE REQUIRED — <Link to="/profiles" style={{ color: 'var(--accent-orange)' }}>Initialize Identity Matrix</Link> to broadcast</>
                   : "⚠️ INSUFFICIENT CREDITS — Need ≥1 CritCoin to transmit" }
               </p>
             </div>
@@ -374,7 +377,7 @@ export default function ForumPage() {
 
       <div style={{ height: '2px', background: 'var(--gradient-primary)', margin: '2rem 0', borderRadius: '1px' }}></div>
       <div className="artistic-card" style={{ background: 'rgba(26, 26, 26, 0.6)', padding: '1rem' }}>
-        <h2 className="sage-text" style={{ marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'Cinzel, serif' }}>Forum Posts</h2>
+        <h2 className="sage-text" style={{ marginBottom: '1.5rem', textAlign: 'center', fontFamily: 'var(--font-heading)' }}>Forum Posts</h2>
       </div>
       
       {posts.map((p) => (
@@ -429,8 +432,8 @@ export default function ForumPage() {
             }}>P</div>
             <div style={{ flex: 1 }}>
               <div style={{ 
-                fontFamily: 'Cinzel, serif', 
-                color: 'var(--accent-gold)',
+                fontFamily: 'var(--font-heading)', 
+                color: 'var(--accent-orange)',
                 fontWeight: '600',
                 marginBottom: '0.25rem'
               }}>
@@ -439,7 +442,7 @@ export default function ForumPage() {
               <div style={{ 
                 fontSize: "0.8rem",
                 color: "rgba(255,255,255,0.5)",
-                fontFamily: 'Crimson Text, serif',
+                fontFamily: 'var(--font-body)',
                 fontStyle: 'italic'
               }}>
                 {new Date(p.createdAt).toLocaleString()}
@@ -452,7 +455,7 @@ export default function ForumPage() {
             borderRadius: '8px',
             padding: '1rem',
             marginBottom: '1rem',
-            fontFamily: 'Space Mono, monospace',
+            fontFamily: 'var(--font-mono)',
             lineHeight: '1.6'
           }}>
             {p.content}
@@ -474,14 +477,14 @@ export default function ForumPage() {
                 gap: "0.5rem",
                 padding: '0.5rem 0.75rem',
                 background: 'rgba(22, 163, 74, 0.1)',
-                border: '1px solid var(--complement-green)',
+                border: '1px solid var(--status-positive)',
                 borderRadius: '20px'
               }}>
                 ↑
                 <span style={{
-                  color: "var(--complement-green)",
+                  color: "var(--status-positive)",
                   fontWeight: "bold",
-                  fontFamily: 'Cinzel, serif',
+                  fontFamily: 'var(--font-heading)',
                   marginLeft: '0.5rem'
                 }}>{p.upvotes || 0}</span>
               </div>
@@ -491,14 +494,14 @@ export default function ForumPage() {
                 gap: "0.5rem",
                 padding: '0.5rem 0.75rem',
                 background: 'rgba(220, 38, 38, 0.1)',
-                border: '1px solid var(--primary-red)',
+                border: '1px solid var(--status-negative)',
                 borderRadius: '20px'
               }}>
                 ↓
                 <span style={{
-                  color: "var(--primary-red)",
+                  color: "var(--status-negative)",
                   fontWeight: "bold",
-                  fontFamily: 'Cinzel, serif',
+                  fontFamily: 'var(--font-heading)',
                   marginLeft: '0.5rem'
                 }}>{p.downvotes || 0}</span>
               </div>
@@ -515,12 +518,12 @@ export default function ForumPage() {
                     background: p.votes && p.votes[wallet?.toLowerCase()] === "up" 
                       ? 'var(--gradient-secondary)' 
                       : 'rgba(22, 163, 74, 0.1)',
-                    border: "2px solid var(--complement-green)",
+                    border: "2px solid var(--status-positive)",
                     color: "white",
                     padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontFamily: 'Cinzel, serif',
+                    fontFamily: 'var(--font-heading)',
                     opacity: p.votes && p.votes[wallet?.toLowerCase()] === "up" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "up" ? "You upvoted this" : "Upvote"}
@@ -535,12 +538,12 @@ export default function ForumPage() {
                     background: p.votes && p.votes[wallet?.toLowerCase()] === "down" 
                       ? 'var(--gradient-primary)' 
                       : 'rgba(220, 38, 38, 0.1)',
-                    border: "2px solid var(--primary-red)",
+                    border: "2px solid var(--status-negative)",
                     color: "white",
                     padding: "0.5rem 1rem",
                     cursor: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "default" : "pointer",
                     fontSize: "0.8rem",
-                    fontFamily: 'Cinzel, serif',
+                    fontFamily: 'var(--font-heading)',
                     opacity: p.votes && p.votes[wallet?.toLowerCase()] === "down" ? 0.7 : 1
                   }}
                   title={p.votes && p.votes[wallet?.toLowerCase()] === "down" ? "You downvoted this" : "Downvote"}
@@ -559,7 +562,7 @@ export default function ForumPage() {
                 borderRadius: '20px',
                 fontSize: "0.8rem",
                 color: "rgba(255,255,255,0.6)",
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'var(--font-mono)',
                 fontStyle: "italic"
               }}>
                 profile required to vote
@@ -578,8 +581,8 @@ export default function ForumPage() {
               className="artistic-btn"
               style={{
                 background: 'rgba(37, 99, 235, 0.1)',
-                border: '1px solid var(--accent-blue)',
-                color: 'var(--accent-blue)',
+                border: '1px solid var(--primary-blue)',
+                color: 'var(--primary-blue)',
                 padding: '0.5rem 1rem',
                 fontSize: '0.9rem',
                 width: '100%'
@@ -612,7 +615,7 @@ export default function ForumPage() {
                         border: '1px solid var(--dark-elevated)',
                         borderRadius: '4px',
                         color: 'white',
-                        fontFamily: 'Space Mono, monospace',
+                        fontFamily: 'var(--font-mono)',
                         fontSize: '0.9rem',
                         marginBottom: '0.5rem',
                         resize: 'vertical'
@@ -673,8 +676,8 @@ export default function ForumPage() {
                       )}
                       <div>
                         <div style={{
-                          fontFamily: 'Cinzel, serif',
-                          color: 'var(--accent-gold)',
+                          fontFamily: 'var(--font-heading)',
+                          color: 'var(--accent-orange)',
                           fontSize: '0.9rem',
                           fontWeight: '600'
                         }}>
@@ -683,7 +686,7 @@ export default function ForumPage() {
                         <div style={{
                           fontSize: '0.7rem',
                           color: 'rgba(255,255,255,0.5)',
-                          fontFamily: 'Crimson Text, serif'
+                          fontFamily: 'var(--font-body)'
                         }}>
                           {new Date(comment.createdAt).toLocaleString()}
                         </div>
@@ -692,7 +695,7 @@ export default function ForumPage() {
 
                     {/* Comment Text */}
                     <div style={{
-                      fontFamily: 'Space Mono, monospace',
+                      fontFamily: 'var(--font-mono)',
                       fontSize: '0.85rem',
                       lineHeight: '1.6',
                       marginBottom: '0.5rem',
@@ -723,13 +726,13 @@ export default function ForumPage() {
                             background: comment.upvotes?.includes(wallet?.toLowerCase())
                               ? 'rgba(22, 163, 74, 0.3)'
                               : 'rgba(22, 163, 74, 0.1)',
-                            border: '1px solid var(--complement-green)',
-                            color: 'var(--complement-green)',
+                            border: '1px solid var(--status-positive)',
+                            color: 'var(--status-positive)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             cursor: wallet ? 'pointer' : 'not-allowed',
-                            fontFamily: 'Cinzel, serif'
+                            fontFamily: 'var(--font-heading)'
                           }}
                         >
                           ↑ {comment.upvotes?.length || 0}
@@ -749,13 +752,13 @@ export default function ForumPage() {
                             background: comment.downvotes?.includes(wallet?.toLowerCase())
                               ? 'rgba(220, 38, 38, 0.3)'
                               : 'rgba(220, 38, 38, 0.1)',
-                            border: '1px solid var(--primary-red)',
-                            color: 'var(--primary-red)',
+                            border: '1px solid var(--status-negative)',
+                            color: 'var(--status-negative)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
                             cursor: wallet ? 'pointer' : 'not-allowed',
-                            fontFamily: 'Cinzel, serif'
+                            fontFamily: 'var(--font-heading)'
                           }}
                         >
                           ↓ {comment.downvotes?.length || 0}
@@ -763,7 +766,7 @@ export default function ForumPage() {
 
                         <span style={{
                           fontSize: '0.8rem',
-                          color: comment.netVotes >= 0 ? 'var(--complement-green)' : 'var(--primary-red)',
+                          color: comment.netVotes >= 0 ? 'var(--status-positive)' : 'var(--status-negative)',
                           fontWeight: 'bold',
                           marginLeft: '0.5rem'
                         }}>
@@ -787,8 +790,8 @@ export default function ForumPage() {
                           }}
                           style={{
                             background: 'rgba(37, 99, 235, 0.1)',
-                            border: '1px solid var(--accent-blue)',
-                            color: 'var(--accent-blue)',
+                            border: '1px solid var(--primary-blue)',
+                            color: 'var(--primary-blue)',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '12px',
                             fontSize: '0.75rem',
@@ -816,7 +819,7 @@ export default function ForumPage() {
                             border: '1px solid var(--dark-elevated)',
                             borderRadius: '4px',
                             color: 'white',
-                            fontFamily: 'Space Mono, monospace',
+                            fontFamily: 'var(--font-mono)',
                             fontSize: '0.8rem',
                             marginBottom: '0.5rem',
                             resize: 'vertical'
@@ -845,7 +848,7 @@ export default function ForumPage() {
                         marginTop: '0.5rem',
                         background: 'rgba(0, 0, 0, 0.3)',
                         border: '1px solid var(--dark-elevated)',
-                        borderLeft: '3px solid var(--accent-blue)',
+                        borderLeft: '3px solid var(--primary-blue)',
                         borderRadius: '4px',
                         padding: '0.75rem'
                       }}>
@@ -878,8 +881,8 @@ export default function ForumPage() {
                           )}
                           <div>
                             <div style={{
-                              fontFamily: 'Cinzel, serif',
-                              color: 'var(--accent-gold)',
+                              fontFamily: 'var(--font-heading)',
+                              color: 'var(--accent-orange)',
                               fontSize: '0.85rem',
                               fontWeight: '600'
                             }}>
@@ -888,7 +891,7 @@ export default function ForumPage() {
                             <div style={{
                               fontSize: '0.65rem',
                               color: 'rgba(255,255,255,0.5)',
-                              fontFamily: 'Crimson Text, serif'
+                              fontFamily: 'var(--font-body)'
                             }}>
                               {new Date(reply.createdAt).toLocaleString()}
                             </div>
@@ -896,7 +899,7 @@ export default function ForumPage() {
                         </div>
 
                         <div style={{
-                          fontFamily: 'Space Mono, monospace',
+                          fontFamily: 'var(--font-mono)',
                           fontSize: '0.8rem',
                           lineHeight: '1.6',
                           marginBottom: '0.5rem',
@@ -920,8 +923,8 @@ export default function ForumPage() {
                               background: reply.upvotes?.includes(wallet?.toLowerCase())
                                 ? 'rgba(22, 163, 74, 0.3)'
                                 : 'rgba(22, 163, 74, 0.1)',
-                              border: '1px solid var(--complement-green)',
-                              color: 'var(--complement-green)',
+                              border: '1px solid var(--status-positive)',
+                              color: 'var(--status-positive)',
                               padding: '0.2rem 0.4rem',
                               borderRadius: '10px',
                               fontSize: '0.7rem',
@@ -945,8 +948,8 @@ export default function ForumPage() {
                               background: reply.downvotes?.includes(wallet?.toLowerCase())
                                 ? 'rgba(220, 38, 38, 0.3)'
                                 : 'rgba(220, 38, 38, 0.1)',
-                              border: '1px solid var(--primary-red)',
-                              color: 'var(--primary-red)',
+                              border: '1px solid var(--status-negative)',
+                              color: 'var(--status-negative)',
                               padding: '0.2rem 0.4rem',
                               borderRadius: '10px',
                               fontSize: '0.7rem',
@@ -958,7 +961,7 @@ export default function ForumPage() {
 
                           <span style={{
                             fontSize: '0.75rem',
-                            color: reply.netVotes >= 0 ? 'var(--complement-green)' : 'var(--primary-red)',
+                            color: reply.netVotes >= 0 ? 'var(--status-positive)' : 'var(--status-negative)',
                             fontWeight: 'bold',
                             marginLeft: '0.25rem'
                           }}>
