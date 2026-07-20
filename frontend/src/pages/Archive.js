@@ -130,14 +130,14 @@ export default function Archive() {
 
   const getTypeColor = (type) => {
     const colors = {
-      'project_tip': '#28a745',
-      'transfer': '#007bff',
-      'forum_reward': '#ffc107',
-      'system': '#6c757d',
-      'mint': '#17a2b8',
-      'burn': '#dc3545'
+      'project_tip': 'var(--status-positive, #28a745)',
+      'transfer': 'var(--status-info, #007bff)',
+      'forum_reward': 'var(--status-warning, #ffc107)',
+      'system': 'var(--text-muted, #6c757d)',
+      'mint': 'var(--status-info, #17a2b8)',
+      'burn': 'var(--status-negative, #dc3545)'
     };
-    return colors[type] || '#6c757d';
+    return colors[type] || 'var(--text-muted, #6c757d)';
   };
 
   const getTypeIcon = (type) => {
@@ -385,8 +385,8 @@ export default function Archive() {
                   <div
                     key={i}
                     style={{
-                      backgroundColor: "white",
-                      border: "1px solid #ddd",
+                      backgroundColor: "var(--surface-card, white)",
+                      border: "1px solid var(--surface-card-border, #ddd)",
                       borderRadius: "8px",
                       padding: "1.5rem",
                       boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
@@ -402,8 +402,8 @@ export default function Archive() {
                             height: "80px",
                             objectFit: "cover",
                             borderRadius: "50%",
-                            border: "3px solid #007bff",
-                            backgroundColor: "#f8f9fa"
+                            border: "3px solid var(--status-info, #007bff)",
+                            backgroundColor: "var(--surface-muted, #f8f9fa)"
                           }}
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
@@ -412,24 +412,24 @@ export default function Archive() {
                           width: "80px",
                           height: "80px",
                           borderRadius: "50%",
-                          border: "3px solid #007bff",
-                          backgroundColor: "#e9ecef",
+                          border: "3px solid var(--status-info, #007bff)",
+                          backgroundColor: "var(--surface-card-border, #e9ecef)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           fontSize: "2rem",
-                          color: "#6c757d",
+                          color: "var(--text-muted, #6c757d)",
                           margin: "0 auto"
                         }}>
                           {profile.name?.charAt(0) || "P"}
                         </div>
                       )}
                     </div>
-                    <h4 style={{ textAlign: "center", marginBottom: "0.5rem", color: "#333" }}>
+                    <h4 style={{ textAlign: "center", marginBottom: "0.5rem", color: "var(--text-body, #333)" }}>
                       {profile.name || 'Unknown User'}
                     </h4>
                     {profile.starSign && (
-                      <p style={{ textAlign: "center", color: "#666", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
+                      <p style={{ textAlign: "center", color: "var(--text-muted, #666)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
                         Star sign: {profile.starSign}
                       </p>
                     )}
@@ -439,21 +439,21 @@ export default function Archive() {
                       textAlign: "center",
                       marginBottom: "0.5rem",
                       padding: "0.5rem",
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "var(--surface-muted, #f8f9fa)",
                       borderRadius: "4px",
-                      border: "1px solid #e9ecef"
+                      border: "1px solid var(--surface-card-border, #e9ecef)"
                     }}>
-                      <div style={{ fontSize: "0.75rem", color: "#666", marginBottom: "0.25rem", fontWeight: "600" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted, #666)", marginBottom: "0.25rem", fontWeight: "600" }}>
                         Wallet Address
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
                         <code style={{
                           fontSize: "0.7rem",
-                          backgroundColor: "#ffffff",
+                          backgroundColor: "var(--surface-card, #ffffff)",
                           padding: "0.25rem 0.5rem",
                           borderRadius: "3px",
-                          border: "1px solid #ddd",
-                          color: "#333",
+                          border: "1px solid var(--surface-card-border, #ddd)",
+                          color: "var(--text-body, #333)",
                           wordBreak: "break-all"
                         }}>
                           {profile.wallet?.slice(0, 10)}...{profile.wallet?.slice(-8)}
@@ -461,7 +461,7 @@ export default function Archive() {
                         <button
                           onClick={() => copyWalletAddress(profile.wallet)}
                           style={{
-                            backgroundColor: "#007bff",
+                            backgroundColor: "var(--status-info, #007bff)",
                             color: "white",
                             border: "none",
                             borderRadius: "3px",
@@ -478,10 +478,10 @@ export default function Archive() {
                     <div style={{
                       marginTop: "1rem",
                       padding: "0.5rem",
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "var(--surface-muted, #f8f9fa)",
                       borderRadius: "4px",
                       fontSize: "0.8rem",
-                      color: "#666",
+                      color: "var(--text-muted, #666)",
                       textAlign: "center"
                     }}>
                       Joined: {profile.createdAt ? formatDate(profile.createdAt) : 'Unknown'}
@@ -507,9 +507,9 @@ export default function Archive() {
                     style={{
                       margin: "0 0.5rem 0.5rem 0",
                       padding: "0.5rem 1rem",
-                      backgroundColor: activeProject === num ? "#007bff" : "#f8f9fa",
+                      backgroundColor: activeProject === num ? "var(--status-info, #007bff)" : "var(--surface-muted, #f8f9fa)",
                       color: activeProject === num ? "white" : "black",
-                      border: "1px solid #ddd",
+                      border: "1px solid var(--surface-card-border, #ddd)",
                       borderRadius: "4px",
                       cursor: "pointer"
                     }}
@@ -524,13 +524,13 @@ export default function Archive() {
                   .filter(p => p.projectNumber === activeProject)
                   .map((project, i) => (
                   <div key={i} style={{
-                    border: "1px solid #ddd",
+                    border: "1px solid var(--surface-card-border, #ddd)",
                     borderRadius: "8px",
                     padding: "1rem",
-                    backgroundColor: "#f9f9f9"
+                    backgroundColor: "var(--surface-muted, #f9f9f9)"
                   }}>
                     <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
-                      <strong style={{ color: "#333" }}>{project.authorName}</strong>
+                      <strong style={{ color: "var(--text-body, #333)" }}>{project.authorName}</strong>
                     </div>
 
                     {project.image && (
@@ -544,15 +544,15 @@ export default function Archive() {
                           objectFit: "contain",
                           borderRadius: "8px",
                           marginBottom: "1rem",
-                          backgroundColor: "#f0f0f0"
+                          backgroundColor: "var(--surface-muted, #f0f0f0)"
                         }}
                         onError={(e) => { e.target.style.display = 'none'; }}
                       />
                     )}
 
-                    <h4 style={{ color: "#333", marginBottom: "0.5rem" }}>{project.title}</h4>
-                    <p style={{ color: "#666", fontSize: "0.9rem" }}>{project.description}</p>
-                    <p style={{ fontWeight: "bold", color: "#28a745", marginTop: "0.5rem" }}>
+                    <h4 style={{ color: "var(--text-body, #333)", marginBottom: "0.5rem" }}>{project.title}</h4>
+                    <p style={{ color: "var(--text-muted, #666)", fontSize: "0.9rem" }}>{project.description}</p>
+                    <p style={{ fontWeight: "bold", color: "var(--status-positive, #28a745)", marginTop: "0.5rem" }}>
                       Received: {project.totalReceived || 0} CritCoin
                     </p>
                   </div>
@@ -560,7 +560,7 @@ export default function Archive() {
               </div>
 
               {selectedArchive.projects.filter(p => p.projectNumber === activeProject).length === 0 && (
-                <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+                <p style={{ textAlign: "center", color: "var(--text-faint, #999)", fontStyle: "italic" }}>
                   No submissions for Project {activeProject}
                 </p>
               )}
@@ -573,7 +573,7 @@ export default function Archive() {
               <h1 className="gothic-title gothic-text" style={{ textAlign: "center", marginBottom: "1rem" }}>
                 CritCoin Leaderboard
               </h1>
-              <p style={{ textAlign: "center", marginBottom: "2rem", fontSize: "1.1rem", color: "#666" }}>
+              <p style={{ textAlign: "center", marginBottom: "2rem", fontSize: "1.1rem", color: "var(--text-muted, #666)" }}>
                 Top 3 projects with the most CritCoin received in each category
               </p>
 
@@ -590,7 +590,7 @@ export default function Archive() {
                       fontSize: "2rem",
                       marginBottom: "1.5rem",
                       paddingBottom: "0.5rem",
-                      borderBottom: "3px solid #007bff",
+                      borderBottom: "3px solid var(--status-info, #007bff)",
                       color: "white"
                     }}>
                       Project {projectGroup.projectNumber}
@@ -610,10 +610,10 @@ export default function Archive() {
 
                         return (
                           <div key={index} style={{
-                            border: "2px solid #ddd",
+                            border: "2px solid var(--surface-card-border, #ddd)",
                             borderRadius: "8px",
                             padding: "1rem",
-                            backgroundColor: index === 0 ? "#fff9e6" : index === 1 ? "#f5f5f5" : "#fafafa",
+                            backgroundColor: index === 0 ? "var(--tint-warning, #fff9e6)" : index === 1 ? "var(--surface-muted, #f5f5f5)" : "var(--surface-muted, #fafafa)",
                             boxShadow: index === 0 ? "0 4px 6px rgba(0,0,0,0.1)" : "0 2px 4px rgba(0,0,0,0.05)"
                           }}>
                             <div style={{
@@ -622,7 +622,7 @@ export default function Archive() {
                               marginBottom: "0.5rem",
                               fontSize: "1.5rem",
                               fontWeight: "bold",
-                              color: "#333"
+                              color: "var(--text-body, #333)"
                             }}>
                               <span style={{ marginRight: "0.5rem" }}>{medals[index]}</span>
                               <span>#{index + 1}</span>
@@ -639,17 +639,17 @@ export default function Archive() {
                                   objectFit: "contain",
                                   borderRadius: "8px",
                                   marginBottom: "1rem",
-                                  backgroundColor: "#f0f0f0"
+                                  backgroundColor: "var(--surface-muted, #f0f0f0)"
                                 }}
                                 onError={(e) => { e.target.style.display = 'none'; }}
                               />
                             )}
 
-                            <h3 style={{ margin: "0.5rem 0", fontSize: "1.2rem", color: "#333" }}>{entry.title}</h3>
-                            <strong style={{ color: "#333" }}>{entry.authorName}</strong>
+                            <h3 style={{ margin: "0.5rem 0", fontSize: "1.2rem", color: "var(--text-body, #333)" }}>{entry.title}</h3>
+                            <strong style={{ color: "var(--text-body, #333)" }}>{entry.authorName}</strong>
                             <p style={{
                               fontSize: "1.1rem",
-                              color: "#007bff",
+                              color: "var(--status-info, #007bff)",
                               fontWeight: "bold",
                               margin: "0.5rem 0"
                             }}>
@@ -664,7 +664,7 @@ export default function Archive() {
               })}
 
               {selectedArchive.leaderboard.every(pg => !pg.entries || pg.entries.length === 0) && (
-                <p style={{ textAlign: "center", color: "#999", fontSize: "1.2rem" }}>
+                <p style={{ textAlign: "center", color: "var(--text-faint, #999)", fontSize: "1.2rem" }}>
                   No projects were submitted this semester.
                 </p>
               )}
@@ -948,7 +948,7 @@ export default function Archive() {
               ))}
 
               {selectedArchive.posts.length === 0 && (
-                <p style={{ textAlign: "center", color: "#999", fontStyle: "italic" }}>
+                <p style={{ textAlign: "center", color: "var(--text-faint, #999)", fontStyle: "italic" }}>
                   No forum posts this semester.
                 </p>
               )}
@@ -968,36 +968,36 @@ export default function Archive() {
                 marginBottom: "2rem"
               }}>
                 <div style={{
-                  backgroundColor: "#f8f9fa",
+                  backgroundColor: "var(--surface-muted, #f8f9fa)",
                   padding: "1rem",
                   borderRadius: "8px",
-                  border: "1px solid #dee2e6"
+                  border: "1px solid var(--surface-card-border, #dee2e6)"
                 }}>
-                  <h4 style={{ color: "#333", margin: "0 0 0.5rem 0" }}>Total Transactions</h4>
-                  <p style={{ fontSize: "1.5rem", margin: 0, color: "#007bff" }}>
+                  <h4 style={{ color: "var(--text-body, #333)", margin: "0 0 0.5rem 0" }}>Total Transactions</h4>
+                  <p style={{ fontSize: "1.5rem", margin: 0, color: "var(--status-info, #007bff)" }}>
                     {selectedArchive.stats?.totalTransactions?.toLocaleString() || 0}
                   </p>
                 </div>
 
                 <div style={{
-                  backgroundColor: "#f8f9fa",
+                  backgroundColor: "var(--surface-muted, #f8f9fa)",
                   padding: "1rem",
                   borderRadius: "8px",
-                  border: "1px solid #dee2e6"
+                  border: "1px solid var(--surface-card-border, #dee2e6)"
                 }}>
-                  <h4 style={{ color: "#333", margin: "0 0 0.5rem 0" }}>Total Volume</h4>
-                  <p style={{ fontSize: "1.5rem", margin: 0, color: "#28a745" }}>
+                  <h4 style={{ color: "var(--text-body, #333)", margin: "0 0 0.5rem 0" }}>Total Volume</h4>
+                  <p style={{ fontSize: "1.5rem", margin: 0, color: "var(--status-positive, #28a745)" }}>
                     {selectedArchive.stats?.totalCritCoinTransferred?.toLocaleString() || 0} CC
                   </p>
                 </div>
               </div>
 
               {/* Transaction List */}
-              <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+              <div style={{ backgroundColor: "var(--surface-card, white)", borderRadius: "8px", border: "1px solid var(--surface-card-border, #dee2e6)" }}>
                 <div style={{
                   padding: "1rem",
-                  borderBottom: "1px solid #dee2e6",
-                  backgroundColor: "#f8f9fa",
+                  borderBottom: "1px solid var(--surface-card-border, #dee2e6)",
+                  backgroundColor: "var(--surface-muted, #f8f9fa)",
                   fontWeight: "bold"
                 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 150px", gap: "1rem" }}>
@@ -1010,7 +1010,7 @@ export default function Archive() {
                 </div>
 
                 {selectedArchive.transactions.length === 0 ? (
-                  <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
+                  <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted, #666)" }}>
                     No transactions recorded this semester.
                   </div>
                 ) : (
@@ -1019,8 +1019,8 @@ export default function Archive() {
                       key={index}
                       style={{
                         padding: "1rem",
-                        borderBottom: index < Math.min(selectedArchive.transactions.length, 100) - 1 ? "1px solid #e9ecef" : "none",
-                        backgroundColor: index % 2 === 0 ? "#ffffff" : "#f8f9fa"
+                        borderBottom: index < Math.min(selectedArchive.transactions.length, 100) - 1 ? "1px solid var(--surface-card-border, #e9ecef)" : "none",
+                        backgroundColor: index % 2 === 0 ? "#ffffff" : "var(--surface-muted, #f8f9fa)"
                       }}
                     >
                       <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 150px", gap: "1rem", alignItems: "center" }}>
@@ -1032,19 +1032,19 @@ export default function Archive() {
                           {getTypeIcon(tx.type)} {tx.type?.replace('_', ' ') || 'transfer'}
                         </span>
 
-                        <span style={{ color: "#333" }} title={tx.fromWallet}>
+                        <span style={{ color: "var(--text-body, #333)" }} title={tx.fromWallet}>
                           {tx.fromName || tx.fromWallet?.slice(0, 8) + '...'}
                         </span>
 
-                        <span style={{ color: "#333" }} title={tx.toWallet}>
+                        <span style={{ color: "var(--text-body, #333)" }} title={tx.toWallet}>
                           {tx.toName || tx.toWallet?.slice(0, 8) + '...'}
                         </span>
 
-                        <span style={{ fontWeight: "bold", color: "#28a745" }}>
+                        <span style={{ fontWeight: "bold", color: "var(--status-positive, #28a745)" }}>
                           {tx.amount} CC
                         </span>
 
-                        <span style={{ fontSize: "0.85rem", color: "#6c757d" }}>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #6c757d)" }}>
                           {formatDateTime(tx.timestamp)}
                         </span>
                       </div>
@@ -1053,7 +1053,7 @@ export default function Archive() {
                 )}
 
                 {selectedArchive.transactions.length > 100 && (
-                  <div style={{ padding: "1rem", textAlign: "center", color: "#666", borderTop: "1px solid #e9ecef" }}>
+                  <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-muted, #666)", borderTop: "1px solid var(--surface-card-border, #e9ecef)" }}>
                     Showing first 100 of {selectedArchive.transactions.length} transactions
                   </div>
                 )}
