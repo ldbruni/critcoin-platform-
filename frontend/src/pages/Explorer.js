@@ -161,7 +161,7 @@ export default function Explorer() {
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
       <div className="v2-masthead">
         <div className="v2-kicker">CritCoin · Explorer</div>
-        <h1 className="gothic-title gothic-text">🔍 CritCoin Explorer</h1>
+        <h1 className="gothic-title gothic-text">CritCoin Explorer</h1>
       </div>
 
       {/* Statistics Dashboard */}
