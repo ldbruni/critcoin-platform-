@@ -20,16 +20,39 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// File type validation with magic-number checking (mirrors profiles.js). A
+// spoofed Content-Type alone is not trusted — the file's actual signature bytes
+// must match an allowed image format.
+const IMAGE_SIGNATURES = {
+  jpg: [0xFF, 0xD8, 0xFF],
+  png: [0x89, 0x50, 0x4E, 0x47],
+  gif: [0x47, 0x49, 0x46],
+  webp: [0x52, 0x49, 0x46, 0x46] // RIFF (WebP starts with RIFF)
+};
+const MIME_FOR_TYPE = {
+  jpg: ['image/jpeg', 'image/jpg'],
+  png: ['image/png'],
+  gif: ['image/gif'],
+  webp: ['image/webp']
+};
+const detectImageType = (buffer) => {
+  for (const [type, sig] of Object.entries(IMAGE_SIGNATURES)) {
+    if (sig.every((byte, index) => buffer[index] === byte)) return type;
+  }
+  return null;
+};
+
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }, // 10MB, single file
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only JPEG, PNG, GIF or WebP images are allowed'));
     }
   }
 });
@@ -175,6 +198,13 @@ router.post("/", requireAuth, upload.single('image'), async (req, res) => {
     const { balance } = await getBalance(wallet);
     if (balance < 1) {
       return res.status(400).send("Need ≥1 CritCoin to submit projects");
+    }
+
+    // Verify the upload really is an image (signature bytes), and that the bytes
+    // match the declared MIME type — a spoofed Content-Type is not enough.
+    const detectedType = detectImageType(req.file.buffer);
+    if (!detectedType || !MIME_FOR_TYPE[detectedType].includes(req.file.mimetype)) {
+      return res.status(400).send("Invalid or mismatched image file");
     }
 
     console.log("🖼️ Uploading project image to Cloudinary...");

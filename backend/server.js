@@ -45,14 +45,17 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Secure CORS configuration
-const allowedOrigins = process.env.NODE_ENV === 'production' 
+// Secure CORS configuration.
+// Note: auth is via the Authorization bearer header, not cookies, so CORS is
+// browser hygiene rather than the access-control boundary (a no-Origin curl has
+// no token and is rejected by requireAuth/requireAdmin). Origins never carry a
+// trailing slash, so the old 'vercel.app/' entry was dead and is removed.
+const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      process.env.FRONTEND_URL, 
+      process.env.FRONTEND_URL,
       'https://critcoin.art',
       'https://www.critcoin.art',
-      'https://critcoin-platform.vercel.app',
-      'https://critcoin-platform.vercel.app/'
+      'https://critcoin-platform.vercel.app'
     ].filter(Boolean)
   : [
       'http://localhost:3000', 
@@ -125,27 +128,56 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rate limiting - more lenient in development
+// Rate limiting — three tiers, tighter on the things worth abusing.
+//
+// Note: these are per-IP. Students on a shared campus NAT share a bucket, so the
+// limits are kept generous; the real anti-abuse control is that every write now
+// requires a signed-in session (middleware/auth.js). See SECURITY.md.
+const isProd = process.env.NODE_ENV === 'production';
+
+// Reads (and everything by default): generous, so image-heavy pages don't throttle.
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 500, // More requests allowed in dev
+  max: isProd ? 600 : 2000,
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for admin in development
-    return process.env.NODE_ENV !== 'production' && req.path.startsWith('/api/admin');
+    return !isProd && req.path.startsWith('/api/admin');
   }
 });
 
+// Writes (any mutating method): tighter than reads.
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 200 : 2000,
+  message: { error: 'Too many write requests, please slow down and try again shortly' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Only limit mutations. Auth has its own limiter below.
+  skip: (req) => req.method === 'GET' || req.method === 'OPTIONS' || req.path.startsWith('/api/auth')
+});
+
+// Sign-in: tightest. Brute force is already pointless (a valid nonce + matching
+// signature is required) — this just caps flooding of the challenge endpoint.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 100 : 1000,
+  message: { error: 'Too many sign-in attempts, please try again shortly' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(generalLimiter);
+app.use(writeLimiter);
 app.use(express.json({ limit: '10mb' }));
 
 // Serve static files for profile photos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routes once
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/projects", projectRoutes);
