@@ -157,6 +157,31 @@ export default function Explorer() {
     return icons[type] || '📝';
   };
 
+  // Map a stored transaction `type` to its human-readable display label. Stored
+  // values are never renamed — archived semesters and existing rows keep
+  // `project_tip` (and legacy `tip`); the "investment" wording is applied only
+  // here at render time. Kept specific ("Project investment") so it reads
+  // distinctly from a prediction-market position.
+  const getTypeLabel = (type) => {
+    const labels = {
+      'project_tip': 'Project investment',
+      'tip': 'Project investment', // legacy stored value from archived semesters
+      'transfer': 'Transfer',
+      'forum_reward': 'Forum reward',
+      'system': 'System',
+      'mint': 'Mint',
+      'burn': 'Burn',
+      'adminGrant': 'Admin grant'
+    };
+    return labels[type] || type.replace(/_/g, ' ');
+  };
+
+  // The tip flow stores descriptions like "Tip for project: <title>". Rename only
+  // the generated prefix at render time — the project title is left untouched so a
+  // title that itself contains "tip" is never mangled, and stored data is unchanged.
+  const formatDescription = (description) =>
+    (description || '').replace(/^Tip for project:/, 'Investment in project:');
+
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
       <div className="v2-masthead">
@@ -250,7 +275,7 @@ export default function Explorer() {
             style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           >
             <option value="">All Types</option>
-            <option value="project_tip">Project Tips</option>
+            <option value="project_tip">Project Investments</option>
             <option value="transfer">Transfers</option>
             <option value="forum_reward">Forum Rewards</option>
             <option value="system">System</option>
@@ -317,7 +342,7 @@ export default function Explorer() {
               <h3>No transactions found</h3>
               <p>The explorer will show data when:</p>
               <ul style={{ textAlign: "left", display: "inline-block" }}>
-                <li>Students tip projects</li>
+                <li>Students invest in projects</li>
                 <li>Admin deploys CritCoin</li>
                 <li>Users transfer CritCoin to each other</li>
                 <li>Forum rewards are distributed</li>
@@ -353,7 +378,7 @@ export default function Explorer() {
                   color: getTypeColor(tx.type),
                   fontWeight: "bold"
                 }}>
-                  {getTypeIcon(tx.type)} {tx.type.replace('_', ' ')}
+                  {getTypeIcon(tx.type)} {getTypeLabel(tx.type)}
                 </span>
                 
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -514,7 +539,7 @@ export default function Explorer() {
                 marginLeft: "0.5rem",
                 fontWeight: "bold"
               }}>
-                {getTypeIcon(selectedTransaction.type)} {selectedTransaction.type.replace('_', ' ')}
+                {getTypeIcon(selectedTransaction.type)} {getTypeLabel(selectedTransaction.type)}
               </span>
             </div>
             
@@ -545,7 +570,7 @@ export default function Explorer() {
             
             {selectedTransaction.description && (
               <div style={{ marginBottom: "1rem" }}>
-                <strong>Description:</strong> {selectedTransaction.description}
+                <strong>Description:</strong> {formatDescription(selectedTransaction.description)}
               </div>
             )}
             
