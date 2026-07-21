@@ -8,6 +8,7 @@ const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
+const { syncAdminTransfers } = require("../lib/adminGrants");
 const { requireAuth } = require("../middleware/auth");
 const multer = require("multer");
 const sharp = require("sharp");
@@ -22,11 +23,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Every new profile receives this one-off ledger credit, which is what lets a
-// brand-new student clear the >=1 CritCoin gate on posting and submitting.
-// The description doubles as the idempotency key.
-const JOINING_CREDIT_AMOUNT = 1;
-const JOINING_CREDIT_DESCRIPTION = 'Joining credit for new profile';
+// Optional welcome grant issued at profile creation, gated by the admin setting
+// `grantOnCreate` (default OFF). It is an off-chain adminGrant credit - admin
+// intent, no on-chain counterpart - and the description doubles as its
+// per-wallet idempotency key. Participation (posting, submitting) no longer
+// depends on holding CritCoin, so a profile created with the toggle OFF (0 CRIT)
+// can still take part; the gate is whitelist membership, not balance.
+const WELCOME_GRANT_AMOUNT = 1;
+const WELCOME_GRANT_DESCRIPTION = 'Welcome grant on profile creation';
+const GRANT_ON_CREATE_KEY = 'grantOnCreate';
 
 
 // File type validation with magic number checking
@@ -157,23 +162,24 @@ router.post("/", requireAuth, upload.single('photo'), validateProfileCreation, a
     const existing = await Profile.findOne({ wallet: wallet.toLowerCase() });
     if (existing) return res.status(409).send("Profile already exists");
 
-    // Check whitelist mode
-    const whitelistSetting = await SystemSettings.findOne({ key: 'whitelistMode' });
-    const isWhitelistMode = whitelistSetting ? whitelistSetting.value : false;
-    
-    if (isWhitelistMode) {
-      const isWhitelisted = await Whitelist.findOne({ wallet: wallet.toLowerCase() });
-      if (!isWhitelisted) {
-        return res.status(403).send("Profile creation restricted to whitelisted wallets only");
-      }
+    // The whitelist is the admission control - the class roster. Only pre-approved
+    // wallets may create a profile, and this is the ONLY authorization gate:
+    // membership is admin intent, checked case-insensitively (both sides
+    // lowercased, matching how every wallet is normalized across the app). It is
+    // never a chain-balance check - a whitelisted wallet may create a profile
+    // whether it holds 0, 1 or 10,000 CritCoin. Existing students were seeded into
+    // the whitelist by the boot migration in server.js so none are locked out.
+    const isWhitelisted = await Whitelist.findOne({ wallet: wallet.toLowerCase() });
+    if (!isWhitelisted) {
+      return res.status(403).send(
+        "This wallet isn't on the class roster — ask your instructor to add it."
+      );
     }
 
-    // No balance requirement to create a profile. A new student has no ledger
-    // history, so requiring a balance here would be unsatisfiable - they'd need
-    // CritCoin to make a profile, but only profile holders get credited.
-    // Instead, creating the profile issues the joining credit below, which then
-    // satisfies the >=1 CritCoin gate on posting, submitting and tipping.
-    // Whitelist mode (checked above) is the admission control.
+    // No balance requirement to create a profile, and none to take part once it
+    // exists: posting and submitting are gated on having this (whitelist-approved)
+    // profile, not on holding CritCoin. The optional welcome grant below is a
+    // starting bonus, not an admission requirement.
 
     let photoUrl = null;
 
@@ -268,35 +274,51 @@ router.post("/", requireAuth, upload.single('photo'), validateProfileCreation, a
     await profile.save();
     console.log("Profile saved successfully");
 
-    // Issue the joining credit so the new student clears the >=1 CritCoin gate
-    // on posting, submitting projects and tipping. Guarded so a wallet that
-    // re-creates a profile (e.g. after archiving) is never credited twice.
-    //
-    // This is an off-chain credit with no on-chain counterpart, so it shows up
-    // as expected drift in /api/admin/reconcile. That is deliberate: it is a
-    // database-only grant, exactly like an admin correction.
+    // Optional welcome grant, gated by the admin `grantOnCreate` setting (default
+    // OFF). When ON, credit the new profile 1 CritCoin as an off-chain adminGrant.
+    // Best-effort and never blocking: the profile already saved, so a failure here
+    // is logged, not surfaced - reconcile/sync will catch an uncredited student.
+    // Guarded by its description so re-creating a profile never double-credits.
     try {
-      const alreadyCredited = await Transaction.findOne({
-        toWallet: profile.wallet,
-        type: 'system',
-        description: JOINING_CREDIT_DESCRIPTION
-      });
+      const grantSetting = await SystemSettings.findOne({ key: GRANT_ON_CREATE_KEY });
+      const grantOnCreate = grantSetting ? Boolean(grantSetting.value) : false;
 
-      if (!alreadyCredited) {
-        await Transaction.create({
-          fromWallet: 'system',
+      if (grantOnCreate) {
+        const alreadyGranted = await Transaction.findOne({
           toWallet: profile.wallet,
-          amount: JOINING_CREDIT_AMOUNT,
-          type: 'system',
-          description: JOINING_CREDIT_DESCRIPTION,
-          txHash: null
+          type: 'adminGrant',
+          txHash: null,
+          description: WELCOME_GRANT_DESCRIPTION
         });
-        console.log(`✅ Issued ${JOINING_CREDIT_AMOUNT} CritCoin joining credit to ${profile.wallet}`);
+
+        if (!alreadyGranted) {
+          await Transaction.create({
+            fromWallet: 'system',
+            toWallet: profile.wallet,
+            amount: WELCOME_GRANT_AMOUNT,
+            type: 'adminGrant',
+            description: WELCOME_GRANT_DESCRIPTION,
+            txHash: null
+          });
+          console.log(`✅ Issued ${WELCOME_GRANT_AMOUNT} CritCoin welcome grant to ${profile.wallet}`);
+        }
       }
-    } catch (creditErr) {
-      // The profile itself saved, so don't fail the request. The admin can spot
-      // an uncredited student in the reconciliation report.
-      console.error("⚠️ Failed to issue joining credit:", creditErr);
+    } catch (grantErr) {
+      console.error("⚠️ Failed to issue welcome grant:", grantErr);
+    }
+
+    // Absorb any CritCoin the admin/deployer wallet already sent this student
+    // on-chain before they onboarded (e.g. a test/welcome transfer). This records
+    // the real transfer in the ledger so the on-chain grant is accounted for
+    // immediately. Best-effort: a failing/unreachable RPC must never block profile
+    // creation - the grant is caught later by reconcile's sync-grants action.
+    try {
+      const { recorded } = await syncAdminTransfers(profile.wallet);
+      if (recorded.length) {
+        console.log(`✅ Absorbed ${recorded.length} pre-onboarding admin grant(s) for ${profile.wallet}`);
+      }
+    } catch (syncErr) {
+      console.error("⚠️ syncAdminTransfers failed during profile creation:", syncErr);
     }
 
     res.status(201).json(profile);

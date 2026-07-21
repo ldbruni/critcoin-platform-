@@ -33,6 +33,8 @@ const predictionRoutes = require("./routes/predictions");
 const authRoutes = require("./routes/auth");
 const Prediction = require("./models/Prediction");
 const Transaction = require("./models/Transaction");
+const Profile = require("./models/Profiles");
+const Whitelist = require("./models/Whitelist");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -261,6 +263,30 @@ mongoose.connection.once('open', async () => {
     }
   } catch (e) {
     console.error('⚠️ txHash index migration failed:', e.message);
+  }
+
+  // One-time migration: seed the whitelist with every wallet that already has a
+  // profile. The whitelist is now the always-on gate for profile creation, so
+  // without this seed, current students who predate the whitelist would be locked
+  // out of re-creating a profile. Idempotent: only inserts wallets not already
+  // listed, so it is a no-op on every startup after the first.
+  try {
+    const profiles = await Profile.find({}, { wallet: 1 });
+    const wallets = profiles.map((p) => p.wallet.toLowerCase());
+    if (wallets.length) {
+      const existing = await Whitelist.find({ wallet: { $in: wallets } }, { wallet: 1 });
+      const already = new Set(existing.map((w) => w.wallet.toLowerCase()));
+      const toSeed = wallets.filter((w) => !already.has(w));
+      if (toSeed.length) {
+        await Whitelist.insertMany(
+          toSeed.map((w) => ({ wallet: w, addedBy: 'system', notes: 'Seeded from existing profile' })),
+          { ordered: false }
+        );
+        console.log(`✅ Seeded ${toSeed.length} existing profile wallet(s) into the whitelist`);
+      }
+    }
+  } catch (e) {
+    console.error('⚠️ Whitelist seeding migration failed:', e.message);
   }
 });
 

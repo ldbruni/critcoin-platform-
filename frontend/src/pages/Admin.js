@@ -57,8 +57,9 @@ export default function Admin() {
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
   const [editingBounty, setEditingBounty] = useState(null);
   
-  // Whitelist form
-  const [whitelistForm, setWhitelistForm] = useState({ wallet: "", notes: "" });
+  // Whitelist form (single add) + a separate bulk-paste field
+  const [whitelistForm, setWhitelistForm] = useState({ wallet: "", label: "", notes: "" });
+  const [bulkWhitelist, setBulkWhitelist] = useState("");
 
   // Semester Archive state
   const [semesterArchives, setSemesterArchives] = useState([]);
@@ -429,30 +430,33 @@ export default function Admin() {
     }
   };
 
-  const handleToggleWhitelistMode = async () => {
+  // The whitelist is now the always-on gate for profile creation, so there is no
+  // "whitelist mode" to toggle. This toggle instead controls the optional
+  // 1-CritCoin welcome grant issued when a profile is created (default OFF).
+  const handleToggleGrantOnCreate = async () => {
     try {
       const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
-        key: "whitelistMode",
-        value: !settings.whitelistMode
+        key: "grantOnCreate",
+        value: !settings.grantOnCreate
       });
 
       if (res.ok) {
-        alert(`Whitelist mode ${!settings.whitelistMode ? 'enabled' : 'disabled'} successfully`);
+        alert(`Welcome grant ${!settings.grantOnCreate ? 'enabled' : 'disabled'}`);
         fetchSettings();
       } else {
         const error = await res.json().catch(async () => ({ error: await res.text() }));
-        console.error("Toggle whitelist mode error:", error);
+        console.error("Toggle grant-on-create error:", error);
         alert("Error: " + (error.error || error));
       }
     } catch (err) {
-      console.error("Toggle whitelist mode error:", err);
-      alert("Error toggling whitelist mode. Please check your wallet connection.");
+      console.error("Toggle grant-on-create error:", err);
+      alert("Error toggling the welcome grant. Please check your wallet connection.");
     }
   };
 
   const handleAddToWhitelist = async (e) => {
     e.preventDefault();
-    
+
     if (!whitelistForm.wallet) {
       alert("Wallet address is required");
       return;
@@ -460,22 +464,80 @@ export default function Admin() {
 
     try {
       const res = await postWithSignature(`${API.admin}/whitelist/add`, 'admin_post_whitelist_add', {
-        wallet: whitelistForm.wallet,
+        wallet: whitelistForm.wallet.trim(),
+        label: whitelistForm.label,
         notes: whitelistForm.notes
       });
 
+      const data = await res.json().catch(async () => ({ error: await res.text() }));
       if (res.ok) {
-        alert("Wallet added to whitelist successfully");
-        setWhitelistForm({ wallet: "", notes: "" });
+        alert(data.message || "Wallet added to whitelist");
+        setWhitelistForm({ wallet: "", label: "", notes: "" });
         fetchWhitelist();
       } else {
-        const error = await res.json().catch(async () => ({ error: await res.text() }));
-        console.error("Add to whitelist error:", error);
-        alert("Error: " + (error.error || error));
+        console.error("Add to whitelist error:", data);
+        alert("Error: " + (data.error || JSON.stringify(data)));
       }
     } catch (err) {
       console.error("Add to whitelist error:", err);
       alert("Error adding wallet to whitelist. Please check your wallet connection.");
+    }
+  };
+
+  // Bulk add: paste any number of addresses separated by spaces, commas or
+  // newlines. Malformed addresses are reported back per-address, not silently
+  // dropped, and already-listed ones are skipped.
+  const handleBulkAddToWhitelist = async (e) => {
+    e.preventDefault();
+    const wallets = bulkWhitelist.split(/[\s,]+/).map((w) => w.trim()).filter(Boolean);
+    if (wallets.length === 0) {
+      alert("Paste one or more wallet addresses");
+      return;
+    }
+
+    try {
+      const res = await postWithSignature(`${API.admin}/whitelist/add`, 'admin_post_whitelist_add', { wallets });
+      const data = await res.json().catch(async () => ({ error: await res.text() }));
+      if (res.ok) {
+        let msg = data.message || "Done";
+        if (data.invalid && data.invalid.length) {
+          msg += `\nInvalid: ${data.invalid.map((i) => i.wallet).join(", ")}`;
+        }
+        alert(msg);
+        setBulkWhitelist("");
+        fetchWhitelist();
+      } else {
+        console.error("Bulk add to whitelist error:", data);
+        alert("Error: " + (data.error || JSON.stringify(data)));
+      }
+    } catch (err) {
+      console.error("Bulk add to whitelist error:", err);
+      alert("Error adding wallets. Please check your wallet connection.");
+    }
+  };
+
+  // Deliberate admin write (distinct from the read-only reconcile view): absorb
+  // on-chain grants the admin/deployer wallet sent to students into the ledger.
+  const handleSyncGrants = async () => {
+    if (!window.confirm(
+      "Absorb on-chain grants the admin/deployer wallet sent to students into the ledger?\n\n" +
+      "Only transfers originating from the deployer wallet are recorded. Transfers between other " +
+      "wallets stay as drift."
+    )) return;
+
+    try {
+      const res = await postWithSignature(`${API.admin}/reconcile/sync-grants`, 'admin_post_sync_grants', {});
+      const data = await res.json().catch(async () => ({ error: await res.text() }));
+      if (res.ok) {
+        alert(data.message || "Sync complete");
+        fetchReconcile();
+      } else {
+        console.error("Sync grants error:", data);
+        alert("Error: " + (data.error || JSON.stringify(data)));
+      }
+    } catch (err) {
+      console.error("Sync grants error:", err);
+      alert("Error syncing admin grants. Please check your wallet connection.");
     }
   };
 
@@ -1354,39 +1416,56 @@ export default function Admin() {
           <h2>🔐 Whitelist Management</h2>
           {console.log("Rendering whitelist tab. Settings:", settings, "Whitelist:", whitelist)}
           
-          {/* Whitelist Mode Toggle */}
-          <div style={{ 
-            backgroundColor: settings.whitelistMode ? "var(--tint-info)" : "var(--tint-warning)", 
-            padding: "1rem", 
-            borderRadius: "8px", 
+          {/* The whitelist is the always-on gate for profile creation. */}
+          <div style={{
+            backgroundColor: "var(--tint-info)",
+            padding: "1rem",
+            borderRadius: "8px",
             marginBottom: "2rem",
-            border: `1px solid ${settings.whitelistMode ? "var(--primary-blue)" : "var(--status-warning)"}`
+            border: "1px solid var(--primary-blue)"
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h4 style={{ margin: "0 0 0.5rem 0" }}>🔒 Whitelist is always on</h4>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
+              Only wallets on this roster can create a profile. Membership is the sole
+              authorization gate — never a CritCoin balance. Existing students were seeded in
+              automatically, and removing a wallet only blocks <em>new</em> profile creation; it never
+              deletes or disables an existing profile.
+            </p>
+          </div>
+
+          {/* Grant 1 CRIT on profile creation (default OFF) */}
+          <div style={{
+            backgroundColor: settings.grantOnCreate ? "var(--tint-info)" : "var(--tint-warning)",
+            padding: "1rem",
+            borderRadius: "8px",
+            marginBottom: "2rem",
+            border: `1px solid ${settings.grantOnCreate ? "var(--primary-blue)" : "var(--status-warning)"}`
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
               <div>
                 <h4 style={{ margin: "0 0 0.5rem 0" }}>
-                  {settings.whitelistMode ? "🔒 Whitelist Mode: ENABLED" : "🔓 Whitelist Mode: DISABLED"}
+                  {settings.grantOnCreate ? "🎁 Welcome grant: ON" : "🎁 Welcome grant: OFF"}
                 </h4>
                 <p style={{ margin: 0, color: "var(--text-muted)" }}>
-                  {settings.whitelistMode 
-                    ? "Only whitelisted wallets can create new profiles. Existing profiles can still access the platform."
-                    : "Anyone with ≥1 CritCoin can create profiles. Perfect for first day of class."
-                  }
+                  {settings.grantOnCreate
+                    ? "New profiles receive a 1-CritCoin off-chain welcome grant on creation."
+                    : "New profiles start with 0 CritCoin. They can still post and submit — participation comes from having a profile, not a balance."}
                 </p>
               </div>
               <button
-                onClick={handleToggleWhitelistMode}
+                onClick={handleToggleGrantOnCreate}
                 style={{
                   padding: "0.75rem 1.5rem",
-                  backgroundColor: settings.whitelistMode ? "var(--status-negative)" : "var(--status-positive)",
+                  backgroundColor: settings.grantOnCreate ? "var(--status-negative)" : "var(--status-positive)",
                   color: "white",
                   border: "none",
                   borderRadius: "6px",
                   cursor: "pointer",
-                  fontWeight: "bold"
+                  fontWeight: "bold",
+                  whiteSpace: "nowrap"
                 }}
               >
-                {settings.whitelistMode ? "Disable Whitelist" : "Enable Whitelist"}
+                {settings.grantOnCreate ? "Turn OFF" : "Turn ON"}
               </button>
             </div>
           </div>
@@ -1401,7 +1480,7 @@ export default function Admin() {
           }}>
             <h4>Add Wallet to Whitelist</h4>
             <form onSubmit={handleAddToWhitelist}>
-              <div style={{ display: "grid", gridTemplateColumns: "300px 1fr auto", gap: "1rem", alignItems: "end" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "240px 160px 1fr auto", gap: "1rem", alignItems: "end" }}>
                 <div>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
                     Wallet Address *
@@ -1412,10 +1491,27 @@ export default function Admin() {
                     value={whitelistForm.wallet}
                     onChange={(e) => setWhitelistForm({...whitelistForm, wallet: e.target.value})}
                     required
-                    style={{ 
-                      width: "100%", 
-                      padding: "0.5rem", 
-                      borderRadius: "4px", 
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      border: "1px solid var(--surface-card-border)"
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                    Label (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Student name"
+                    value={whitelistForm.label}
+                    onChange={(e) => setWhitelistForm({...whitelistForm, label: e.target.value})}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
                       border: "1px solid var(--surface-card-border)"
                     }}
                   />
@@ -1429,15 +1525,15 @@ export default function Admin() {
                     placeholder="Reason for whitelisting..."
                     value={whitelistForm.notes}
                     onChange={(e) => setWhitelistForm({...whitelistForm, notes: e.target.value})}
-                    style={{ 
-                      width: "100%", 
-                      padding: "0.5rem", 
-                      borderRadius: "4px", 
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
                       border: "1px solid var(--surface-card-border)"
                     }}
                   />
                 </div>
-                <button 
+                <button
                   type="submit"
                   style={{
                     padding: "0.5rem 1rem",
@@ -1449,9 +1545,54 @@ export default function Admin() {
                     fontWeight: "bold"
                   }}
                 >
-                  Add to Whitelist
+                  Add
                 </button>
               </div>
+            </form>
+          </div>
+
+          {/* Bulk add to Whitelist */}
+          <div style={{
+            backgroundColor: "var(--surface-muted)",
+            padding: "1rem",
+            borderRadius: "8px",
+            marginBottom: "2rem",
+            border: "1px solid var(--surface-card-border)"
+          }}>
+            <h4>Bulk Add</h4>
+            <p style={{ margin: "0 0 0.5rem 0", color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Paste many addresses separated by spaces, commas or newlines. Invalid addresses are
+              reported back; already-listed ones are skipped.
+            </p>
+            <form onSubmit={handleBulkAddToWhitelist}>
+              <textarea
+                placeholder="0xabc...\n0xdef...\n0x123..."
+                value={bulkWhitelist}
+                onChange={(e) => setBulkWhitelist(e.target.value)}
+                rows={4}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--surface-card-border)",
+                  fontFamily: "monospace",
+                  marginBottom: "0.5rem"
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "var(--primary-blue)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "bold"
+                }}
+              >
+                Add All
+              </button>
             </form>
           </div>
 
@@ -1477,8 +1618,9 @@ export default function Admin() {
                 backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
-                <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "220px 130px 1fr 120px 90px", gap: "1rem" }}>
                   <span>Wallet Address</span>
+                  <span>Label</span>
                   <span>Notes</span>
                   <span>Added</span>
                   <span>Actions</span>
@@ -1492,10 +1634,13 @@ export default function Admin() {
                     borderBottom: index < whitelist.length - 1 ? "1px solid var(--surface-card-border)" : "none"
                   }}
                 >
-                  <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem", alignItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "220px 130px 1fr 120px 90px", gap: "1rem", alignItems: "center" }}>
                     <code style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
                       {entry.wallet}
                     </code>
+                    <span style={{ fontSize: "0.9rem" }}>
+                      {entry.label || <em style={{ color: "var(--text-faint)" }}>—</em>}
+                    </span>
                     <span style={{ fontSize: "0.9rem" }}>
                       {entry.notes || <em style={{ color: "var(--text-faint)" }}>No notes</em>}
                     </span>
@@ -2052,9 +2197,29 @@ export default function Admin() {
             database or sends a transaction, and drift is never corrected automatically.
           </p>
 
-          <button onClick={fetchReconcile} disabled={reconcileLoading} style={{ marginBottom: "1rem" }}>
-            {reconcileLoading ? "Loading..." : "Refresh"}
-          </button>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
+            <button onClick={fetchReconcile} disabled={reconcileLoading}>
+              {reconcileLoading ? "Loading..." : "Refresh"}
+            </button>
+            <button
+              onClick={handleSyncGrants}
+              style={{
+                backgroundColor: "var(--primary-blue)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                padding: "0.5rem 1rem",
+                cursor: "pointer",
+                fontWeight: "bold"
+              }}
+            >
+              Sync admin grants
+            </button>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Absorbs on-chain transfers <em>from the deployer wallet</em> into the ledger (a deliberate
+              write; only deployer-sourced transfers are recorded).
+            </span>
+          </div>
 
           {reconcile && (
             <>

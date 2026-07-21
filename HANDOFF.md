@@ -35,11 +35,11 @@ The React app talks to the chain **directly** through MetaMask. The backend neve
 | Role | **Authoritative** | Experiential / verification |
 | Source | `Transaction` documents in MongoDB | `Token.balanceOf(wallet)` on Sepolia |
 | Shown on | Everywhere in the app | Nowhere in the app — Etherscan links only |
-| Changed by | Tips, deploys, joining credits, admin corrections | Tips and deploys (real transfers) |
+| Changed by | Tips, deploys, admin grants, admin corrections | Tips, deploys, and admin grants (real transfers) |
 
 Admin → **Deploy CritCoin** now does **both**: it credits the ledger *and* transfers real tokens from the admin's MetaMask wallet, tracking each student's on-chain status individually.
 
-The two can still disagree — admin corrections and joining credits are database-only by design. That gap is **expected**, is reported by `GET /api/admin/reconcile/:adminWallet`, and is never corrected automatically.
+The two can still disagree — admin corrections and the optional off-chain welcome grant are database-only by design. On-chain admin grants the deployer sends are absorbed into the ledger (§13), so they reconcile. Any remaining gap is **expected**, is reported by `GET /api/admin/reconcile/:adminWallet`, and is never corrected automatically.
 
 Full reasoning in [ARCHITECTURE.md](ARCHITECTURE.md) — "Balance authority". The working rule for anyone (human or agent) editing this code is in [CLAUDE.md](CLAUDE.md).
 
@@ -54,7 +54,7 @@ There are no sessions, no JWTs, no passwords.
 - The frontend admin gate in [frontend/src/App.js](frontend/src/App.js) only hides the nav link — it is cosmetic. Real enforcement is server-side.
 - Server-side, `authenticateAdmin` (POST body) and `authenticateAdminGET` (query string) verify a **signed message** against `ADMIN_WALLET`. Both live at the top of each route file that needs them ([backend/routes/admin.js](backend/routes/admin.js), [backend/routes/archive.js](backend/routes/archive.js)).
 - **Development escape hatch:** when `NODE_ENV !== 'production'`, passing `adminWallet` without a `signature` is accepted with a console warning. Never run production with `NODE_ENV` unset.
-- **Whitelist mode** (`SystemSettings.whitelistMode`, default `false`): when on, only wallets in the `Whitelist` collection can create a profile. Enforced in [backend/routes/profiles.js](backend/routes/profiles.js).
+- **Whitelist gate** (always on): only wallets in the `Whitelist` collection may create a profile — the class roster is the sole admission control, never a chain balance. Enforced in [backend/routes/profiles.js](backend/routes/profiles.js), independent of the legacy `SystemSettings.whitelistMode` flag (which no longer governs the gate). Existing students are seeded into the whitelist by a boot migration (§3) so none are locked out. Participation (posting, submitting) follows from having a whitelist-approved profile, not from holding CritCoin.
 
 ---
 
@@ -69,11 +69,11 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | `Post` | `authorWallet`, `content`, `upvotes`, `downvotes`, `votes` (Map), `hidden` | Moderation is `hidden`, not deletion. |
 | `Comment` | `postId`, `authorWallet`, `text`, `parentCommentId`, `upvotes[]`, `downvotes[]`, `archived` | `parentCommentId` gives one level of replies. Votes are arrays of wallets. |
 | `Bounty` | `title`, `description`, `reward`, `status`, `completedBy`, `crossedOut` | **Survives semester clears.** |
-| `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn. See §11. |
+| `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn / **adminGrant**. See §11 and §13. |
 | `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
-| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `whitelistMode`, `predictionEnabled2/3/4`. |
-| `Whitelist` | `wallet` (unique), `addedBy`, `notes` | Only consulted when `whitelistMode` is on. |
+| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `grantOnCreate` (welcome-grant toggle, default off), `predictionEnabled2/3/4`. `whitelistMode` is legacy (no longer gates profile creation). |
+| `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The always-on class roster for profile creation. |
 | `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions` | Fully self-contained snapshot; wallet→name resolved at archive time. |
 
 ### Migration on boot
@@ -82,6 +82,7 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 
 1. Drops the legacy `predictorWallet_1` unique index and backfills `projectNumber: 2` on predictions missing it. Safe to remove once no deployment predates the multi-project predictions change (`e578c38`).
 2. Replaces the legacy non-partial `txHash_1` unique index with a partial one, then calls `Transaction.syncIndexes()`. The `syncIndexes()` call is load-bearing — dropping alone races Mongoose's autoIndex pass and fails with `IndexOptionsConflict`. See §11.
+3. Seeds the `Whitelist` with every wallet that already has a profile. The whitelist is now the always-on profile-creation gate, so without this seed pre-whitelist students would be locked out of re-creating a profile. Only inserts wallets not already listed.
 
 Separately, [backend/migrations/flag-fabricated-hashes.js](backend/migrations/flag-fabricated-hashes.js) is a **manual** one-off (`node migrations/flag-fabricated-hashes.js`, with `--dry-run` support) that labels legacy fabricated hashes. Run it once per environment after deploying this change.
 
@@ -120,7 +121,9 @@ Admin: `GET /admin/:adminWallet` · `GET /preview` · `POST /create` · `POST /c
 `GET /dashboard/:adminWallet` · `GET|POST /profiles*` · `GET|POST /posts*` · `GET|POST /projects*` · `GET|POST /bounties*` · `GET|POST /settings*` · `GET|POST /whitelist*` · `GET /public/bounties` *(public)*
 
 Deploy (see §12): `POST /deploy/start` · `POST /deploy/record` · `GET /deploy/latest/:adminWallet`
-Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and never sends a transaction
+Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and never sends a transaction · `POST /reconcile/sync-grants` — **deliberate write** (see §13): absorbs deployer-sourced on-chain grants into the ledger
+On-chain readout: `GET /onchain/:adminWallet` — admin/deployer wallet's live CRIT + Sepolia ETH; degrades to `available: false` when the RPC is down. Powers the admin-only nav gauge ([frontend/src/components/AdminOnChainStatus.js](frontend/src/components/AdminOnChainStatus.js)). Not a student balance.
+Whitelist: `GET /whitelist/:adminWallet` · `POST /whitelist/add` (single `{wallet,label,notes}` **or** bulk `{wallets:[...]}` / `{entries:[...]}`; validates + lowercases every address) · `POST /whitelist/remove` (non-destructive — never deletes a profile)
 
 ---
 
@@ -226,7 +229,7 @@ Ordered roughly by how much trouble they'll cause.
 
 The unique index is **partial** (`partialFilterExpression: { txHash: { $type: 'string' } }`), so real hashes stay unique while any number of rows carry `null`. The old plain `unique: true` index permitted only one null document — which is precisely why the pre-refactor code invented hashes. If you ever see `E11000` on `txHash`, check that the boot migration in `server.js` ran.
 
-- `txHash: null` → genuinely off-chain (deploy credit, joining credit, admin correction). Renders as "off-chain".
+- `txHash: null` → genuinely off-chain (deploy credit, off-chain welcome grant, admin correction). Renders as "off-chain".
 - `hashFabricated: true` → a legacy invented hash, flagged by `backend/migrations/flag-fabricated-hashes.js`. Renders as "legacy — no on-chain record".
 
 Fabricated values are ~19 characters; real ones are exactly 66. That length difference is how the migration tells them apart.
@@ -244,3 +247,19 @@ Credits the ledger **and** transfers real tokens. The admin's MetaMask signs; th
 **Interrupted deploys are resumed, not restarted.** `/deploy/start` returns `409` if a round is still `in_progress` — restarting instead of resuming would credit everyone twice. Use the *Resume deploy* button. Confirmed students are skipped; failed ones retried.
 
 Requires `SEPOLIA_RPC_URL` (or the existing `ALCHEMY_API_KEY`, which already holds a full RPC URL) on the server.
+
+---
+
+## 13. Admin grants
+
+When the instructor sends a student CritCoin **directly on-chain from the admin/deployer wallet** (to test a wallet or onboard someone, outside the tip/deploy routes), that is admin intent and the ledger may record it. `syncAdminTransfers(address)` ([backend/lib/adminGrants.js](backend/lib/adminGrants.js)) reads the Token's `Transfer` log for transfers **from the deployer to that address** and writes one `adminGrant` `Transaction` per not-yet-recorded transfer, keyed on the real `txHash`.
+
+- **Only deployer-sourced transfers are absorbed** — the on-chain `from` topic filter is the safety guarantee; a student→student transfer is never recorded and stays as drift in reconcile.
+- **Idempotent** on `txHash`; running it twice records nothing the second time.
+- **Read + database-write only** — never sends a transaction. The backend holds no key.
+
+It runs best-effort after profile creation (catches a welcome token sent *before* onboarding) and behind the explicit `POST /api/admin/reconcile/sync-grants` admin action (catches grants sent *after* a profile exists). `GET /reconcile` stays read-only.
+
+**Welcome grant toggle** (`SystemSettings.grantOnCreate`, default off): when on, a new profile also gets a 1-CritCoin **off-chain** `adminGrant` credit at creation. It is *received*, so it never affects tip stats, and it does count toward the student's database balance. Because participation is gated on having a (whitelist-approved) profile rather than on balance, a profile created with the toggle **off** starts at 0 CRIT and can still post and submit — the former `≥1 CritCoin` gate on project submission was removed with this change.
+
+`TOKEN_DEPLOY_BLOCK` (optional) narrows the `Transfer`-log scan to the contract's deployment block; without it the scan starts at block 0, which some RPC providers reject as too wide a range (the read then degrades to "nothing to absorb").

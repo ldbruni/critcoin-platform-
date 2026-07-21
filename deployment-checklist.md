@@ -15,8 +15,12 @@ Quick pre-flight list. Full instructions in [DEPLOYMENT.md](DEPLOYMENT.md).
 - [ ] `NODE_ENV=production`
 - [ ] `MONGO_URI` — Atlas connection string
 - [ ] `ADMIN_WALLET` — valid `0x` + 40 hex chars, or the server won't boot
+- [ ] `JWT_SECRET` — required in production, or the server won't boot
+- [ ] `SEPOLIA_RPC_URL` — read-only RPC; powers deploy preflight, reconcile, admin-grant sync, and the on-chain readout
+- [ ] `TOKEN_DEPLOY_BLOCK` — optional; narrows the admin-grant log scan
 - [ ] `FRONTEND_URL=https://critcoin.art`
 - [ ] `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`
+- [ ] Never set `SEPOLIA_PRIVATE_KEY` (or any deployer key) on Railway — the backend never signs
 
 **Vercel (frontend)**
 - [ ] `REACT_APP_API_URL` — Railway backend URL
@@ -34,11 +38,13 @@ Push to `main` — Railway and Vercel both auto-deploy. Watch both dashboards fo
 - [ ] `curl https://critcoin-platform-production.up.railway.app/health` returns `mongodb: Connected`
 - [ ] https://critcoin.art loads over HTTPS
 - [ ] MetaMask connects and shows a Sepolia CritCoin balance
-- [ ] Profile creation with a photo works (exercises Cloudinary)
+- [ ] Profile creation with a photo works for a **whitelisted** wallet (exercises Cloudinary); a non-whitelisted wallet is refused clearly
+- [ ] A new (0-CritCoin) profile can still submit a project and post in the forum
 - [ ] Project submission and an on-chain tip both succeed
 - [ ] Forum post + comment + vote work
 - [ ] Prediction page loads and respects the open/closed setting
 - [ ] Admin panel opens from the admin wallet and is hidden from student wallets
+- [ ] Admin on-chain readout shows in the nav (admin only); Reconcile → Sync admin grants works
 - [ ] Archive page lists past semesters
 
 ## If the contract was redeployed

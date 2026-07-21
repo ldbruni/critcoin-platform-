@@ -11,6 +11,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Archive from "./pages/Archive";
 import Prediction from "./pages/Prediction";
 import ThemeScope from "./theme/ThemeScope";
+import AdminOnChainStatus from "./components/AdminOnChainStatus";
 // Order matters, and so does the fact that index.js imports this module before
 // bootstrap.css: the theme rules must keep landing ahead of bootstrap so it
 // wins the same element-selector ties it wins today. See styles/TOKENS.md.
@@ -22,7 +23,7 @@ import './styles/theme-v2.css';
 // Replace with your actual admin wallet address
 const ADMIN_WALLET = process.env.REACT_APP_ADMIN_WALLET?.toLowerCase() || "0xc69c361d300aeaad0aee95bd1c753e62298f92e9";
 
-function Navigation({ isAdmin }) {
+function Navigation({ wallet, isAdmin }) {
   const location = useLocation();
   
   const isActive = (path) => {
@@ -55,6 +56,9 @@ function Navigation({ isAdmin }) {
           </Link>
         )}
       </div>
+      {/* Admin-only on-chain balance gauge, on every page. Renders nothing for
+          non-admin wallets. */}
+      <AdminOnChainStatus wallet={wallet} isAdmin={isAdmin} />
     </nav>
   );
 }
@@ -117,7 +121,7 @@ export default function App() {
   return (
     <Router>
       <ThemeScope theme="v2">
-        <Navigation isAdmin={isAdmin} />
+        <Navigation wallet={wallet} isAdmin={isAdmin} />
       </ThemeScope>
       <Routes>
         <Route path="/" element={pageV2(<Dapp />)} />

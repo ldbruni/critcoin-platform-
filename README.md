@@ -32,9 +32,12 @@ Admin panel at `/admin`, gated on the wallet matching `ADMIN_WALLET`. Tabs:
 | Projects | Archive / restore project submissions |
 | Bounties | Create, edit, cross out, delete bounties |
 | Predictions | Open/close the prediction market per project (2, 3, 4) |
-| Whitelist | Restrict profile creation to approved wallets |
+| Whitelist | Manage the class roster that gates profile creation (add/bulk-add/remove), and the optional "grant 1 CritCoin on profile creation" toggle |
 | Semester | Preview, archive, and clear a semester's data |
-| Deploy | Grant 10,000 CritCoin to every active student (ledger entry) |
+| Deploy | Grant 10,000 CritCoin to every active student (ledger credit **+** a real on-chain transfer from the admin's MetaMask) |
+| Reconcile | Compare the ledger against live on-chain balances (read-only), and **Sync admin grants** — absorb coins sent on-chain from the admin/deployer wallet into the ledger |
+
+Profile creation is gated by the **whitelist** (always on — the class roster, never a chain balance); participation then follows from having a profile, not from holding CritCoin. The admin also gets an **on-chain balance readout** (deployer/admin wallet's CritCoin + Sepolia ETH) in the nav on every page — an operational gauge, not a student balance.
 
 ---
 
@@ -78,9 +81,19 @@ ADMIN_WALLET=0xYourAdminWalletAddress
 PORT=3001
 NODE_ENV=development
 
+# Signs the HMAC session tokens (Sign-In With Ethereum). Required in production;
+# in dev an ephemeral secret is used if unset.
+JWT_SECRET=any-long-random-string-for-dev
+
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-key
 CLOUDINARY_API_SECRET=your-secret
+
+# Read-only Sepolia RPC. Powers deploy preflight, /api/admin/reconcile, the
+# admin on-chain readout, and admin-grant sync. Falls back to ALCHEMY_API_KEY.
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
+# Optional: block the Token was deployed at, to narrow the admin-grant log scan.
+TOKEN_DEPLOY_BLOCK=
 ```
 
 **`frontend/.env`**
@@ -159,8 +172,10 @@ npx hardhat test
 │   ├── models/                   # Bounty, Comment, Post, Prediction, Profiles,
 │   │                             # Project, SemesterArchive, SystemSettings,
 │   │                             # Transaction, Whitelist
-│   ├── routes/                   # admin, archive, comments, explorer, posts,
+│   ├── routes/                   # admin, archive, auth, comments, explorer, posts,
 │   │                             # predictions, profiles, projects
+│   ├── lib/                      # chain (read-only RPC), balances, adminGrants, authToken
+│   ├── middleware/auth.js        # requireAuth / requireAdmin (session tokens)
 │   ├── uploads/                  # legacy local image storage
 │   └── sepolia.json              # contract address + ABI (manual copy)
 │

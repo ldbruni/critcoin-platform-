@@ -40,6 +40,25 @@ Wallet-only, session-based. One signature prompt per session.
 - **Amounts** on `send-coin` are validated server-side: positive, finite, whole, and
   within the sender's ledger balance; no self-tips. A tip can only move coins the
   sender actually holds.
+- **Profile creation is gated by the whitelist** (the class roster), checked against the
+  SIWE-verified wallet — admin intent, never a chain balance. Roster addresses are
+  validated and lowercased on add, so a checksummed and a lowercase form of the same
+  wallet are never two entries. Roster management (`/api/admin/whitelist/*`) is behind
+  `requireAdmin`.
+
+## Admin grants and the ledger boundary
+
+The database ledger is authoritative, and the chain may write to it in exactly **one**
+place: `syncAdminTransfers` ([backend/lib/adminGrants.js](backend/lib/adminGrants.js))
+absorbs on-chain transfers **from the deployer/admin wallet only** (an on-chain topic
+filter, so a student→student transfer can never credit the database — it stays as drift
+in the reconcile report). It is idempotent on `txHash` and **never sends a transaction**;
+the deployer key stays out of the backend. Exposed via the admin-only, deliberate
+`POST /api/admin/reconcile/sync-grants`; `GET /reconcile` remains strictly read-only.
+
+The admin-only on-chain readout (`GET /api/admin/onchain/:adminWallet`, behind
+`requireAdmin`) reports the deployer/admin wallet's live CritCoin + Sepolia ETH. It reads
+public chain state, is never a student balance, and is never exposed on a public route.
 
 ## Baseline hardening
 

@@ -47,6 +47,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "test": "node --test test/",
     "dev": "nodemon server.js",
     "start-university": "PORT=8081 node server.js",
     "start-secure": "PORT=8444 node server.js",

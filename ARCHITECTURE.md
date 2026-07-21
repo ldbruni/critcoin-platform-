@@ -43,8 +43,9 @@ from it.
 5. **Admin corrections are database-only, and produce expected drift.** An
    instructor adjusting a balance writes a `Transaction` and nothing else. The
    resulting gap between ledger and chain is a known, accepted state — not a bug.
-   The same is true of the 1-CritCoin joining credit issued at profile creation,
-   which has no on-chain counterpart by design.
+   The same is true of the optional 1-CritCoin welcome grant at profile creation
+   (the `grantOnCreate` toggle, default off), an off-chain `adminGrant` with no
+   on-chain counterpart by design. See "Admin grants" below.
 
 6. **Drift is surfaced, never auto-corrected.**
    `GET /api/admin/reconcile/:adminWallet` reports database balance, live chain
@@ -75,6 +76,44 @@ the in-app check and then have the contract revert with `Not enough tokens`.
 That is handled with an explicit message telling them to contact the instructor.
 It is deliberately **not** repaired by writing to the database or by sending a
 compensating transaction. See the working rule in [CLAUDE.md](CLAUDE.md).
+
+### Admin grants
+
+Authority in CritCoin is not "database vs. chain" — it is **admin intent vs.
+everything else.** The database is where admin intent is normally recorded, but a
+token transfer *from the deployer/admin wallet* is another expression of that
+intent, delivered on-chain instead of through the API. So when the instructor
+sends a student CritCoin directly on Sepolia — to test a wallet or onboard someone
+outside the tip/deploy routes — the ledger may legitimately record it.
+
+`syncAdminTransfers(address)`
+([backend/lib/adminGrants.js](backend/lib/adminGrants.js)) does exactly this: it
+reads the Token's `Transfer` log for transfers **from the deployer to that
+address** (the topic filter is the safety guarantee) and writes one `adminGrant`
+`Transaction` per not-yet-recorded transfer, keyed on the real `txHash` for
+idempotency. A transfer between any **other** two wallets is not admin intent and
+is never absorbed — it stays visible as drift in the reconcile report for a human
+to act on.
+
+Two invariants hold this in place:
+
+- **Only deployer-sourced transfers are absorbed.** The chain-level `from` filter
+  means a student→student transfer can never be credited to the database.
+- **The backend never signs.** `syncAdminTransfers` is read + database-write only;
+  it never sends a transaction. The deployer key stays out of the backend, so the
+  optional on-chain welcome grant is one the admin sends from their own wallet —
+  the sync then absorbs it — not one the server initiates.
+
+It runs in two places: best-effort after profile creation (so a welcome token sent
+*before* onboarding is accounted for the moment the student joins), and behind the
+explicit admin action `POST /api/admin/reconcile/sync-grants` (so grants sent
+*after* a profile exists are caught on demand). The `GET /reconcile` view itself
+stays strictly read-only; the sync is a separate, deliberate write.
+
+Because an `adminGrant` is *received*, it never counts toward a sender's tip
+budget, and it does count toward the student's authoritative database balance —
+so a student who received a 1-CRIT grant and then goes through a full deploy ends
+reconciled in both ledgers, with no double-count and no leftover drift.
 
 ---
 

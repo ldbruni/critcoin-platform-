@@ -47,6 +47,15 @@ export function clearSession(wallet) {
   } catch (e) { /* ignore */ }
 }
 
+// True if a valid, unexpired session already exists for this wallet - WITHOUT
+// prompting for a signature. Lets passive UI (e.g. the admin on-chain readout in
+// the nav) fetch admin-only data only when the admin has already signed in,
+// instead of triggering a MetaMask popup on every page load.
+export function hasSession(wallet) {
+  if (!wallet) return false;
+  return readStored(wallet.toLowerCase()) !== null;
+}
+
 // Perform the nonce -> sign -> verify handshake and store the token.
 async function doSignIn(wallet) {
   const address = wallet.toLowerCase();

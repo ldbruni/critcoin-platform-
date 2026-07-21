@@ -192,13 +192,11 @@ router.post("/", requireAuth, upload.single('image'), async (req, res) => {
       return res.status(400).send("Must have a profile to submit projects");
     }
 
-    // Check balance requirement against the ledger. The client used to send its
-    // own balance, which the server simply trusted - never take the client's
-    // word for a balance.
-    const { balance } = await getBalance(wallet);
-    if (balance < 1) {
-      return res.status(400).send("Need ≥1 CritCoin to submit projects");
-    }
+    // No CritCoin-balance requirement to submit. Taking part is authorized by
+    // having a (whitelist-approved) profile - admin intent - not by holding a
+    // balance, so a student granted 0 CritCoin on creation can still submit. The
+    // ledger stays authoritative for what students hold; it just doesn't gate
+    // participation. (The former >=1 CritCoin gate was removed here.)
 
     // Verify the upload really is an image (signature bytes), and that the bytes
     // match the declared MIME type — a spoofed Content-Type is not enough.

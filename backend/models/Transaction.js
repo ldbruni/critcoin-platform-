@@ -19,7 +19,12 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['transfer', 'project_tip', 'forum_reward', 'system', 'mint', 'burn']
+    // 'adminGrant': CritCoin the admin/deployer wallet put in a student's hands as
+    // an expression of admin intent - either a real on-chain transfer FROM the
+    // deployer that syncAdminTransfers absorbed (real txHash), or the optional
+    // 1-CritCoin welcome credit issued at profile creation (txHash: null). Only
+    // deployer-sourced value is ever recorded this way; see lib/adminGrants.js.
+    enum: ['transfer', 'project_tip', 'forum_reward', 'system', 'mint', 'burn', 'adminGrant']
   },
   description: { type: String }, // Description of the transaction
   relatedId: { type: String }, // ID of related post/project/etc

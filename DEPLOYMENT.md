@@ -32,8 +32,19 @@ CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-key
 CLOUDINARY_API_SECRET=your-secret
 
-# Read-only Sepolia RPC. Required for deploy preflight and /api/admin/reconcile.
+# Session-token signing secret. REQUIRED — the server refuses to start without it
+# in production. Long random string; rotating it just logs everyone out.
+JWT_SECRET=your-long-random-secret
+
+# Read-only Sepolia RPC. Powers deploy preflight, /api/admin/reconcile, admin-grant
+# sync, and the admin on-chain readout.
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
+
+# Optional. The block the Token contract was deployed at. Narrows the Transfer-log
+# scan used to absorb admin grants; without it the scan starts at block 0, which
+# some RPC providers reject as too wide (the read then degrades to "nothing to
+# absorb", and the grant stays visible as drift in reconcile).
+TOKEN_DEPLOY_BLOCK=
 ```
 
 `PORT` is injected by Railway — don't hardcode it.
@@ -53,9 +64,11 @@ cd backend && node migrations/flag-fabricated-hashes.js --dry-run   # inspect
 cd backend && node migrations/flag-fabricated-hashes.js             # apply
 ```
 
-The index migration in `server.js` runs automatically on boot and is idempotent.
+The boot migrations in `server.js` run automatically and are idempotent: the `txHash`
+index rebuild **and** the whitelist seed (every existing profile's wallet is added to the
+now-always-on whitelist, so no current student is locked out of re-creating a profile).
 
-The server **exits on startup** if `MONGO_URI` or `ADMIN_WALLET` are missing, or if `ADMIN_WALLET` isn't a valid `0x` + 40-hex address. Check the deploy logs first when a release fails to come up.
+The server **exits on startup** if `MONGO_URI` or `ADMIN_WALLET` are missing, if `ADMIN_WALLET` isn't a valid `0x` + 40-hex address, or (in production) if `JWT_SECRET` is unset. Check the deploy logs first when a release fails to come up.
 
 The health check is `GET /api/health`, matching `healthcheckPath` in `railway.json`. It is declared ahead of the rate limiter so the probe is never throttled.
 
@@ -145,8 +158,10 @@ Then in a browser at https://critcoin.art:
 - [ ] Page loads over HTTPS with a valid certificate
 - [ ] MetaMask connects and shows a Sepolia CritCoin balance
 - [ ] Profiles, Projects, Leaderboard, Forum, Prediction, Archive all render
-- [ ] Creating a profile with a photo works (exercises Cloudinary)
+- [ ] Creating a profile with a photo works for a **whitelisted** wallet (exercises Cloudinary); a non-whitelisted wallet is refused with a clear message
 - [ ] Admin panel is reachable from the admin wallet and hidden from others
+- [ ] The admin on-chain readout shows in the nav for the admin wallet (and not for others)
+- [ ] Admin → Reconcile loads; **Sync admin grants** absorbs a deployer-sourced on-chain transfer and leaves it reconciled
 
 ---
 

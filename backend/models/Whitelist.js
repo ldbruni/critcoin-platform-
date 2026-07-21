@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const whitelistSchema = new mongoose.Schema({
   wallet: { type: String, required: true, unique: true, lowercase: true },
+  label: { type: String }, // Optional human label (e.g. the student's name)
   addedBy: { type: String, required: true }, // Admin wallet that added this wallet
   addedAt: { type: Date, default: Date.now },
   notes: { type: String } // Optional notes about why this wallet was whitelisted

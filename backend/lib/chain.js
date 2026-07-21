@@ -74,6 +74,64 @@ async function getEthBalance(address) {
   }
 }
 
+// Incoming CritCoin transfers from `fromAddress` to `toAddress`, read from the
+// chain's Transfer event log. Both fields are indexed on the Token's
+// Transfer(address indexed _from, address indexed _to, uint256 _value) event, so
+// this is a cheap topic-filtered query - the result set is only the transfers
+// between exactly these two wallets.
+//
+// This is the read half of admin-grant absorption (see lib/adminGrants.js). It
+// filters on `from` at the chain level, which is the safety guarantee: a transfer
+// from any wallet other than the deployer is never returned, so it can never be
+// absorbed into the ledger.
+//
+// Returns [] (never throws) when the RPC is unreachable or the query fails, so a
+// dead RPC degrades to "nothing to absorb" and the grant stays visible as drift
+// in the reconcile report rather than taking down profile creation.
+//
+// TOKEN_DEPLOY_BLOCK narrows the scan to the contract's deployment block; without
+// it the scan starts at 0, which some RPC providers reject for too-wide a range.
+async function getIncomingTransfersFrom(fromAddress, toAddress, { fromBlock } = {}) {
+  const c = getContract();
+  if (!c || !fromAddress || !toAddress) return [];
+
+  const start = fromBlock ?? (process.env.TOKEN_DEPLOY_BLOCK ? Number(process.env.TOKEN_DEPLOY_BLOCK) : 0);
+
+  try {
+    const filter = c.filters.Transfer(fromAddress, toAddress);
+    const events = await c.queryFilter(filter, start, "latest");
+
+    // Resolve block timestamps once per block, not once per event.
+    const blockCache = new Map();
+    const results = [];
+    for (const ev of events) {
+      let ts = blockCache.get(ev.blockNumber);
+      if (ts === undefined) {
+        try {
+          const block = await ev.getBlock();
+          ts = block ? new Date(block.timestamp * 1000) : null;
+        } catch (e) {
+          ts = null;
+        }
+        blockCache.set(ev.blockNumber, ts);
+      }
+      results.push({
+        txHash: ev.transactionHash.toLowerCase(),
+        from: ev.args._from.toLowerCase(),
+        to: ev.args._to.toLowerCase(),
+        // The Token has no decimals - _value is a whole count of CritCoin.
+        amount: Number(ev.args._value.toString()),
+        blockNumber: ev.blockNumber,
+        timestamp: ts
+      });
+    }
+    return results;
+  } catch (err) {
+    console.warn(`⚠️ chain: getIncomingTransfersFrom(${fromAddress} -> ${toAddress}) failed - ${err.message}`);
+    return [];
+  }
+}
+
 // Estimated wei cost of a single transfer, for roster-wide gas preflight.
 // Falls back to a fixed gas ceiling when estimateGas can't run (which it often
 // can't - estimating a transfer the deployer cannot afford reverts).
@@ -107,6 +165,7 @@ module.exports = {
   isConfigured,
   getCritBalance,
   getEthBalance,
+  getIncomingTransfersFrom,
   estimateTransferCost,
   contractAddress: contractInfo.address,
   GAS_SAFETY_MARGIN

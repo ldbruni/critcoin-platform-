@@ -16,6 +16,7 @@ const Whitelist = require("../models/Whitelist");
 const { ethers } = require('ethers');
 const chain = require("../lib/chain");
 const { getBalances } = require("../lib/balances");
+const { syncAdminTransfers } = require("../lib/adminGrants");
 
 const { requireAdmin } = require("../middleware/auth");
 
@@ -674,6 +675,87 @@ router.get("/reconcile/:adminWallet", [
   }
 });
 
+// ---------------------------------------------------------------------------
+// POST admin-triggered sync of deployer-sourced on-chain grants into the ledger.
+//
+// Unlike GET /reconcile (strictly read-only), this is a DELIBERATE admin write.
+// It absorbs on-chain transfers the deployer/admin wallet sent to students - and
+// ONLY that wallet - recording each once (txHash idempotency). A transfer between
+// any other wallets is never absorbed; it stays as drift in the reconcile report.
+// See lib/adminGrants.js and CLAUDE.md.
+// ---------------------------------------------------------------------------
+router.post("/reconcile/sync-grants", requireAdmin, async (req, res) => {
+  try {
+    if (!chain.isConfigured()) {
+      return res.status(503).json({
+        error: "SEPOLIA_RPC_URL is not configured - cannot read on-chain grants"
+      });
+    }
+
+    const profiles = await Profile.find({ archived: { $ne: true } });
+    const recorded = [];
+    let skipped = 0;
+
+    for (const p of profiles) {
+      const result = await syncAdminTransfers(p.wallet);
+      recorded.push(...result.recorded);
+      skipped += result.skipped;
+    }
+
+    res.json({
+      message: `Absorbed ${recorded.length} admin grant(s); ${skipped} already recorded`,
+      recorded,
+      skipped,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Sync grants error:", err);
+    res.status(500).json({ error: "Failed to sync admin grants" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET the admin/deployer wallet's live on-chain balances (CritCoin + Sepolia ETH).
+//
+// Admin-only operational gauge for the wallet that actually moves tokens before a
+// deploy or grant. This is the deliberate, narrowly-scoped exception to "no
+// balanceOf in the app": it reads the ADMIN/deployer wallet, never a student's,
+// so it is never mistaken for a student's authoritative database balance. In this
+// deployment admin == deployer (the deploy flow sends from ADMIN_WALLET). Degrades
+// to available:false (never throws) when the RPC is unreachable.
+// ---------------------------------------------------------------------------
+router.get("/onchain/:adminWallet", [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], requireAdmin, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const deployer = process.env.ADMIN_WALLET.toLowerCase();
+
+  try {
+    if (!chain.isConfigured()) {
+      return res.json({ wallet: deployer, critBalance: null, ethBalance: null, available: false });
+    }
+
+    const [crit, ethWei] = await Promise.all([
+      chain.getCritBalance(deployer),
+      chain.getEthBalance(deployer)
+    ]);
+
+    res.json({
+      wallet: deployer,
+      critBalance: crit,
+      ethBalance: ethWei === null ? null : ethers.utils.formatEther(ethWei),
+      available: crit !== null || ethWei !== null
+    });
+  } catch (err) {
+    console.error("On-chain readout error:", err);
+    res.json({ wallet: deployer, critBalance: null, ethBalance: null, available: false });
+  }
+});
+
 // GET all projects for admin management
 router.get("/projects/:adminWallet", [
   param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
@@ -752,11 +834,16 @@ router.get("/settings/:adminWallet", [
       settingsObj[setting.key] = setting.value;
     });
     
-    // Default values if not set
+    // Default values if not set. `grantOnCreate` gates the optional 1-CritCoin
+    // welcome grant at profile creation (default OFF). `whitelistMode` is legacy:
+    // the whitelist is now always the profile-creation gate regardless of it.
     if (!settingsObj.hasOwnProperty('whitelistMode')) {
       settingsObj.whitelistMode = false;
     }
-    
+    if (!settingsObj.hasOwnProperty('grantOnCreate')) {
+      settingsObj.grantOnCreate = false;
+    }
+
     res.json(settingsObj);
   } catch (err) {
     console.error("Settings fetch error:", err);
@@ -808,27 +895,84 @@ router.get("/whitelist/:adminWallet", [
   }
 });
 
-// POST add wallet to whitelist
+// POST add wallet(s) to whitelist
+//
+// Accepts either a single entry ({ wallet, label, notes }) or a bulk add
+// ({ wallets: ["0x..", ...] } and/or { entries: [{ wallet, label, notes }] }).
+// Every address is validated and normalized with the same lowercasing used
+// everywhere else in the app, so a checksummed and a lowercase form of the same
+// wallet are never two different roster entries - the class of bug behind flaky
+// admin auth. Malformed addresses are rejected with a clear per-address reason.
 router.post("/whitelist/add", requireAdmin, async (req, res) => {
-  const { wallet, notes } = req.body;
+  const { wallet, label, notes, wallets, entries } = req.body;
 
-  if (!wallet) {
+  // Normalize the request into a list of { wallet, label, notes } candidates.
+  const candidates = [];
+  if (Array.isArray(entries)) {
+    for (const e of entries) {
+      if (e && e.wallet) candidates.push({ wallet: e.wallet, label: e.label, notes: e.notes });
+    }
+  }
+  if (Array.isArray(wallets)) {
+    for (const w of wallets) candidates.push({ wallet: w, label: undefined, notes: undefined });
+  }
+  if (wallet) {
+    candidates.push({ wallet, label, notes });
+  }
+
+  if (candidates.length === 0) {
     return res.status(400).send("Wallet address required");
   }
 
+  const added = [];
+  const skipped = [];   // already whitelisted
+  const invalid = [];   // malformed address
+
   try {
-    const whitelistEntry = new Whitelist({
-      wallet: wallet.toLowerCase(),
-      addedBy: req.adminWallet,
-      notes: notes || ""
-    });
-    
-    await whitelistEntry.save();
-    res.json({ message: "Wallet added to whitelist successfully" });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).send("Wallet already whitelisted");
+    for (const c of candidates) {
+      const raw = String(c.wallet).trim();
+      if (!ethers.utils.isAddress(raw)) {
+        invalid.push({ wallet: raw, reason: "Not a valid Ethereum address" });
+        continue;
+      }
+      const normalized = raw.toLowerCase();
+
+      const exists = await Whitelist.findOne({ wallet: normalized });
+      if (exists) {
+        skipped.push(normalized);
+        continue;
+      }
+
+      try {
+        await Whitelist.create({
+          wallet: normalized,
+          label: c.label ? String(c.label).trim() : undefined,
+          notes: c.notes ? String(c.notes).trim() : "",
+          addedBy: req.adminWallet
+        });
+        added.push(normalized);
+      } catch (err) {
+        // Concurrent insert of the same address; treat as already present.
+        if (err.code === 11000) skipped.push(normalized);
+        else throw err;
+      }
     }
+
+    // A lone malformed single-address add is a client error, not a partial success.
+    if (added.length === 0 && skipped.length === 0 && invalid.length > 0) {
+      return res.status(400).json({
+        error: invalid.length === 1 ? invalid[0].reason : "No valid addresses to add",
+        invalid
+      });
+    }
+
+    res.json({
+      message: `Added ${added.length}, skipped ${skipped.length} already-listed, ${invalid.length} invalid`,
+      added,
+      skipped,
+      invalid
+    });
+  } catch (err) {
     console.error("Add to whitelist error:", err);
     res.status(500).send("Database error");
   }
