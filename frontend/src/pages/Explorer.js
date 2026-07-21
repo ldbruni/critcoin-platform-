@@ -169,6 +169,15 @@ export default function Explorer() {
   const formatDescription = (description) =>
     (description || '').replace(/^Tip for project:/, 'Investment in project:');
 
+  // Shared column template for the transaction table's header and rows so the two
+  // grids always stay aligned. Human-readable columns (Type, Amount, Time) get
+  // enough room to show their values in full; the per-column min widths give the
+  // grid an intrinsic width (~TX_TABLE_MIN_WIDTH) that scrolls horizontally on
+  // narrow screens instead of crushing or clipping the cells. See Change 3.
+  const TX_GRID_COLUMNS =
+    "minmax(150px, 0.9fr) minmax(150px, 1.2fr) minmax(150px, 1.2fr) 100px minmax(160px, 1fr) 70px";
+  const TX_TABLE_MIN_WIDTH = "870px";
+
   return (
     <div className="artistic-container" style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
       <div className="v2-masthead">
@@ -303,15 +312,17 @@ export default function Explorer() {
         </button>
       </div>
 
-      {/* Transaction List */}
-      <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
-        <div style={{ 
-          padding: "1rem", 
+      {/* Transaction List — scrolls horizontally as one unit on narrow screens so
+          the header and rows stay aligned and no cell is silently clipped. */}
+      <div className="explorer-table" style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)", overflowX: "auto" }}>
+       <div style={{ minWidth: TX_TABLE_MIN_WIDTH }}>
+        <div style={{
+          padding: "1rem",
           borderBottom: "1px solid var(--surface-card-border)",
           backgroundColor: "var(--surface-muted)",
           fontWeight: "bold"
         }}>
-          <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 120px 80px", gap: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: TX_GRID_COLUMNS, gap: "1rem" }}>
             <span>Type</span>
             <span>From</span>
             <span>To</span>
@@ -360,7 +371,7 @@ export default function Explorer() {
                 backgroundColor: index % 2 === 0 ? "var(--surface-card)" : "var(--surface-muted)"
               }}
             >
-              <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 100px 120px 80px", gap: "1rem", alignItems: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: TX_GRID_COLUMNS, gap: "1rem", alignItems: "center" }}>
                 <span style={{ 
                   color: getTypeColor(tx.type),
                   fontWeight: "bold"
@@ -368,7 +379,7 @@ export default function Explorer() {
                   {getTypeLabel(tx.type)}
                 </span>
                 
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
                   {tx.fromPhoto && (
                     <img
                       src={`${API.profiles}/photo/${tx.fromPhoto}`}
@@ -387,7 +398,7 @@ export default function Explorer() {
                   />
                 </div>
                 
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
                   {tx.toPhoto && (
                     <img
                       src={`${API.profiles}/photo/${tx.toPhoto}`}
@@ -432,6 +443,7 @@ export default function Explorer() {
             </div>
           ))
         )}
+       </div>
       </div>
 
       {/* Pagination */}
@@ -503,14 +515,14 @@ export default function Explorer() {
             <h3>Transaction Details</h3>
             <div style={{ marginBottom: "1rem" }}>
               <strong>Transaction ID:</strong><br />
-              <code style={{ fontSize: "0.9rem", backgroundColor: "var(--surface-muted)", padding: "0.25rem" }}>
+              <code style={{ fontSize: "0.9rem", backgroundColor: "var(--surface-muted)", padding: "0.25rem", wordBreak: "break-all" }}>
                 {selectedTransaction._id}
               </code>
             </div>
             
             <div style={{ marginBottom: "1rem" }}>
               <strong>Transaction Hash:</strong><br />
-              <span style={{ fontSize: "0.9rem" }}>
+              <span style={{ fontSize: "0.9rem", wordBreak: "break-all", overflowWrap: "anywhere" }}>
                 <TxLink
                   hash={selectedTransaction.txHash}
                   fabricated={selectedTransaction.hashFabricated}
@@ -532,14 +544,14 @@ export default function Explorer() {
             
             <div style={{ marginBottom: "1rem" }}>
               <strong>From:</strong> {selectedTransaction.fromName}<br />
-              <span style={{ fontSize: "0.8rem" }}>
+              <span style={{ fontSize: "0.8rem", wordBreak: "break-all", overflowWrap: "anywhere" }}>
                 <AddressLink address={selectedTransaction.fromWallet} short={false} />
               </span>
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
               <strong>To:</strong> {selectedTransaction.toName}<br />
-              <span style={{ fontSize: "0.8rem" }}>
+              <span style={{ fontSize: "0.8rem", wordBreak: "break-all", overflowWrap: "anywhere" }}>
                 <AddressLink address={selectedTransaction.toWallet} short={false} />
               </span>
             </div>
