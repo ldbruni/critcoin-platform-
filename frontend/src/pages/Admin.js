@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 import { AddressLink, TxLink } from "../components/ChainLink";
+import { authorizedFetch } from "../utils/auth";
 
 // How each per-student deploy row reads in the status table.
 const DEPLOY_STATUS_LABELS = {
@@ -105,72 +106,23 @@ export default function Admin() {
     }
   };
 
-  // Helper function to create signed admin requests
-  const createSignedAdminRequest = async (action, additionalData = {}) => {
-    if (!signer || !wallet) {
-      throw new Error('Wallet not connected');
-    }
-
-    const messageData = {
-      timestamp: Date.now(),
-      action: action,
-      wallet: wallet.toLowerCase(),
-      ...additionalData
-    };
-
-    const message = JSON.stringify(messageData);
-    const signature = await signer.signMessage(message);
-    
-    return { message, signature };
+  // Admin requests reuse the shared wallet session (one signature prompt per
+  // session, established on first request). The server verifies the bearer
+  // token and that the signed-in wallet is ADMIN_WALLET — see middleware/auth.js.
+  // The `action` argument is kept for call-site compatibility but is no longer
+  // used: identity is the token, not a per-request signed message. This also
+  // removes the concurrent-signMessage race that made the panel show an error
+  // while still working (audit finding A4).
+  const fetchWithSignature = async (url) => {
+    return authorizedFetch(url, {}, wallet);
   };
 
-  // Helper function for signed GET requests
-  const fetchWithSignature = async (url, action) => {
-    try {
-      const { message, signature } = await createSignedAdminRequest(action);
-      const signedUrl = `${url}?message=${encodeURIComponent(message)}&signature=${signature}`;
-      return await fetch(signedUrl);
-    } catch (err) {
-      console.error('Signed request error:', err);
-      // Fallback for development mode
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Falling back to unsigned request in development mode');
-        return await fetch(url);
-      }
-      throw err;
-    }
-  };
-
-  // Helper function for signed POST requests
   const postWithSignature = async (url, action, data = {}) => {
-    try {
-      const { message, signature } = await createSignedAdminRequest(action, data);
-      return await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          adminWallet: wallet,
-          message,
-          signature
-        })
-      });
-    } catch (err) {
-      console.error('Signed POST request error:', err);
-      // Fallback for development mode
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Falling back to unsigned POST request in development mode');
-        return await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...data,
-            adminWallet: wallet
-          })
-        });
-      }
-      throw err;
-    }
+    return authorizedFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }, wallet);
   };
 
   const fetchDashboard = async () => {

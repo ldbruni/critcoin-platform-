@@ -10,108 +10,10 @@ const Comment = require("../models/Comment");
 const Transaction = require("../models/Transaction");
 const Bounty = require("../models/Bounty");
 const Prediction = require("../models/Prediction");
-const { ethers } = require('ethers');
+const { requireAdmin } = require("../middleware/auth");
 
-// Admin authentication middleware with signature verification
-const authenticateAdmin = async (req, res, next) => {
-  const { adminWallet, signature, message } = req.body;
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-
-  if (!ADMIN_WALLET) {
-    console.error('ADMIN_WALLET environment variable not set');
-    return res.status(500).send('Server configuration error');
-  }
-
-  // For backward compatibility, allow old method in development only
-  if (process.env.NODE_ENV !== 'production' && adminWallet && !signature) {
-    if (adminWallet.toLowerCase() === ADMIN_WALLET) {
-      console.warn('Warning: Using insecure admin auth in development mode');
-      return next();
-    }
-  }
-
-  if (!signature || !message) {
-    return res.status(403).json({ error: 'Signature and message required for admin authentication' });
-  }
-
-  try {
-    let messageData;
-    try {
-      messageData = JSON.parse(message);
-    } catch (e) {
-      return res.status(403).json({ error: 'Invalid message format' });
-    }
-
-    if (!messageData.timestamp || Date.now() - messageData.timestamp > 300000) {
-      return res.status(403).json({ error: 'Message expired or invalid timestamp' });
-    }
-
-    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
-
-    if (recoveredAddress.toLowerCase() !== ADMIN_WALLET) {
-      return res.status(403).json({ error: 'Invalid admin signature' });
-    }
-
-    next();
-  } catch (error) {
-    console.error('Admin authentication error:', error);
-    return res.status(403).json({ error: 'Authentication failed' });
-  }
-};
-
-// Admin authentication for GET routes
-const authenticateAdminGET = async (req, res, next) => {
-  const { signature, message } = req.query;
-  const adminWallet = req.params.adminWallet?.toLowerCase();
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-
-  if (!ADMIN_WALLET) {
-    console.error('ADMIN_WALLET environment variable not set');
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
-
-  if (adminWallet !== ADMIN_WALLET) {
-    return res.status(403).json({ error: 'Unauthorized wallet address' });
-  }
-
-  if (process.env.NODE_ENV !== 'production' && !signature) {
-    console.warn('Warning: Using insecure admin auth in development mode');
-    return next();
-  }
-
-  if (!signature || !message) {
-    return res.status(403).json({
-      error: 'Admin GET routes require signature and message query parameters'
-    });
-  }
-
-  try {
-    let messageData;
-    try {
-      messageData = JSON.parse(decodeURIComponent(message));
-    } catch (e) {
-      return res.status(403).json({ error: 'Invalid message format' });
-    }
-
-    if (!messageData.timestamp || Date.now() - messageData.timestamp > 300000) {
-      return res.status(403).json({ error: 'Message expired or invalid timestamp' });
-    }
-
-    const recoveredAddress = ethers.utils.verifyMessage(
-      JSON.stringify(messageData),
-      signature
-    );
-
-    if (recoveredAddress.toLowerCase() !== ADMIN_WALLET) {
-      return res.status(403).json({ error: 'Invalid admin signature' });
-    }
-
-    next();
-  } catch (error) {
-    console.error('Admin GET authentication error:', error);
-    return res.status(403).json({ error: 'Authentication failed' });
-  }
-};
+// Admin routes here are gated by the shared requireAdmin (middleware/auth.js):
+// session bearer token + ADMIN_WALLET check, fail-closed. See admin.js.
 
 // ==================== PUBLIC ROUTES ====================
 
@@ -258,7 +160,7 @@ router.get("/:archiveId/explorer", async (req, res) => {
 // GET all archives for admin management
 router.get("/admin/:adminWallet", [
   param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
-], authenticateAdminGET, async (req, res) => {
+], requireAdmin, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -300,8 +202,8 @@ router.get("/preview", async (req, res) => {
 });
 
 // POST create new semester archive (archives current site data)
-router.post("/create", authenticateAdmin, async (req, res) => {
-  const { name, description, adminWallet } = req.body;
+router.post("/create", requireAdmin, async (req, res) => {
+  const { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Semester name is required' });
@@ -464,7 +366,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
     const archive = new SemesterArchive({
       name: name.trim(),
       description: description?.trim() || '',
-      archivedBy: adminWallet.toLowerCase(),
+      archivedBy: req.adminWallet,
       stats: {
         totalProfiles: profiles.length,
         totalProjects: projects.length,
@@ -505,15 +407,15 @@ router.post("/create", authenticateAdmin, async (req, res) => {
 });
 
 // POST clear current site data after archiving
-router.post("/clear-current", authenticateAdmin, async (req, res) => {
-  const { confirmed, adminWallet } = req.body;
+router.post("/clear-current", requireAdmin, async (req, res) => {
+  const { confirmed } = req.body;
 
   if (!confirmed) {
     return res.status(400).json({ error: 'Confirmation required to clear data' });
   }
 
   try {
-    console.log('Starting site data clear by admin:', adminWallet);
+    console.log('Starting site data clear by admin:', req.adminWallet);
 
     // Get admin wallet to exclude from deletion
     const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
@@ -560,7 +462,7 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
 });
 
 // POST delete an archive (admin only)
-router.post("/delete", authenticateAdmin, async (req, res) => {
+router.post("/delete", requireAdmin, async (req, res) => {
   const { archiveId } = req.body;
 
   if (!archiveId) {
@@ -588,7 +490,7 @@ router.post("/delete", authenticateAdmin, async (req, res) => {
 });
 
 // POST update archive name/description
-router.post("/update", authenticateAdmin, async (req, res) => {
+router.post("/update", requireAdmin, async (req, res) => {
   const { archiveId, name, description } = req.body;
 
   if (!archiveId) {
