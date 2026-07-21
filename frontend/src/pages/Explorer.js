@@ -45,11 +45,11 @@ export default function Explorer() {
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
 
-      console.log("🔍 Fetching transactions from:", `${API.explorer}/transactions?${params}`);
+      console.log("Fetching transactions from:", `${API.explorer}/transactions?${params}`);
       const res = await fetch(`${API.explorer}/transactions?${params}`);
       if (res.ok) {
         const data = await res.json();
-        console.log("📊 Transaction data received:", data);
+        console.log("Transaction data received:", data);
         setTransactions(data.transactions);
         setPagination(data.pagination);
       } else {
@@ -143,18 +143,6 @@ export default function Explorer() {
       'burn': 'var(--status-negative)'
     };
     return colors[type] || 'var(--text-muted)';
-  };
-
-  const getTypeIcon = (type) => {
-    const icons = {
-      'project_tip': '🎨',
-      'transfer': '💸',
-      'forum_reward': '💬',
-      'system': '⚙️',
-      'mint': '➕',
-      'burn': '🔥'
-    };
-    return icons[type] || '📝';
   };
 
   // Map a stored transaction `type` to its human-readable display label. Stored
@@ -378,7 +366,7 @@ export default function Explorer() {
                   color: getTypeColor(tx.type),
                   fontWeight: "bold"
                 }}>
-                  {getTypeIcon(tx.type)} {getTypeLabel(tx.type)}
+                  {getTypeLabel(tx.type)}
                 </span>
                 
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -539,7 +527,7 @@ export default function Explorer() {
                 marginLeft: "0.5rem",
                 fontWeight: "bold"
               }}>
-                {getTypeIcon(selectedTransaction.type)} {getTypeLabel(selectedTransaction.type)}
+                {getTypeLabel(selectedTransaction.type)}
               </span>
             </div>
             
