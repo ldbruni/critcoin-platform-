@@ -1760,6 +1760,7 @@ export default function Admin() {
                     <li>{archivePreview?.comments || 0} comments</li>
                     <li>{archivePreview?.transactions || 0} transactions</li>
                     <li>{archivePreview?.bounties || 0} bounties</li>
+                    <li>{archivePreview?.predictions || 0} predictions</li>
                   </ul>
                   <button
                     type="submit"

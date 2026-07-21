@@ -277,7 +277,7 @@ export default function Archive() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem", borderBottom: "2px solid var(--dark-elevated)", paddingBottom: "1rem" }}>
-        {["overview", "profiles", "projects", "leaderboard", "forum", "explorer"].map((tab) => (
+        {["overview", "profiles", "projects", "leaderboard", "predictions", "forum", "explorer"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveSection(tab)}
@@ -667,6 +667,125 @@ export default function Archive() {
                 <p style={{ textAlign: "center", color: "var(--text-faint, #999)", fontSize: "1.2rem" }}>
                   No projects were submitted this semester.
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* Predictions Section - read-only snapshot of the prediction market */}
+          {activeSection === "predictions" && (
+            <div>
+              <h1 className="gothic-title gothic-text" style={{ textAlign: "center", marginBottom: "1rem" }}>
+                Prediction Market
+              </h1>
+              <p style={{ textAlign: "center", marginBottom: "2rem", fontSize: "1.1rem", color: "var(--text-muted, #666)" }}>
+                Who students predicted would win each project. The winner is the top of that project's leaderboard.
+              </p>
+
+              {(!selectedArchive.predictions || selectedArchive.predictions.length === 0) ? (
+                <p style={{ textAlign: "center", color: "var(--text-faint, #999)", fontSize: "1.2rem" }}>
+                  No predictions were made this semester.
+                </p>
+              ) : (
+                [2, 3, 4].map((projectNumber) => {
+                  const positions = selectedArchive.predictions.filter(p => p.projectNumber === projectNumber);
+                  if (positions.length === 0) return null;
+
+                  // Winner = rank 1 of this project's leaderboard snapshot.
+                  const lbGroup = selectedArchive.leaderboard?.find(g => g.projectNumber === projectNumber);
+                  const winner = lbGroup?.entries?.find(e => e.rank === 1) || null;
+                  const enabledKey = `predictionEnabled${projectNumber}`;
+                  const settings = selectedArchive.predictionSettings;
+                  const stateKnown = settings && typeof settings[enabledKey] === "boolean";
+                  const wasOpen = settings?.[enabledKey];
+
+                  const isCorrect = (p) => winner &&
+                    p.predictedWallet?.toLowerCase() === winner.authorWallet?.toLowerCase();
+                  const correctCount = positions.filter(isCorrect).length;
+
+                  return (
+                    <div key={projectNumber} style={{ marginBottom: "3rem" }}>
+                      <h2 style={{
+                        fontSize: "2rem",
+                        marginBottom: "0.5rem",
+                        paddingBottom: "0.5rem",
+                        borderBottom: "3px solid var(--status-info, #007bff)",
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        flexWrap: "wrap"
+                      }}>
+                        <span>Project {projectNumber}</span>
+                        {stateKnown && (
+                          <span style={{
+                            fontSize: "0.8rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            padding: "0.15rem 0.6rem",
+                            borderRadius: "999px",
+                            color: "white",
+                            backgroundColor: wasOpen ? "var(--status-positive, #28a745)" : "var(--text-muted, #6c757d)"
+                          }}>
+                            {wasOpen ? "Open" : "Closed"}
+                          </span>
+                        )}
+                      </h2>
+
+                      <p style={{ color: "var(--text-muted, #666)", marginBottom: "1rem" }}>
+                        {winner ? (
+                          <>Winner: <strong style={{ color: "var(--status-info, #007bff)" }}>{winner.authorName}</strong>
+                          {" — "}{correctCount} of {positions.length} predicted correctly.</>
+                        ) : (
+                          <>{positions.length} prediction{positions.length === 1 ? "" : "s"} made — no leaderboard winner recorded.</>
+                        )}
+                      </p>
+
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                        gap: "1rem"
+                      }}>
+                        {positions.map((p, index) => {
+                          const correct = isCorrect(p);
+                          return (
+                            <div key={index} style={{
+                              border: "2px solid var(--surface-card-border, #ddd)",
+                              borderLeft: winner
+                                ? `6px solid ${correct ? "var(--status-positive, #28a745)" : "var(--status-negative, #dc3545)"}`
+                                : "2px solid var(--surface-card-border, #ddd)",
+                              borderRadius: "8px",
+                              padding: "1rem",
+                              backgroundColor: "var(--surface-muted, #fafafa)"
+                            }}>
+                              <div style={{ color: "var(--text-body, #333)", fontWeight: "bold", marginBottom: "0.25rem" }}>
+                                {p.predictorName || "Unknown"}
+                              </div>
+                              <div style={{ color: "var(--text-muted, #666)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
+                                predicted
+                              </div>
+                              <div style={{ color: "var(--text-body, #333)", fontWeight: "bold" }}>
+                                {p.predictedName || "Unknown"}
+                                {winner && (
+                                  <span style={{
+                                    marginLeft: "0.5rem",
+                                    color: correct ? "var(--status-positive, #28a745)" : "var(--status-negative, #dc3545)"
+                                  }}>
+                                    {correct ? "✓" : "✗"}
+                                  </span>
+                                )}
+                              </div>
+                              {p.createdAt && (
+                                <div style={{ color: "var(--text-faint, #999)", fontSize: "0.8rem", marginTop: "0.5rem" }}>
+                                  {formatDateTime(p.createdAt)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}

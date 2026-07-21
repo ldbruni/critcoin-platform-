@@ -83,6 +83,23 @@ literals use `var(--token, original-literal)` fallbacks, and the fallback target
 must be a token `theme-v1.css` does **not** define, or the v1/Classic scope
 stops matching.
 
+## Semester archiving
+
+A semester archive is a read-only snapshot of the authoritative Mongo data for
+one class. What it captures and what it deliberately excludes is enumerated in
+[ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md).
+
+- **Any new page or model must be added to `ARCHIVE-MANIFEST.md` — as captured or
+  explicitly excluded — in the same PR that introduces it.** An addition that
+  isn't in the manifest is a silent archive gap (the way predictions were once
+  captured but never previewed or shown).
+- **In [backend/routes/archive.js](backend/routes/archive.js), literal GET paths
+  (e.g. `/preview`) must stay declared before the `/:archiveId` param route.**
+  Express matches in declaration order; the ObjectId route otherwise captures the
+  literal path and 500s, silently zeroing the pre-archive preview.
+- **Inspect before mutating.** `GET /preview` gives live counts; `POST /create`
+  with `{ dryRun: true }` builds and validates the whole archive without writing.
+
 ## Project layout
 
 - `backend/` — Express API, Mongoose models, deployed on Railway
@@ -90,3 +107,4 @@ stops matching.
 - `contracts/`, `scripts/`, `test/` — Hardhat; the Sepolia `Token` contract
 - [HANDOFF.md](HANDOFF.md) — data model, API surface, semester workflow, gotchas
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design decisions and their reasoning
+- [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md) — what a semester archive captures/excludes

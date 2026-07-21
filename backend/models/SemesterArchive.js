@@ -128,7 +128,15 @@ const semesterArchiveSchema = new mongoose.Schema({
   transactions: [archivedTransactionSchema],
   bounties: [archivedBountySchema],
   leaderboard: [leaderboardEntrySchema],
-  predictions: [archivedPredictionSchema]
+  predictions: [archivedPredictionSchema],
+
+  // Per-project prediction open/closed state at archive time. Predictions have
+  // no resolution/payout record; this is the only "market" metadata that exists.
+  predictionSettings: {
+    predictionEnabled2: Boolean,
+    predictionEnabled3: Boolean,
+    predictionEnabled4: Boolean
+  }
 });
 
 // Index for efficient queries

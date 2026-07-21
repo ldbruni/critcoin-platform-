@@ -10,6 +10,7 @@ const Comment = require("../models/Comment");
 const Transaction = require("../models/Transaction");
 const Bounty = require("../models/Bounty");
 const Prediction = require("../models/Prediction");
+const SystemSettings = require("../models/SystemSettings");
 const { requireAdmin } = require("../middleware/auth");
 
 // Admin routes here are gated by the shared requireAdmin (middleware/auth.js):
@@ -27,6 +28,32 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error("Archives fetch error:", err);
     res.status(500).json({ error: 'Failed to fetch archives' });
+  }
+});
+
+// GET preview of what will be archived (public endpoint for admin UI).
+//
+// MUST stay above /:archiveId. Express matches in declaration order, so if the
+// ObjectId param route is declared first it captures "/preview" and runs
+// findById("preview"), which throws a CastError and 500s — the admin then sees
+// 0 for every type (the frontend's `if (res.ok)` guard leaves the preview null).
+// The counts below mirror the /create filters exactly. See ARCHIVE-MANIFEST.md.
+router.get("/preview", async (req, res) => {
+  try {
+    const [profiles, projects, posts, comments, transactions, bounties, predictions] = await Promise.all([
+      Profile.countDocuments({ archived: { $ne: true } }),
+      Project.countDocuments({ archived: { $ne: true } }),
+      Post.countDocuments({ hidden: { $ne: true } }),
+      Comment.countDocuments({ archived: { $ne: true } }),
+      Transaction.countDocuments(),
+      Bounty.countDocuments(),
+      Prediction.countDocuments({ archived: { $ne: true } })
+    ]);
+
+    res.json({ profiles, projects, posts, comments, transactions, bounties, predictions });
+  } catch (err) {
+    console.error("Archive preview error:", err);
+    res.status(500).json({ error: 'Failed to get archive preview' });
   }
 });
 
@@ -177,46 +204,29 @@ router.get("/admin/:adminWallet", [
   }
 });
 
-// GET preview of what will be archived (public endpoint for admin UI)
-router.get("/preview", async (req, res) => {
-  try {
-    const profileCount = await Profile.countDocuments({ archived: { $ne: true } });
-    const projectCount = await Project.countDocuments({ archived: { $ne: true } });
-    const postCount = await Post.countDocuments({ hidden: { $ne: true } });
-    const commentCount = await Comment.countDocuments({ archived: { $ne: true } });
-    const transactionCount = await Transaction.countDocuments();
-    const bountyCount = await Bounty.countDocuments();
-
-    res.json({
-      profiles: profileCount,
-      projects: projectCount,
-      posts: postCount,
-      comments: commentCount,
-      transactions: transactionCount,
-      bounties: bountyCount
-    });
-  } catch (err) {
-    console.error("Archive preview error:", err);
-    res.status(500).json({ error: 'Failed to get archive preview' });
-  }
-});
-
 // POST create new semester archive (archives current site data)
 router.post("/create", requireAdmin, async (req, res) => {
-  const { name, description } = req.body;
+  // dryRun builds the full archive document in memory and validates it, but
+  // never persists — an inspectable preview-without-commit. It exercises the
+  // real capture/mapping code (not just counts), so what it reports is exactly
+  // what a real run would write. See ARCHIVE-MANIFEST.md, "Dry run".
+  const { name, description, dryRun } = req.body;
 
-  if (!name || !name.trim()) {
+  if (!dryRun && (!name || !name.trim())) {
     return res.status(400).json({ error: 'Semester name is required' });
   }
 
   try {
-    // Check if archive with this name already exists
-    const existingArchive = await SemesterArchive.findOne({ name: name.trim() });
-    if (existingArchive) {
-      return res.status(400).json({ error: 'An archive with this name already exists' });
+    // Check if archive with this name already exists (skipped for dry runs,
+    // which never write and may be run without a name).
+    if (!dryRun) {
+      const existingArchive = await SemesterArchive.findOne({ name: name.trim() });
+      if (existingArchive) {
+        return res.status(400).json({ error: 'An archive with this name already exists' });
+      }
     }
 
-    console.log('Starting semester archive creation:', name);
+    console.log(dryRun ? 'Dry-run archive inspection (no write)' : 'Starting semester archive creation:', name || '');
 
     // Fetch all current data (excluding already archived items)
     const profiles = await Profile.find({ archived: { $ne: true } });
@@ -226,6 +236,20 @@ router.post("/create", requireAdmin, async (req, res) => {
     const transactions = await Transaction.find();
     const bounties = await Bounty.find();
     const predictions = await Prediction.find({ archived: { $ne: true } });
+
+    // Snapshot the per-project prediction open/closed state. Predictions have no
+    // resolution/payout record in this system — the winner is the leaderboard,
+    // and the only "market" metadata is whether each project's round was open.
+    // Defaults to open (true) when a setting doc is absent, matching predictions.js.
+    const predictionSettingDocs = await SystemSettings.find({
+      key: { $in: ['predictionEnabled2', 'predictionEnabled3', 'predictionEnabled4'] }
+    });
+    const predictionSettings = {
+      predictionEnabled2: true,
+      predictionEnabled3: true,
+      predictionEnabled4: true
+    };
+    predictionSettingDocs.forEach(s => { predictionSettings[s.key] = s.value; });
 
     // Create profile lookup map
     const profileMap = {};
@@ -364,7 +388,7 @@ router.post("/create", requireAdmin, async (req, res) => {
 
     // Create the archive
     const archive = new SemesterArchive({
-      name: name.trim(),
+      name: dryRun ? (name?.trim() || 'DRY-RUN') : name.trim(),
       description: description?.trim() || '',
       archivedBy: req.adminWallet,
       stats: {
@@ -383,8 +407,31 @@ router.post("/create", requireAdmin, async (req, res) => {
       transactions: archivedTransactions,
       bounties: archivedBounties,
       leaderboard,
-      predictions: archivedPredictions
+      predictions: archivedPredictions,
+      predictionSettings
     });
+
+    // Dry run: validate the fully-built document against the schema, then return
+    // the same stats a real run would write — without persisting anything.
+    if (dryRun) {
+      await archive.validate();
+      console.log('Dry-run archive inspection complete (nothing written)');
+      return res.json({
+        dryRun: true,
+        message: 'Dry run complete — no data was written',
+        stats: archive.stats,
+        captured: {
+          profiles: archivedProfiles.length,
+          projects: archivedProjects.length,
+          posts: archivedPosts.length,
+          comments: comments.length,
+          transactions: archivedTransactions.length,
+          bounties: archivedBounties.length,
+          predictions: archivedPredictions.length
+        },
+        predictionSettings
+      });
+    }
 
     await archive.save();
 
