@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const Comment = require("../models/Comment");
 const Profile = require("../models/Profiles");
+const { requireAuth } = require("../middleware/auth");
 
 // GET all comments for a post
 router.get("/post/:postId", async (req, res) => {
@@ -42,11 +43,12 @@ router.get("/post/:postId", async (req, res) => {
 });
 
 // POST create a new comment
-router.post("/", async (req, res) => {
-  const { postId, authorWallet, text, parentCommentId } = req.body;
+router.post("/", requireAuth, async (req, res) => {
+  const { postId, text, parentCommentId } = req.body;
+  const authorWallet = req.wallet;
 
-  if (!postId || !authorWallet || !text) {
-    return res.status(400).send("postId, authorWallet, and text are required");
+  if (!postId || !text) {
+    return res.status(400).send("postId and text are required");
   }
 
   if (text.length > 1000) {
@@ -87,12 +89,13 @@ router.post("/", async (req, res) => {
 });
 
 // POST upvote/downvote a comment
-router.post("/:commentId/vote", async (req, res) => {
+router.post("/:commentId/vote", requireAuth, async (req, res) => {
   const { commentId } = req.params;
-  const { wallet, voteType } = req.body; // voteType: 'upvote' or 'downvote'
+  const { voteType } = req.body; // voteType: 'upvote' or 'downvote'
+  const wallet = req.wallet;
 
-  if (!wallet || !voteType) {
-    return res.status(400).send("wallet and voteType are required");
+  if (!voteType) {
+    return res.status(400).send("voteType is required");
   }
 
   if (voteType !== "upvote" && voteType !== "downvote") {
@@ -132,13 +135,9 @@ router.post("/:commentId/vote", async (req, res) => {
 });
 
 // POST remove vote from a comment
-router.post("/:commentId/unvote", async (req, res) => {
+router.post("/:commentId/unvote", requireAuth, async (req, res) => {
   const { commentId } = req.params;
-  const { wallet } = req.body;
-
-  if (!wallet) {
-    return res.status(400).send("wallet is required");
-  }
+  const wallet = req.wallet;
 
   try {
     const comment = await Comment.findById(commentId);
@@ -166,13 +165,9 @@ router.post("/:commentId/unvote", async (req, res) => {
 });
 
 // DELETE a comment (mark as archived)
-router.delete("/:commentId", async (req, res) => {
+router.delete("/:commentId", requireAuth, async (req, res) => {
   const { commentId } = req.params;
-  const { wallet } = req.body;
-
-  if (!wallet) {
-    return res.status(400).send("wallet is required");
-  }
+  const wallet = req.wallet;
 
   try {
     const comment = await Comment.findById(commentId);
@@ -180,7 +175,8 @@ router.delete("/:commentId", async (req, res) => {
       return res.status(404).send("Comment not found");
     }
 
-    // Only author can delete
+    // Only author can delete. Author identity is the verified session wallet, so
+    // this can no longer be bypassed by naming someone else's address.
     if (comment.authorWallet.toLowerCase() !== wallet.toLowerCase()) {
       return res.status(403).send("Only comment author can delete");
     }

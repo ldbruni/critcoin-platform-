@@ -6,6 +6,7 @@ const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
 const { REAL_TX_HASH } = require("../models/Transaction");
 const { getBalance } = require("../lib/balances");
+const { requireAuth } = require("../middleware/auth");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
@@ -148,11 +149,12 @@ router.get("/:projectNumber/:wallet", async (req, res) => {
 });
 
 // POST create or update project submission
-router.post("/", upload.single('image'), async (req, res) => {
-  const { wallet, projectNumber, title, description } = req.body;
+router.post("/", requireAuth, upload.single('image'), async (req, res) => {
+  const { projectNumber, title, description } = req.body;
+  const wallet = req.wallet; // author is the verified session wallet
   const projNum = parseInt(projectNumber);
 
-  if (!wallet || !projNum || !title || !req.file) {
+  if (!projNum || !title || !req.file) {
     return res.status(400).send("Missing required fields");
   }
 
@@ -240,11 +242,32 @@ router.post("/", upload.single('image'), async (req, res) => {
 });
 
 // POST send CritCoin to project author
-router.post("/send-coin", async (req, res) => {
-  const { fromWallet, toWallet, amount, projectId, txHash } = req.body;
+router.post("/send-coin", requireAuth, async (req, res) => {
+  // The sender is the verified session wallet, never a body field. Without this,
+  // anyone could forge a ledger entry crediting themselves and debiting a victim
+  // (the ledger is authoritative for every balance shown in the app).
+  const fromWallet = req.wallet;
+  const { toWallet, amount, projectId, txHash } = req.body;
 
-  if (!fromWallet || !toWallet || !amount || !projectId) {
+  if (!toWallet || amount === undefined || amount === null || !projectId) {
     return res.status(400).send("Missing required fields");
+  }
+
+  // Numeric validation: a tip must be a positive, finite, whole number. This
+  // rejects negative amounts (which would reverse the flow and steal), zero,
+  // NaN/non-numeric, and absurd floats like 1e308.
+  const amt = Number(amount);
+  if (!Number.isInteger(amt) || amt <= 0) {
+    return res.status(400).send("Amount must be a positive whole number");
+  }
+
+  if (!/^0x[a-fA-F0-9]{40}$/.test(toWallet)) {
+    return res.status(400).send("Invalid recipient wallet");
+  }
+  if (toWallet.toLowerCase() === fromWallet) {
+    // A self-tip nets zero on balance but would still inflate the project's
+    // totalReceived for free — reject it.
+    return res.status(400).send("Cannot tip yourself");
   }
 
   // Record the real on-chain hash when the frontend supplies a well-formed one.
@@ -257,6 +280,13 @@ router.post("/send-coin", async (req, res) => {
   }
 
   try {
+    // The tip may not exceed what the sender actually holds in the ledger, so a
+    // tip can never mint balance — it only moves coins the sender already has.
+    const { balance: senderBalance } = await getBalance(fromWallet);
+    if (amt > senderBalance) {
+      return res.status(400).send("Amount exceeds your CritCoin balance");
+    }
+
     // Find the project to update total received
     const project = await Project.findById(projectId);
     if (!project) {
@@ -277,14 +307,14 @@ router.post("/send-coin", async (req, res) => {
       }
     }
 
-    project.totalReceived += Number(amount);
+    project.totalReceived += amt;
     await project.save();
 
     // Log the transaction
     const transaction = new Transaction({
       fromWallet: fromWallet.toLowerCase(),
       toWallet: toWallet.toLowerCase(),
-      amount: Number(amount),
+      amount: amt,
       type: 'project_tip',
       description: `Tip for project: ${project.title}`,
       relatedId: projectId,

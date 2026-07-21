@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchBalance } from "../utils/balance";
+import { authorizedFetch } from "../utils/auth";
 
 const API = {
   predictions: process.env.REACT_APP_API_URL
@@ -125,15 +126,14 @@ export default function Prediction() {
     setSubmitting(prev => ({ ...prev, [projectNum]: true }));
 
     try {
-      const res = await fetch(API.predictions, {
+      const res = await authorizedFetch(API.predictions, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          predictorWallet: wallet,
           predictedWallet: selectedWallet,
           projectNumber: projectNum
         })
-      });
+      }, wallet);
 
       if (res.ok) {
         const prediction = await res.json();

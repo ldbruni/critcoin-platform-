@@ -6,7 +6,7 @@ const cors = require("cors");
 
 // Environment validation for production
 if (process.env.NODE_ENV === 'production') {
-  const requiredEnvVars = ['MONGO_URI', 'ADMIN_WALLET'];
+  const requiredEnvVars = ['MONGO_URI', 'ADMIN_WALLET', 'JWT_SECRET'];
   const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
   
   if (missingEnvVars.length > 0) {
@@ -30,6 +30,7 @@ const adminRoutes = require("./routes/admin");
 const commentRoutes = require("./routes/comments");
 const archiveRoutes = require("./routes/archive");
 const predictionRoutes = require("./routes/predictions");
+const authRoutes = require("./routes/auth");
 const Prediction = require("./models/Prediction");
 const Transaction = require("./models/Transaction");
 
@@ -144,6 +145,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routes once
+app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/projects", projectRoutes);
@@ -163,7 +165,9 @@ console.log("ADMIN_WALLET:", process.env.ADMIN_WALLET);
 console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 
 // Validate critical environment variables
-const requiredEnvVars = ['MONGO_URI', 'ADMIN_WALLET'];
+const requiredEnvVars = process.env.NODE_ENV === 'production'
+  ? ['MONGO_URI', 'ADMIN_WALLET', 'JWT_SECRET']
+  : ['MONGO_URI', 'ADMIN_WALLET'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {

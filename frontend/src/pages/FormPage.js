@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchBalance } from "../utils/balance";
+import { authorizedFetch } from "../utils/auth";
 // import { UpvoteEmoji, DownvoteEmoji } from "../components/Emoji";
 
 export default function ForumPage() {
@@ -127,11 +128,11 @@ export default function ForumPage() {
     }
 
     try {
-      const res = await fetch(API.posts, {
+      const res = await authorizedFetch(API.posts, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorWallet: wallet, content: newPost })
-      });
+        body: JSON.stringify({ content: newPost })
+      }, wallet);
 
       if (!res.ok) {
         const error = await res.json().catch(async () => ({ error: await res.text() }));
@@ -166,11 +167,11 @@ export default function ForumPage() {
     }
 
     try {
-      const res = await fetch(`${API.posts}/vote`, {
+      const res = await authorizedFetch(`${API.posts}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: id, type, voterWallet: wallet })
-      });
+        body: JSON.stringify({ postId: id, type })
+      }, wallet);
 
       if (!res.ok) {
         const error = await res.json().catch(async () => ({ error: await res.text() }));
@@ -237,16 +238,15 @@ export default function ForumPage() {
     }
 
     try {
-      const res = await fetch(API.comments, {
+      const res = await authorizedFetch(API.comments, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId,
-          authorWallet: wallet,
           text: text.trim(),
           parentCommentId
         })
-      });
+      }, wallet);
 
       if (res.ok) {
         // Clear input
@@ -274,11 +274,11 @@ export default function ForumPage() {
     }
 
     try {
-      const res = await fetch(`${API.comments}/${commentId}/vote`, {
+      const res = await authorizedFetch(`${API.comments}/${commentId}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, voteType })
-      });
+        body: JSON.stringify({ voteType })
+      }, wallet);
 
       if (res.ok) {
         fetchComments(postId);
@@ -296,11 +296,11 @@ export default function ForumPage() {
     if (!wallet) return;
 
     try {
-      const res = await fetch(`${API.comments}/${commentId}/unvote`, {
+      const res = await authorizedFetch(`${API.comments}/${commentId}/unvote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet })
-      });
+        body: JSON.stringify({})
+      }, wallet);
 
       if (res.ok) {
         fetchComments(postId);

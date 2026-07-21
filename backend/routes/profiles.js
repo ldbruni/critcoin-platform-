@@ -8,6 +8,7 @@ const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
+const { requireAuth } = require("../middleware/auth");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
@@ -83,12 +84,9 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Rate limiting temporarily disabled - dummy middleware
-const uploadLimiter = (req, res, next) => next();
-
-// Validation middleware
+// Validation middleware. The wallet is the verified session wallet (req.wallet),
+// not a body field — a student can only create their own profile.
 const validateProfileCreation = [
-  body('wallet').isEthereumAddress().withMessage('Invalid wallet address'),
   body('name').isLength({ min: 1, max: 50 }).trim().escape().withMessage('Name must be 1-50 characters'),
   body('birthday').matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Invalid date format (YYYY-MM-DD)'),
   body('starSign').isIn([
@@ -131,19 +129,19 @@ router.get("/", async (req, res) => {
 });
 
 // POST create profile with optional photo
-router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation, async (req, res) => {
+router.post("/", requireAuth, upload.single('photo'), validateProfileCreation, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
-  const { wallet, name, birthday, starSign } = req.body;
-  
-  console.log("Profile create request:", { 
-    wallet, 
-    name, 
-    birthday, 
-    starSign, 
-    balance,
+  const wallet = req.wallet; // a student can only create their own profile
+  const { name, birthday, starSign } = req.body;
+
+  console.log("Profile create request:", {
+    wallet,
+    name,
+    birthday,
+    starSign,
     hasPhoto: !!req.file,
     photoInfo: req.file ? {
       originalname: req.file.originalname,
@@ -151,8 +149,8 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
       size: req.file.size
     } : null
   });
-  
-  if (!wallet || !name || !birthday || !starSign)
+
+  if (!name || !birthday || !starSign)
     return res.status(400).send("Missing fields");
 
   try {
@@ -312,12 +310,11 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
 });
 
 // POST update profile with optional photo
-router.post("/update", upload.single('photo'), async (req, res) => {
-  const { wallet, name, birthday, starSign } = req.body;
-  
+router.post("/update", requireAuth, upload.single('photo'), async (req, res) => {
+  const wallet = req.wallet; // a student can only update their own profile
+  const { name, birthday, starSign } = req.body;
+
   console.log("Profile update request:", { wallet, name, birthday, starSign });
-  
-  if (!wallet) return res.status(400).send("Wallet required");
 
   try {
     const updateData = { name, birthday, starSign };
@@ -386,32 +383,11 @@ router.post("/update", upload.single('photo'), async (req, res) => {
   }
 });
 
-// POST archive profile (admin only)
-router.post("/archive", async (req, res) => {
-  const { wallet, adminWallet } = req.body;
-  const ADMIN_WALLET = process.env.ADMIN_WALLET?.toLowerCase();
-
-  if (!wallet || !adminWallet)
-    return res.status(400).send("Missing fields");
-  if (adminWallet.toLowerCase() !== ADMIN_WALLET)
-    return res.status(403).send("Unauthorized");
-
-  try {
-    const profile = await Profile.findOneAndUpdate(
-      { wallet: wallet.toLowerCase() },
-      { archived: true },
-      { new: true }
-    );
-    if (!profile) return res.status(404).send("Profile not found");
-    res.json({ message: "Profile archived", profile });
-  } catch (err) {
-    console.error("Archive error:", err);
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    res.status(500).json({ 
-      error: isDevelopment ? err.message : 'Database error' 
-    });
-  }
-});
+// NOTE: profile archiving is an admin action and lives at
+// POST /api/admin/profiles/archive (behind requireAdmin). The previously
+// duplicated POST /api/profiles/archive here was gated only on a plaintext,
+// publicly-known admin address (no signature), so anyone could archive any
+// profile. It has been removed — use the admin route. (Audit finding F4.)
 
 // Secure file name sanitization
 const sanitizeFilename = (filename) => {

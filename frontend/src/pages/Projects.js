@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 import { fetchBalance } from "../utils/balance";
+import { authorizedFetch } from "../utils/auth";
 
 const API = {
   profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
@@ -147,10 +148,10 @@ export default function Projects() {
         return;
       }
 
-      const res = await fetch(API.projects, {
+      const res = await authorizedFetch(API.projects, {
         method: "POST",
         body: formData
-      });
+      }, wallet);
 
       if (res.ok) {
         setEditing(false);
@@ -200,17 +201,16 @@ export default function Projects() {
       await tx.wait();
 
       // Record transaction in backend
-      const res = await fetch(`${API.projects}/send-coin`, {
+      const res = await authorizedFetch(`${API.projects}/send-coin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fromWallet: wallet,
           toWallet: recipientWallet,
           amount: Number(amount),
           projectId,
           txHash: tx.hash
         })
-      });
+      }, wallet);
 
       if (res.ok) {
         alert(`Successfully sent ${amount} CritCoin!\nTransaction: ${tx.hash}`);

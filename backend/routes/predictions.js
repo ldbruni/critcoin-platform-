@@ -4,10 +4,11 @@ const { body, validationResult } = require('express-validator');
 const Prediction = require("../models/Prediction");
 const Profile = require("../models/Profiles");
 const SystemSettings = require("../models/SystemSettings");
+const { requireAuth } = require("../middleware/auth");
 
-// Validation middleware
+// Validation middleware. The predictor is the verified session wallet; only the
+// predicted wallet and project number come from the body.
 const validatePrediction = [
-  body('predictorWallet').isEthereumAddress().withMessage('Invalid predictor wallet address'),
   body('predictedWallet').isEthereumAddress().withMessage('Invalid predicted wallet address'),
   body('projectNumber').optional().isInt({ min: 2, max: 4 }).withMessage('Project number must be 2, 3, or 4')
 ];
@@ -94,14 +95,14 @@ router.get("/check/:wallet", async (req, res) => {
 });
 
 // POST create a new prediction (ONE TIME PER PROJECT)
-router.post("/", validatePrediction, async (req, res) => {
+router.post("/", requireAuth, validatePrediction, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { predictorWallet, predictedWallet, projectNumber = 2 } = req.body;
-  const predictorLower = predictorWallet.toLowerCase();
+  const { predictedWallet, projectNumber = 2 } = req.body;
+  const predictorLower = req.wallet;
   const predictedLower = predictedWallet.toLowerCase();
 
   try {

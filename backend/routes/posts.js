@@ -6,16 +6,11 @@ const { body, param, validationResult } = require('express-validator');
 // const rateLimit = require('express-rate-limit');
 const Post = require("../models/Post");
 const Profile = require("../models/Profiles");
+const { requireAuth } = require("../middleware/auth");
 
-
-// Rate limiting for posts
-// Rate limiting temporarily disabled - dummy middleware
-const postLimiter = (req, res, next) => next();
-const voteLimiter = (req, res, next) => next();
-
-// Input validation middleware
+// Input validation middleware. Identity (author/voter) comes from the verified
+// session (req.wallet), never from the request body.
 const validatePost = [
-  body('authorWallet').isEthereumAddress().withMessage('Invalid wallet address'),
   body('content')
     .isLength({ min: 1, max: 2000 })
     .withMessage('Content must be 1-2000 characters')
@@ -25,18 +20,18 @@ const validatePost = [
 
 const validateVote = [
   body('postId').isMongoId().withMessage('Invalid post ID'),
-  body('type').isIn(['up', 'down']).withMessage('Vote type must be "up" or "down"'),
-  body('voterWallet').isEthereumAddress().withMessage('Invalid voter wallet address')
+  body('type').isIn(['up', 'down']).withMessage('Vote type must be "up" or "down"')
 ];
 
 // Create a new post
-router.post("/", validatePost, async (req, res) => {
+router.post("/", requireAuth, validatePost, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { authorWallet, content } = req.body;
+  const authorWallet = req.wallet;
+  const { content } = req.body;
 
   try {
     // Verify user has a profile (business logic validation)
@@ -84,13 +79,14 @@ router.get("/", async (req, res) => {
 });
 
 // Upvote or downvote a post
-router.post("/vote", validateVote, async (req, res) => {
+router.post("/vote", requireAuth, validateVote, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { postId, type, voterWallet } = req.body;
+  const { postId, type } = req.body;
+  const voterWallet = req.wallet;
 
   try {
     // Verify voter has a profile

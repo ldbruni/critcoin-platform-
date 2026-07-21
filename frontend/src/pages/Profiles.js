@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchBalance } from "../utils/balance";
+import { authorizedFetch } from "../utils/auth";
 
 // Debug environment variables
 console.log("🔍 Environment debug:");
@@ -215,10 +216,10 @@ export default function Profiles() {
         }
       }
 
-      const res = await fetch(endpoint, {
+      const res = await authorizedFetch(endpoint, {
         method: "POST",
         body: formData // Don't set Content-Type header, let browser set it
-      });
+      }, wallet);
 
       if (res.ok) {
         const data = await res.json();
