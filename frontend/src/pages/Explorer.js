@@ -147,13 +147,12 @@ export default function Explorer() {
 
   // Map a stored transaction `type` to its human-readable display label. Stored
   // values are never renamed — archived semesters and existing rows keep
-  // `project_tip` (and legacy `tip`); the "investment" wording is applied only
-  // here at render time. Kept specific ("Project investment") so it reads
-  // distinctly from a prediction-market position.
+  // `project_tip` (and legacy `tip`); the "invest" wording is applied only
+  // here at render time.
   const getTypeLabel = (type) => {
     const labels = {
-      'project_tip': 'Project investment',
-      'tip': 'Project investment', // legacy stored value from archived semesters
+      'project_tip': 'Invest',
+      'tip': 'Invest', // legacy stored value from archived semesters
       'transfer': 'Transfer',
       'forum_reward': 'Forum reward',
       'system': 'System',
@@ -263,7 +262,7 @@ export default function Explorer() {
             style={{ padding: "0.5rem", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--line)", borderRadius: "2px" }}
           >
             <option value="">All Types</option>
-            <option value="project_tip">Project Investments</option>
+            <option value="project_tip">Invest</option>
             <option value="transfer">Transfers</option>
             <option value="forum_reward">Forum Rewards</option>
             <option value="system">System</option>
