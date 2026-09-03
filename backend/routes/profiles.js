@@ -143,7 +143,6 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
     name, 
     birthday, 
     starSign, 
-    balance,
     hasPhoto: !!req.file,
     photoInfo: req.file ? {
       originalname: req.file.originalname,
