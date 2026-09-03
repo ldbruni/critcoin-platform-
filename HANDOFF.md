@@ -35,11 +35,11 @@ The React app talks to the chain **directly** through MetaMask. The backend neve
 | Role | **Authoritative** | Experiential / verification |
 | Source | `Transaction` documents in MongoDB | `Token.balanceOf(wallet)` on Sepolia |
 | Shown on | Everywhere in the app | Nowhere in the app — Etherscan links only |
-| Changed by | Tips, deploys, joining credits, admin corrections | Tips and deploys (real transfers) |
+| Changed by | Tips, deploys, admin corrections | Tips and deploys (real transfers) |
 
 Admin → **Deploy CritCoin** now does **both**: it credits the ledger *and* transfers real tokens from the admin's MetaMask wallet, tracking each student's on-chain status individually.
 
-The two can still disagree — admin corrections and joining credits are database-only by design. That gap is **expected**, is reported by `GET /api/admin/reconcile/:adminWallet`, and is never corrected automatically.
+The two can still disagree — admin corrections are database-only by design. That gap is **expected**, is reported by `GET /api/admin/reconcile/:adminWallet`, and is never corrected automatically.
 
 Full reasoning in [ARCHITECTURE.md](ARCHITECTURE.md) — "Balance authority". The working rule for anyone (human or agent) editing this code is in [CLAUDE.md](CLAUDE.md).
 
@@ -54,7 +54,7 @@ There are no sessions, no JWTs, no passwords.
 - The frontend admin gate in [frontend/src/App.js](frontend/src/App.js) only hides the nav link — it is cosmetic. Real enforcement is server-side.
 - Server-side, `authenticateAdmin` (POST body) and `authenticateAdminGET` (query string) verify a **signed message** against `ADMIN_WALLET`. Both live at the top of each route file that needs them ([backend/routes/admin.js](backend/routes/admin.js), [backend/routes/archive.js](backend/routes/archive.js)).
 - **Development escape hatch:** when `NODE_ENV !== 'production'`, passing `adminWallet` without a `signature` is accepted with a console warning. Never run production with `NODE_ENV` unset.
-- **Whitelist mode** (`SystemSettings.whitelistMode`, default `false`): when on, only wallets in the `Whitelist` collection can create a profile. Enforced in [backend/routes/profiles.js](backend/routes/profiles.js).
+- **Whitelist (class roster)**: membership in the `Whitelist` collection is the **only** requirement to create a profile, post, comment or submit a project — there is no CritCoin balance gate and no toggle. All reads go through [backend/lib/whitelist.js](backend/lib/whitelist.js), which lowercases addresses on both write and read. It gates the *claimed* address; see [ARCHITECTURE.md](ARCHITECTURE.md), "Whitelist admission".
 
 ---
 
@@ -72,8 +72,8 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn. See §11. |
 | `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
-| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `whitelistMode`, `predictionEnabled2/3/4`. |
-| `Whitelist` | `wallet` (unique), `addedBy`, `notes` | Only consulted when `whitelistMode` is on. |
+| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4`. |
+| `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The class roster. Consulted on every profile creation, post, comment and project submission. |
 | `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions` | Fully self-contained snapshot; wallet→name resolved at archive time. |
 
 ### Migration on boot
@@ -226,7 +226,7 @@ Ordered roughly by how much trouble they'll cause.
 
 The unique index is **partial** (`partialFilterExpression: { txHash: { $type: 'string' } }`), so real hashes stay unique while any number of rows carry `null`. The old plain `unique: true` index permitted only one null document — which is precisely why the pre-refactor code invented hashes. If you ever see `E11000` on `txHash`, check that the boot migration in `server.js` ran.
 
-- `txHash: null` → genuinely off-chain (deploy credit, joining credit, admin correction). Renders as "off-chain".
+- `txHash: null` → genuinely off-chain (deploy credit, admin correction). Renders as "off-chain".
 - `hashFabricated: true` → a legacy invented hash, flagged by `backend/migrations/flag-fabricated-hashes.js`. Renders as "legacy — no on-chain record".
 
 Fabricated values are ~19 characters; real ones are exactly 66. That length difference is how the migration tells them apart.

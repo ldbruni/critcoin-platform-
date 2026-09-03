@@ -43,8 +43,6 @@ from it.
 5. **Admin corrections are database-only, and produce expected drift.** An
    instructor adjusting a balance writes a `Transaction` and nothing else. The
    resulting gap between ledger and chain is a known, accepted state — not a bug.
-   The same is true of the 1-CritCoin joining credit issued at profile creation,
-   which has no on-chain counterpart by design.
 
 6. **Drift is surfaced, never auto-corrected.**
    `GET /api/admin/reconcile/:adminWallet` reports database balance, live chain
@@ -78,6 +76,43 @@ compensating transaction. See the working rule in [CLAUDE.md](CLAUDE.md).
 
 ---
 
+## Whitelist admission
+
+**Roster membership is the only requirement to create a profile or to post.**
+Holding CritCoin is a score, not a permission.
+
+The app used to gate posting and project submission on holding ≥1 CritCoin, and
+issued every new profile a 1-CritCoin "joining credit" purely so that gate could
+be satisfied. That was circular — the credit existed only to clear the gate that
+measured it — and it put an economic signal in charge of access control. Both the
+gate and the credit are gone. A student with a balance of 0 is in good standing.
+
+Admission is now a single question, asked in one place
+([backend/lib/whitelist.js](backend/lib/whitelist.js)): is this address on the
+roster? The `Whitelist` collection answers it, addresses are normalized to
+lowercase on every read and write, and the check is **unconditional** — there is
+no setting that turns it off. The instructor manages the roster from the admin
+panel, behind the same `ADMIN_WALLET` signed-message check as every other admin
+action.
+
+The check runs on every post and submission, not only at signup, so removing a
+wallet from the roster takes effect immediately.
+
+### The limitation
+
+**This gates on the address the client claims.** `main` has no sessions and no
+signature on ordinary student requests: the browser sends `authorWallet` and the
+server believes it. The whitelist reliably stops honest users from acting outside
+the roster, but it is **not cryptographically enforced** — a forged address
+bypasses it.
+
+That is an accepted trade for now. Cryptographic enforcement arrives with the
+SIWE sessions on the quarantined `security-hardening` branch, merged later; when
+they land, these same checks bind to a verified session identity instead of a
+claimed one. Nothing here depends on that branch.
+
+---
+
 ## Transaction hashes
 
 `Transaction.txHash` holds a real Sepolia hash or `null`. It is **never**
@@ -108,8 +143,8 @@ which discriminates on length: real hashes match `/^0x[0-9a-f]{64}$/i`,
 fabricated ones never do. The UI renders them as "legacy — no on-chain record"
 rather than linking to a dead Etherscan page.
 
-A `null` hash means the row is genuinely off-chain (deploy credit, joining
-credit, admin correction) and renders as "off-chain". Counts of both appear in
+A `null` hash means the row is genuinely off-chain (deploy credit, admin
+correction) and renders as "off-chain". Counts of both appear in
 the reconciliation report as drift signals.
 
 ---

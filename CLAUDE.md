@@ -29,6 +29,23 @@ admin tooling. Report it, never silently repair it. See
 - **Keep the deployer key out of the backend.** Signing happens in the admin's
   MetaMask. The server's chain access is read-only.
 
+## Access control
+
+**Being on the whitelist is the only requirement to create a profile or to
+post.** There is no CritCoin balance gate on either, and no joining credit —
+holding CritCoin is a score, not a permission. Every roster read goes through
+`backend/lib/whitelist.js`, which normalizes addresses to lowercase on write and
+read alike; never query the `Whitelist` collection directly.
+
+- **The `main` whitelist gates on claimed address; real enforcement depends on
+  SIWE from the security branch, merged later.**
+- **Never import from `security-hardening`.** That branch is quarantined —
+  `requireAdmin`, `middleware/auth`, SIWE, its `SystemSettings`. Needing any of
+  them means the wrong thing is being built. Admin routes use the existing
+  `ADMIN_WALLET` signed-message check.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), "Whitelist admission".
+
 ## Design system (v1 / v2 + Classic Mode)
 
 The frontend has two themes, applied by wrapper class through
