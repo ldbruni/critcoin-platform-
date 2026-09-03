@@ -6,6 +6,7 @@ const { body, param, validationResult } = require('express-validator');
 // const rateLimit = require('express-rate-limit');
 const Post = require("../models/Post");
 const Profile = require("../models/Profiles");
+const { isWhitelisted, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
 
 
 // Rate limiting for posts
@@ -39,6 +40,13 @@ router.post("/", validatePost, async (req, res) => {
   const { authorWallet, content } = req.body;
 
   try {
+    // Roster membership is the only requirement to post - no CritCoin
+    // balance is needed. Checked on every post, not just at signup, so
+    // removing a wallet from the roster takes effect immediately.
+    if (!(await isWhitelisted(authorWallet))) {
+      return res.status(403).json({ error: NOT_WHITELISTED_MESSAGE });
+    }
+
     // Verify user has a profile (business logic validation)
     const profile = await Profile.findOne({ 
       wallet: { $eq: authorWallet.toLowerCase() },

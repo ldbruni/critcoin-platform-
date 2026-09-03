@@ -5,7 +5,7 @@ const Project = require("../models/Project");
 const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
 const { REAL_TX_HASH } = require("../models/Transaction");
-const { getBalance } = require("../lib/balances");
+const { isWhitelisted, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
@@ -167,12 +167,11 @@ router.post("/", upload.single('image'), async (req, res) => {
       return res.status(400).send("Must have a profile to submit projects");
     }
 
-    // Check balance requirement against the ledger. The client used to send its
-    // own balance, which the server simply trusted - never take the client's
-    // word for a balance.
-    const { balance } = await getBalance(wallet);
-    if (balance < 1) {
-      return res.status(400).send("Need ≥1 CritCoin to submit projects");
+    // Roster membership is the only requirement to submit. There is no
+    // longer a CritCoin balance gate here: holding CritCoin is a score, not
+    // a permission.
+    if (!(await isWhitelisted(wallet))) {
+      return res.status(403).send(NOT_WHITELISTED_MESSAGE);
     }
 
     console.log("🖼️ Uploading project image to Cloudinary...");

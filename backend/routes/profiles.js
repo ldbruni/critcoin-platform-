@@ -5,9 +5,7 @@ const { body, param, validationResult } = require('express-validator');
 // Temporarily disable rate limiting
 // const rateLimit = require('express-rate-limit');
 const Profile = require("../models/Profiles");
-const Transaction = require("../models/Transaction");
-const SystemSettings = require("../models/SystemSettings");
-const Whitelist = require("../models/Whitelist");
+const { isWhitelisted, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
 const multer = require("multer");
 const sharp = require("sharp");
 const path = require("path");
@@ -20,13 +18,6 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
-
-// Every new profile receives this one-off ledger credit, which is what lets a
-// brand-new student clear the >=1 CritCoin gate on posting and submitting.
-// The description doubles as the idempotency key.
-const JOINING_CREDIT_AMOUNT = 1;
-const JOINING_CREDIT_DESCRIPTION = 'Joining credit for new profile';
-
 
 // File type validation with magic number checking
 const validateImageType = (buffer) => {
@@ -96,8 +87,8 @@ const validateProfileCreation = [
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
   ]).withMessage('Invalid star sign')
   // No balance validator: profile creation has no balance requirement, and a
-  // client-supplied balance was never trustworthy anyway. See the joining
-  // credit issued in POST / below.
+  // client-supplied balance was never trustworthy anyway. Roster membership is
+  // the only admission control - see the check in POST / below.
 ];
 
 // GET profile by wallet
@@ -158,23 +149,16 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
     const existing = await Profile.findOne({ wallet: wallet.toLowerCase() });
     if (existing) return res.status(409).send("Profile already exists");
 
-    // Check whitelist mode
-    const whitelistSetting = await SystemSettings.findOne({ key: 'whitelistMode' });
-    const isWhitelistMode = whitelistSetting ? whitelistSetting.value : false;
-    
-    if (isWhitelistMode) {
-      const isWhitelisted = await Whitelist.findOne({ wallet: wallet.toLowerCase() });
-      if (!isWhitelisted) {
-        return res.status(403).send("Profile creation restricted to whitelisted wallets only");
-      }
+    // Roster membership is the only admission control, and it is
+    // unconditional - there is no setting that turns it off. There is no
+    // balance requirement either: a brand-new student has no ledger history,
+    // so a balance gate here could never be satisfied.
+    //
+    // This trusts the address the client claims. See ARCHITECTURE.md,
+    // "Whitelist admission", for why that is an accepted limitation for now.
+    if (!(await isWhitelisted(wallet))) {
+      return res.status(403).send(NOT_WHITELISTED_MESSAGE);
     }
-
-    // No balance requirement to create a profile. A new student has no ledger
-    // history, so requiring a balance here would be unsatisfiable - they'd need
-    // CritCoin to make a profile, but only profile holders get credited.
-    // Instead, creating the profile issues the joining credit below, which then
-    // satisfies the >=1 CritCoin gate on posting, submitting and tipping.
-    // Whitelist mode (checked above) is the admission control.
 
     let photoUrl = null;
 
@@ -268,37 +252,6 @@ router.post("/", uploadLimiter, upload.single('photo'), validateProfileCreation,
     console.log("Attempting to save profile:", profile);
     await profile.save();
     console.log("Profile saved successfully");
-
-    // Issue the joining credit so the new student clears the >=1 CritCoin gate
-    // on posting, submitting projects and tipping. Guarded so a wallet that
-    // re-creates a profile (e.g. after archiving) is never credited twice.
-    //
-    // This is an off-chain credit with no on-chain counterpart, so it shows up
-    // as expected drift in /api/admin/reconcile. That is deliberate: it is a
-    // database-only grant, exactly like an admin correction.
-    try {
-      const alreadyCredited = await Transaction.findOne({
-        toWallet: profile.wallet,
-        type: 'system',
-        description: JOINING_CREDIT_DESCRIPTION
-      });
-
-      if (!alreadyCredited) {
-        await Transaction.create({
-          fromWallet: 'system',
-          toWallet: profile.wallet,
-          amount: JOINING_CREDIT_AMOUNT,
-          type: 'system',
-          description: JOINING_CREDIT_DESCRIPTION,
-          txHash: null
-        });
-        console.log(`✅ Issued ${JOINING_CREDIT_AMOUNT} CritCoin joining credit to ${profile.wallet}`);
-      }
-    } catch (creditErr) {
-      // The profile itself saved, so don't fail the request. The admin can spot
-      // an uncredited student in the reconciliation report.
-      console.error("⚠️ Failed to issue joining credit:", creditErr);
-    }
 
     res.status(201).json(profile);
   } catch (err) {

@@ -206,8 +206,8 @@ mongoose.connection.once('open', async () => {
   // One-time migration: the legacy txHash_1 index was unique but not partial, so
   // only one document could ever carry txHash: null - which is why the old code
   // fabricated hashes instead of storing null. Off-chain rows (deploy credits,
-  // joining credits, admin corrections) need null, so drop the legacy index and
-  // rebuild the partial one declared in models/Transaction.js.
+  // admin corrections) need null, so drop the legacy index and rebuild the
+  // partial one declared in models/Transaction.js.
   //
   // syncIndexes() is what actually reconciles the collection with the schema.
   // Dropping alone is not enough: Mongoose's own autoIndex pass races this hook,

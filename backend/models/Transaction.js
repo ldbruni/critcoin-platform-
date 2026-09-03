@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 const REAL_TX_HASH = /^0x[0-9a-f]{64}$/i;
 
 const transactionSchema = new mongoose.Schema({
-  // Null for off-chain rows (deploy credits, joining credits, admin corrections).
+  // Null for off-chain rows (deploy credits, admin corrections).
   // Never fabricate a value here - a missing hash is a drift signal.
   txHash: { type: String, default: null },
   // Set by migrations/flag-fabricated-hashes.js on legacy rows whose hash was

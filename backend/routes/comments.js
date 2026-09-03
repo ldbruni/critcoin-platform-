@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const Comment = require("../models/Comment");
 const Profile = require("../models/Profiles");
+const { isWhitelisted, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
 
 // GET all comments for a post
 router.get("/post/:postId", async (req, res) => {
@@ -54,6 +55,11 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    // Roster membership is the only requirement to comment.
+    if (!(await isWhitelisted(authorWallet))) {
+      return res.status(403).send(NOT_WHITELISTED_MESSAGE);
+    }
+
     const comment = new Comment({
       postId,
       authorWallet: authorWallet.toLowerCase(),
