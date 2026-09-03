@@ -120,8 +120,8 @@ export default function Projects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!wallet || !profile || Number(balance) < 1) {
-      alert("You need a profile and ≥1 CritCoin to submit projects");
+    if (!wallet || !profile) {
+      alert("You need a profile to submit projects");
       return;
     }
 
@@ -299,10 +299,6 @@ export default function Projects() {
             {!profile ? (
               <p style={{ color: "var(--status-negative)" }}>
                 <Link to="/profiles">Create a profile</Link> to submit projects.
-              </p>
-            ) : Number(balance) < 1 ? (
-              <p style={{ color: "var(--status-negative)" }}>
-                You need ≥1 CritCoin to submit projects.
               </p>
             ) : userSubmission && !editing ? (
               <div>

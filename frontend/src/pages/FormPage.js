@@ -114,10 +114,10 @@ export default function ForumPage() {
 
   const submitPost = async (e) => {
     e.preventDefault();
-    // Require wallet, profile, and >=1 CritCoin
+    // Require wallet and profile. Roster membership is the real gate and is
+    // enforced server-side; there is no CritCoin balance requirement.
     if (!wallet) { alert("Connect wallet first"); return; }
     if (!profile) { alert("Create a profile before posting"); return; }
-    if (Number(balance) < 1) { alert("Need ≥1 CritCoin to post"); return; }
     if (!newPost.trim()) { alert("Post cannot be empty"); return; }
     
     // Validate post length (match backend 2000 char limit)
@@ -333,7 +333,7 @@ export default function ForumPage() {
             </p>
           </div>
 
-          {profile && Number(balance) >= 1 ? (
+          {profile ? (
             <div className="artistic-form">
               <h3 className="copper-text" style={{ marginBottom: '1rem', fontFamily: 'var(--font-heading)' }}>Share Your Thoughts</h3>
               <textarea
@@ -366,9 +366,7 @@ export default function ForumPage() {
               textAlign: 'center'
             }}>
               <p style={{ color: "var(--accent-orange)", fontFamily: 'var(--font-mono)', fontWeight: 'bold' }}>
-                { !profile
-                  ? <>⚠️ PROFILE REQUIRED — <Link to="/profiles" style={{ color: 'var(--accent-orange)' }}>Initialize Identity Matrix</Link> to broadcast</>
-                  : "⚠️ INSUFFICIENT CREDITS — Need ≥1 CritCoin to transmit" }
+                ⚠️ PROFILE REQUIRED — <Link to="/profiles" style={{ color: 'var(--accent-orange)' }}>Initialize Identity Matrix</Link> to broadcast
               </p>
             </div>
           )}

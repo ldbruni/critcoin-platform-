@@ -176,11 +176,8 @@ export default function Profiles() {
       return;
     }
 
-    // No balance gate on profile creation: a new student has no ledger history
-    // yet, so requiring a balance here could never be satisfied. Creating the
-    // profile issues a joining credit, which then covers the >=1 CritCoin
-    // requirement for posting, submitting projects and tipping.
-
+    // No balance gate on profile creation, and no joining credit: roster
+    // membership is the only requirement, and the server enforces it.
     const endpoint = profile ? `${API.profiles}/update` : API.profiles;
 
     try {
@@ -237,8 +234,9 @@ export default function Profiles() {
           // Handle validation errors
           const errorMessages = error.errors.map(err => err.msg).join("\n");
           alert("Profile validation failed:\n" + errorMessages);
-        } else if (res.status === 403 && (error.error || error).includes("whitelist")) {
-          alert("⚠️ Profile Creation Restricted\n\nProfile creation is currently restricted to whitelisted wallets only. Please contact your instructor to be added to the whitelist.");
+        } else if (res.status === 403) {
+          // The server explains why (not on the roster); show it verbatim.
+          alert("Profile creation refused\n\n" + (error.error || error));
         } else {
           alert("Profile save error: " + (error.error || error));
         }
@@ -533,7 +531,7 @@ export default function Profiles() {
               color: "var(--status-positive)"
             }}>
               <strong>Welcome</strong>
-              <p>Creating your profile grants you 1 CritCoin to get started.</p>
+              <p>Your wallet must be on the class roster to create a profile. If you are turned away, ask your instructor to add you.</p>
             </div>
           )}
           <form onSubmit={handleSubmit}>
