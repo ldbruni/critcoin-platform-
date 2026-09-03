@@ -57,7 +57,7 @@ export default function Admin() {
   const [editingBounty, setEditingBounty] = useState(null);
   
   // Whitelist form
-  const [whitelistForm, setWhitelistForm] = useState({ wallet: "", notes: "" });
+  const [whitelistForm, setWhitelistForm] = useState({ wallet: "", label: "", notes: "" });
 
   // Semester Archive state
   const [semesterArchives, setSemesterArchives] = useState([]);
@@ -79,10 +79,7 @@ export default function Admin() {
       if (activeTab === "posts") fetchPosts();
       if (activeTab === "bounties") fetchBounties();
       if (activeTab === "projects") fetchProjects();
-      if (activeTab === "whitelist") {
-        fetchSettings();
-        fetchWhitelist();
-      }
+      if (activeTab === "whitelist") fetchWhitelist();
       if (activeTab === "predictions") fetchSettings();
       if (activeTab === "semester") fetchSemesterArchives();
       if (activeTab === "deploy") fetchLatestDeploy();
@@ -477,27 +474,6 @@ export default function Admin() {
     }
   };
 
-  const handleToggleWhitelistMode = async () => {
-    try {
-      const res = await postWithSignature(`${API.admin}/settings`, 'admin_post_settings', {
-        key: "whitelistMode",
-        value: !settings.whitelistMode
-      });
-
-      if (res.ok) {
-        alert(`Whitelist mode ${!settings.whitelistMode ? 'enabled' : 'disabled'} successfully`);
-        fetchSettings();
-      } else {
-        const error = await res.json().catch(async () => ({ error: await res.text() }));
-        console.error("Toggle whitelist mode error:", error);
-        alert("Error: " + (error.error || error));
-      }
-    } catch (err) {
-      console.error("Toggle whitelist mode error:", err);
-      alert("Error toggling whitelist mode. Please check your wallet connection.");
-    }
-  };
-
   const handleAddToWhitelist = async (e) => {
     e.preventDefault();
     
@@ -509,12 +485,13 @@ export default function Admin() {
     try {
       const res = await postWithSignature(`${API.admin}/whitelist/add`, 'admin_post_whitelist_add', {
         wallet: whitelistForm.wallet,
+        label: whitelistForm.label,
         notes: whitelistForm.notes
       });
 
       if (res.ok) {
         alert("Wallet added to whitelist successfully");
-        setWhitelistForm({ wallet: "", notes: "" });
+        setWhitelistForm({ wallet: "", label: "", notes: "" });
         fetchWhitelist();
       } else {
         const error = await res.json().catch(async () => ({ error: await res.text() }));
@@ -1400,45 +1377,6 @@ export default function Admin() {
       {activeTab === "whitelist" && (
         <div>
           <h2>🔐 Whitelist Management</h2>
-          {console.log("Rendering whitelist tab. Settings:", settings, "Whitelist:", whitelist)}
-          
-          {/* Whitelist Mode Toggle */}
-          <div style={{ 
-            backgroundColor: settings.whitelistMode ? "var(--tint-info)" : "var(--tint-warning)", 
-            padding: "1rem", 
-            borderRadius: "8px", 
-            marginBottom: "2rem",
-            border: `1px solid ${settings.whitelistMode ? "var(--primary-blue)" : "var(--status-warning)"}`
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <h4 style={{ margin: "0 0 0.5rem 0" }}>
-                  {settings.whitelistMode ? "🔒 Whitelist Mode: ENABLED" : "🔓 Whitelist Mode: DISABLED"}
-                </h4>
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>
-                  {settings.whitelistMode 
-                    ? "Only whitelisted wallets can create new profiles. Existing profiles can still access the platform."
-                    : "Anyone with ≥1 CritCoin can create profiles. Perfect for first day of class."
-                  }
-                </p>
-              </div>
-              <button
-                onClick={handleToggleWhitelistMode}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  backgroundColor: settings.whitelistMode ? "var(--status-negative)" : "var(--status-positive)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: "bold"
-                }}
-              >
-                {settings.whitelistMode ? "Disable Whitelist" : "Enable Whitelist"}
-              </button>
-            </div>
-          </div>
-
           {/* Add to Whitelist Form */}
           <div style={{ 
             backgroundColor: "var(--surface-muted)", 
@@ -1449,7 +1387,7 @@ export default function Admin() {
           }}>
             <h4>Add Wallet to Whitelist</h4>
             <form onSubmit={handleAddToWhitelist}>
-              <div style={{ display: "grid", gridTemplateColumns: "300px 1fr auto", gap: "1rem", alignItems: "end" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 1fr auto", gap: "1rem", alignItems: "end" }}>
                 <div>
                   <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
                     Wallet Address *
@@ -1460,6 +1398,23 @@ export default function Admin() {
                     value={whitelistForm.wallet}
                     onChange={(e) => setWhitelistForm({...whitelistForm, wallet: e.target.value})}
                     required
+                    style={{ 
+                      width: "100%", 
+                      padding: "0.5rem", 
+                      borderRadius: "4px", 
+                      border: "1px solid var(--surface-card-border)"
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem", fontWeight: "bold" }}>
+                    Student name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Name on the roster..."
+                    value={whitelistForm.label}
+                    onChange={(e) => setWhitelistForm({...whitelistForm, label: e.target.value})}
                     style={{ 
                       width: "100%", 
                       padding: "0.5rem", 
@@ -1525,8 +1480,9 @@ export default function Admin() {
                 backgroundColor: "var(--surface-muted)",
                 fontWeight: "bold"
               }}>
-                <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "250px 160px 1fr 150px 100px", gap: "1rem" }}>
                   <span>Wallet Address</span>
+                  <span>Student</span>
                   <span>Notes</span>
                   <span>Added</span>
                   <span>Actions</span>
@@ -1540,10 +1496,13 @@ export default function Admin() {
                     borderBottom: index < whitelist.length - 1 ? "1px solid var(--surface-card-border)" : "none"
                   }}
                 >
-                  <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 150px 100px", gap: "1rem", alignItems: "center" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "250px 160px 1fr 150px 100px", gap: "1rem", alignItems: "center" }}>
                     <code style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
                       {entry.wallet}
                     </code>
+                    <span style={{ fontSize: "0.9rem" }}>
+                      {entry.label || <em style={{ color: "var(--text-faint)" }}>--</em>}
+                    </span>
                     <span style={{ fontSize: "0.9rem" }}>
                       {entry.notes || <em style={{ color: "var(--text-faint)" }}>No notes</em>}
                     </span>

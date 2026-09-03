@@ -13,6 +13,7 @@ const { REAL_TX_HASH } = require("../models/Transaction");
 const Deploy = require("../models/Deploy");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
+const { normalizeWallet } = require("../lib/whitelist");
 const { ethers } = require('ethers');
 const chain = require("../lib/chain");
 const { getBalances } = require("../lib/balances");
@@ -890,11 +891,6 @@ router.get("/settings/:adminWallet", adminRateLimit, [
       settingsObj[setting.key] = setting.value;
     });
     
-    // Default values if not set
-    if (!settingsObj.hasOwnProperty('whitelistMode')) {
-      settingsObj.whitelistMode = false;
-    }
-    
     res.json(settingsObj);
   } catch (err) {
     console.error("Settings fetch error:", err);
@@ -948,16 +944,23 @@ router.get("/whitelist/:adminWallet", adminRateLimit, [
 
 // POST add wallet to whitelist
 router.post("/whitelist/add", authenticateAdmin, async (req, res) => {
-  const { wallet, notes, adminWallet } = req.body;
+  const { wallet, label, notes, adminWallet } = req.body;
   
   if (!wallet) {
     return res.status(400).send("Wallet address required");
   }
 
+  // Reject malformed addresses here rather than storing a roster entry that
+  // could never match a real wallet.
+  if (!/^0x[a-fA-F0-9]{40}$/.test(String(wallet).trim())) {
+    return res.status(400).send("Invalid Ethereum address");
+  }
+
   try {
     const whitelistEntry = new Whitelist({
-      wallet: wallet.toLowerCase(),
-      addedBy: adminWallet.toLowerCase(),
+      wallet: normalizeWallet(wallet),
+      label: label || "",
+      addedBy: normalizeWallet(adminWallet),
       notes: notes || ""
     });
     
@@ -981,8 +984,8 @@ router.post("/whitelist/remove", authenticateAdmin, async (req, res) => {
   }
 
   try {
-    const result = await Whitelist.findOneAndDelete({ 
-      wallet: wallet.toLowerCase() 
+    const result = await Whitelist.findOneAndDelete({
+      wallet: normalizeWallet(wallet)
     });
     
     if (!result) {
