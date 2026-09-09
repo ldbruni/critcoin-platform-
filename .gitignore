@@ -27,3 +27,6 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Crash dumps (e.g. Git-Bash grep.exe on Windows)
+*.stackdump
