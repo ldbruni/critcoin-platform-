@@ -44,8 +44,8 @@ router.get("/leaderboard/top", async (req, res) => {
   try {
     const leaderboard = {};
 
-    // Get top 3 for each project number (1-4)
-    for (let projectNumber = 1; projectNumber <= 4; projectNumber++) {
+    // Get top 3 for each project number (1-5)
+    for (let projectNumber = 1; projectNumber <= 5; projectNumber++) {
       const topProjects = await Project.find({
         projectNumber,
         archived: { $ne: true }
@@ -90,7 +90,7 @@ router.get("/leaderboard/top", async (req, res) => {
 // GET all projects for a specific project number
 router.get("/:projectNumber", async (req, res) => {
   const projectNumber = parseInt(req.params.projectNumber);
-  if (!projectNumber || projectNumber < 1 || projectNumber > 4) {
+  if (!projectNumber || projectNumber < 1 || projectNumber > 5) {
     return res.status(400).send("Invalid project number");
   }
 
@@ -156,7 +156,7 @@ router.post("/", upload.single('image'), async (req, res) => {
     return res.status(400).send("Missing required fields");
   }
 
-  if (projNum < 1 || projNum > 4) {
+  if (projNum < 1 || projNum > 5) {
     return res.status(400).send("Invalid project number");
   }
 

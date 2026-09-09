@@ -9,15 +9,15 @@ const SystemSettings = require("../models/SystemSettings");
 const validatePrediction = [
   body('predictorWallet').isEthereumAddress().withMessage('Invalid predictor wallet address'),
   body('predictedWallet').isEthereumAddress().withMessage('Invalid predicted wallet address'),
-  body('projectNumber').optional().isInt({ min: 2, max: 4 }).withMessage('Project number must be 2, 3, or 4')
+  body('projectNumber').optional().isInt({ min: 2, max: 5 }).withMessage('Project number must be 2, 3, 4, or 5')
 ];
 
 // GET public prediction enabled settings — MUST be before /check/:wallet
 router.get("/settings", async (req, res) => {
   try {
-    const keys = ["predictionEnabled2", "predictionEnabled3", "predictionEnabled4"];
+    const keys = ["predictionEnabled2", "predictionEnabled3", "predictionEnabled4", "predictionEnabled5"];
     const docs = await SystemSettings.find({ key: { $in: keys } });
-    const result = { predictionEnabled2: true, predictionEnabled3: true, predictionEnabled4: true };
+    const result = { predictionEnabled2: true, predictionEnabled3: true, predictionEnabled4: true, predictionEnabled5: true };
     docs.forEach(s => { result[s.key] = s.value; });
     res.json(result);
   } catch (err) {

@@ -13,7 +13,7 @@ const predictionSchema = new mongoose.Schema({
     required: true,
     lowercase: true
   },
-  // Which project this prediction is for (2, 3, or 4)
+  // Which project this prediction is for (2, 3, 4, or 5)
   projectNumber: {
     type: Number,
     required: true,

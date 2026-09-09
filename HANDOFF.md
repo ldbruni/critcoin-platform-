@@ -65,14 +65,14 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | Model | Key fields | Notes |
 |---|---|---|
 | `Profiles` | `wallet` (unique), `name`, `birthday`, `starSign`, `photo`, `archived` | One per wallet. Soft-deleted via `archived`. |
-| `Project` | `authorWallet`, `projectNumber` (1–4), `title`, `description`, `image`, `totalReceived`, `archived` | Compound unique index on `(authorWallet, projectNumber)` — one submission per slot. |
+| `Project` | `authorWallet`, `projectNumber` (1–5), `title`, `description`, `image`, `totalReceived`, `archived` | Compound unique index on `(authorWallet, projectNumber)` — one submission per slot. |
 | `Post` | `authorWallet`, `content`, `upvotes`, `downvotes`, `votes` (Map), `hidden` | Moderation is `hidden`, not deletion. |
 | `Comment` | `postId`, `authorWallet`, `text`, `parentCommentId`, `upvotes[]`, `downvotes[]`, `archived` | `parentCommentId` gives one level of replies. Votes are arrays of wallets. |
 | `Bounty` | `title`, `description`, `reward`, `status`, `completedBy`, `crossedOut` | **Survives semester clears.** |
 | `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn. See §11. |
 | `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
-| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4`. |
+| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`. |
 | `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The class roster. Consulted on every profile creation, post, comment and project submission. |
 | `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions` | Fully self-contained snapshot; wallet→name resolved at archive time. |
 
@@ -212,7 +212,8 @@ Ordered roughly by how much trouble they'll cause.
 | Add an admin control | `backend/routes/admin.js` (behind `authenticateAdmin`), tab in `frontend/src/pages/Admin.js` |
 | Add a toggleable setting | write a `SystemSettings` key via `POST /api/admin/settings`, read it where enforced |
 | Change token behavior | `contracts/Token.sol` → `npx hardhat test` → redeploy → copy ABI/address to `frontend/src/contracts/` and `backend/sepolia.json` |
-| Include new data in archives | `backend/models/SemesterArchive.js` (sub-schema), `backend/routes/archive.js` (`/create` and the read routes), `frontend/src/pages/Archive.js` |
+| Include new data in archives | `backend/models/SemesterArchive.js` (sub-schema), `backend/routes/archive.js` (`/create` and the read routes), `frontend/src/pages/Archive.js` — register it in [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md) |
+| Add a project number | Every site listed in [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md), "Adding a project number" — the set is hardcoded, and the archive's leaderboard loop and the archive viewer's tabs are the two that fail silently |
 | Allow a new frontend origin | `allowedOrigins` in `backend/server.js` |
 | Show a balance anywhere | `fetchBalance()` from `frontend/src/utils/balance.js` — never `balanceOf` |
 | Link an address or hash | `AddressLink` / `TxLink` from `frontend/src/components/ChainLink.js` |

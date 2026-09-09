@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const projectSchema = new mongoose.Schema({
   authorWallet: { type: String, required: true },
-  projectNumber: { type: Number, required: true, min: 1, max: 4 }, // Projects 1-4
+  projectNumber: { type: Number, required: true, min: 1, max: 5 }, // Projects 1-5
   title: { type: String, required: true },
   description: { type: String },
   image: { type: String, required: true }, // filename of uploaded image

@@ -127,7 +127,7 @@ export default function Leaderboard() {
         Top 3 projects with the most CritCoin received in each category
       </p>
 
-      {leaderboard && [1, 2, 3, 4].map(num => {
+      {leaderboard && [1, 2, 3, 4, 5].map(num => {
         const projects = leaderboard[`project${num}`];
 
         if (!projects || projects.length === 0) {

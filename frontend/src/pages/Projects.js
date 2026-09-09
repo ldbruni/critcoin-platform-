@@ -268,7 +268,7 @@ export default function Projects() {
           {/* Project Navigation */}
           <div style={{ marginBottom: "2rem" }}>
             <h3>Select Project:</h3>
-            {[1, 2, 3, 4].map(num => (
+            {[1, 2, 3, 4, 5].map(num => (
               <button
                 key={num}
                 onClick={() => setActiveProject(num)}

@@ -1330,7 +1330,7 @@ export default function Admin() {
         <div>
           <h2>Prediction Market Controls</h2>
           <p>Enable or disable each project's prediction market. When closed, users cannot submit new predictions.</p>
-          {[2, 3, 4].map(projectNum => {
+          {[2, 3, 4, 5].map(projectNum => {
             const key = `predictionEnabled${projectNum}`;
             const isEnabled = settings[key] !== false;
             return (

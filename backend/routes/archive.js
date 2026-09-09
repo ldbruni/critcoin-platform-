@@ -439,7 +439,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
 
     // Build leaderboard snapshot (top 3 per project)
     const leaderboard = [];
-    for (let projectNum = 1; projectNum <= 4; projectNum++) {
+    for (let projectNum = 1; projectNum <= 5; projectNum++) {
       const projectsForNum = projects
         .filter(p => p.projectNumber === projectNum)
         .sort((a, b) => (b.totalReceived || 0) - (a.totalReceived || 0))

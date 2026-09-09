@@ -500,7 +500,7 @@ export default function Archive() {
               {/* Project Number Tabs */}
               <div style={{ marginBottom: "1.5rem" }}>
                 <h3 style={{ marginBottom: "0.5rem", color: "rgba(255,255,255,0.8)" }}>Select Project:</h3>
-                {[1, 2, 3, 4].map((num) => (
+                {[1, 2, 3, 4, 5].map((num) => (
                   <button
                     key={num}
                     onClick={() => setActiveProject(num)}

@@ -11,7 +11,7 @@ const API = {
     : "http://localhost:3001/api/profiles"
 };
 
-const PROJECTS = [2, 3, 4];
+const PROJECTS = [2, 3, 4, 5];
 
 export default function Prediction() {
   const [wallet, setWallet] = useState(null);
@@ -19,11 +19,13 @@ export default function Prediction() {
   const [balance, setBalance] = useState(0);
   const [allProfiles, setAllProfiles] = useState([]);
   // Per-project state maps
-  const [allPredictions, setAllPredictions] = useState({});     // { 2: [...], 3: [...], 4: [...] }
-  const [userPredictions, setUserPredictions] = useState({});   // { 2: pred|null, 3: null, 4: null }
-  const [selectedWallets, setSelectedWallets] = useState({});   // { 2: "", 3: "", 4: "" }
-  const [submitting, setSubmitting] = useState({});             // { 2: false, 3: false, 4: false }
-  const [predictionEnabled, setPredictionEnabled] = useState({ 2: true, 3: true, 4: true });
+  const [allPredictions, setAllPredictions] = useState({});     // keyed by project number, e.g. { 2: [...], 5: [...] }
+  const [userPredictions, setUserPredictions] = useState({});   // keyed by project number, e.g. { 2: pred|null }
+  const [selectedWallets, setSelectedWallets] = useState({});   // keyed by project number, e.g. { 2: "" }
+  const [submitting, setSubmitting] = useState({});             // keyed by project number, e.g. { 2: false }
+  const [predictionEnabled, setPredictionEnabled] = useState(
+    Object.fromEntries(PROJECTS.map(p => [p, true]))
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,28 +41,26 @@ export default function Prediction() {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [profilesRes, p2Res, p3Res, p4Res, settingsRes] = await Promise.all([
+      // One request per entry in PROJECTS, so adding a project number above is
+      // all it takes for its round to load here.
+      const [profilesRes, settingsRes, ...predictionRes] = await Promise.all([
         fetch(API.profiles),
-        fetch(`${API.predictions}?project=2`),
-        fetch(`${API.predictions}?project=3`),
-        fetch(`${API.predictions}?project=4`),
-        fetch(`${API.predictions}/settings`)
+        fetch(`${API.predictions}/settings`),
+        ...PROJECTS.map(p => fetch(`${API.predictions}?project=${p}`))
       ]);
 
       if (profilesRes.ok) setAllProfiles(await profilesRes.json());
 
       const predsMap = {};
-      const results = await Promise.all([p2Res, p3Res, p4Res].map(r => r.ok ? r.json() : []));
+      const results = await Promise.all(predictionRes.map(r => r.ok ? r.json() : []));
       PROJECTS.forEach((p, i) => { predsMap[p] = results[i]; });
       setAllPredictions(predsMap);
 
       if (settingsRes.ok) {
         const s = await settingsRes.json();
-        setPredictionEnabled({
-          2: s.predictionEnabled2 !== false,
-          3: s.predictionEnabled3 !== false,
-          4: s.predictionEnabled4 !== false
-        });
+        setPredictionEnabled(
+          Object.fromEntries(PROJECTS.map(p => [p, s[`predictionEnabled${p}`] !== false]))
+        );
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -171,7 +171,7 @@ export default function Prediction() {
       <div key={projectNum} style={{
         marginBottom: '3rem',
         paddingBottom: '3rem',
-        borderBottom: projectNum < 4 ? '2px solid var(--dark-border)' : 'none'
+        borderBottom: projectNum < 5 ? '2px solid var(--dark-border)' : 'none'
       }}>
         {/* Question header */}
         <div className="artistic-card" style={{

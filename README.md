@@ -12,12 +12,12 @@ Live at **https://critcoin.art**.
 
 ### Students
 - **Profiles** — name, birthday, auto-derived star sign, photo (Cloudinary-hosted), MetaMask wallet identity
-- **Projects** — one submission per student per project slot (Projects 1–4), with image upload
+- **Projects** — one submission per student per project slot (Projects 1–5), with image upload
 - **On-chain tipping** — send CritCoin to a project author via a real MetaMask transaction on Sepolia
 - **Forum** — posts with upvote/downvote, threaded comments and replies with their own voting
 - **Bounties** — instructor-created tasks with CritCoin rewards
 - **Leaderboard** — top 3 projects per project slot, ranked by CritCoin received
-- **Prediction Market** — one locked-in prediction per student per project (2, 3, 4) for who will win
+- **Prediction Market** — one locked-in prediction per student per project (2, 3, 4, 5) for who will win
 - **Explorer** — transaction ledger, per-wallet history, and platform stats
 - **Archive** — browse read-only snapshots of previous semesters
 
