@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 import { AddressLink, TxLink } from "../components/ChainLink";
+import { cloudinaryVariant, THUMB } from "../utils/cloudinary";
 
 // How each per-student deploy row reads in the status table.
 const DEPLOY_STATUS_LABELS = {
@@ -56,6 +57,10 @@ export default function Admin() {
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
   const [editingBounty, setEditingBounty] = useState(null);
   
+  // The Feed: posts with authorship, per-student quota, run settings
+  const [feedAdmin, setFeedAdmin] = useState(null);
+  const [feedForm, setFeedForm] = useState({ runStart: "", runDays: 14, dailyTarget: 10, timeZone: "America/New_York" });
+
   // Whitelist form
   const [whitelistForm, setWhitelistForm] = useState({ wallet: "", label: "", notes: "" });
 
@@ -77,6 +82,7 @@ export default function Admin() {
       fetchDashboard();
       if (activeTab === "profiles") fetchProfiles();
       if (activeTab === "posts") fetchPosts();
+      if (activeTab === "feed") fetchFeedAdmin();
       if (activeTab === "bounties") fetchBounties();
       if (activeTab === "projects") fetchProjects();
       if (activeTab === "whitelist") fetchWhitelist();
@@ -224,6 +230,62 @@ export default function Admin() {
       alert('Failed to fetch posts. Please check your wallet connection.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFeedAdmin = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchWithSignature(`${API.admin}/feed/${wallet}`, 'admin_get_feed');
+      if (res.ok) {
+        const data = await res.json();
+        setFeedAdmin(data);
+        setFeedForm({
+          runStart: data.config.runStart || "",
+          runDays: data.config.runDays,
+          dailyTarget: data.config.dailyTarget,
+          timeZone: data.config.timeZone
+        });
+      } else {
+        const error = await res.json().catch(() => ({ error: 'Failed to fetch feed' }));
+        alert(`Feed error: ${error.error}`);
+      }
+    } catch (err) {
+      console.error("Feed fetch error:", err);
+      alert('Failed to fetch feed. Please check your wallet connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveFeedSettings = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await postWithSignature(`${API.admin}/feed/settings`, 'admin_post_feed_settings', feedForm);
+      if (res.ok) {
+        fetchFeedAdmin();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Error: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Feed settings error:", err);
+      alert("Error saving feed settings. Please check your wallet connection.");
+    }
+  };
+
+  const handleHideFeedPost = async (postId, hide) => {
+    try {
+      const res = await postWithSignature(`${API.admin}/feed/hide`, 'admin_post_feed_hide', { postId, hide });
+      if (res.ok) {
+        fetchFeedAdmin();
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Error: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Hide feed post error:", err);
+      alert("Error hiding feed post. Please check your wallet connection.");
     }
   };
 
@@ -860,7 +922,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "reconcile"].map(tab => (
+        {["dashboard", "profiles", "posts", "feed", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "reconcile"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -875,7 +937,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab === "feed" ? "The Feed" : tab}
           </button>
         ))}
       </div>
@@ -1060,6 +1122,113 @@ export default function Admin() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* The Feed Tab - the instructor's view, with authorship */}
+      {activeTab === "feed" && (
+        <div>
+          <h2>The Feed</h2>
+          <p style={{ color: "var(--text-muted)" }}>
+            Students see the feed without names. This view, the database, and the semester archive keep full authorship.
+          </p>
+
+          <form onSubmit={handleSaveFeedSettings} style={{
+            display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-end",
+            padding: "1rem", marginBottom: "1.5rem",
+            background: "var(--surface-card)", border: "1px solid var(--surface-card-border)", borderRadius: "8px"
+          }}>
+            <label>Run starts (day 1)<br />
+              <input className="artistic-input" type="date" value={feedForm.runStart}
+                onChange={(e) => setFeedForm({ ...feedForm, runStart: e.target.value })} />
+            </label>
+            <label>Days<br />
+              <input className="artistic-input" type="number" min="1" style={{ width: "6rem" }} value={feedForm.runDays}
+                onChange={(e) => setFeedForm({ ...feedForm, runDays: e.target.value })} />
+            </label>
+            <label>Posts / day<br />
+              <input className="artistic-input" type="number" min="1" style={{ width: "6rem" }} value={feedForm.dailyTarget}
+                onChange={(e) => setFeedForm({ ...feedForm, dailyTarget: e.target.value })} />
+            </label>
+            <label>Time zone (what "today" means)<br />
+              <input className="artistic-input" value={feedForm.timeZone}
+                onChange={(e) => setFeedForm({ ...feedForm, timeZone: e.target.value })} />
+            </label>
+            <button className="artistic-btn" type="submit">Save</button>
+          </form>
+
+          {loading || !feedAdmin ? (
+            <p>Loading feed...</p>
+          ) : (
+            <>
+              <h3>Quota by student</h3>
+              <div style={{ overflowX: "auto", marginBottom: "2rem" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", borderBottom: "1px solid var(--surface-card-border)" }}>
+                      <th style={{ padding: "0.5rem" }}>Student</th>
+                      <th style={{ padding: "0.5rem" }}>Wallet</th>
+                      <th style={{ padding: "0.5rem" }}>Today</th>
+                      <th style={{ padding: "0.5rem" }}>{feedAdmin.config.runStart ? "This run" : "Total"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feedAdmin.quotas.map((q) => (
+                      <tr key={q.authorWallet} style={{ borderBottom: "1px solid var(--surface-card-border)" }}>
+                        <td style={{ padding: "0.5rem" }}>{q.authorName}</td>
+                        <td style={{ padding: "0.5rem" }}><code style={{ fontSize: "0.8rem" }}>{q.authorWallet.slice(0, 10)}...</code></td>
+                        <td className="ledger-num" style={{ padding: "0.5rem", color: q.today >= q.dailyTarget ? "var(--status-positive)" : "inherit" }}>
+                          {q.today} / {q.dailyTarget}
+                        </td>
+                        <td className="ledger-num" style={{ padding: "0.5rem" }}>
+                          {q.runStatus === "unscheduled" ? q.run : `${q.run} / ${q.dailyTarget * q.runDays}`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <h3>Posts ({feedAdmin.posts.length})</h3>
+              <div style={{ backgroundColor: "var(--surface-card)", borderRadius: "8px", border: "1px solid var(--surface-card-border)" }}>
+                {feedAdmin.posts.map((post, index) => (
+                  <div key={post._id} style={{
+                    display: "grid", gridTemplateColumns: "64px 180px 1fr 80px", gap: "1rem", alignItems: "center",
+                    padding: "0.75rem 1rem",
+                    borderBottom: index < feedAdmin.posts.length - 1 ? "1px solid var(--surface-card-border)" : "none",
+                    backgroundColor: post.hidden ? "var(--tint-negative)" : "transparent"
+                  }}>
+                    <div style={{ width: 64, height: 64, background: "var(--surface-muted)" }}>
+                      {post.images?.[0] && (
+                        <img src={cloudinaryVariant(post.images[0].url, THUMB)} alt="" loading="lazy"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      )}
+                    </div>
+                    <div>
+                      <strong>{post.authorName}</strong>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                        {new Date(post.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <div style={{ maxHeight: "60px", overflow: "hidden", textDecoration: post.hidden ? "line-through" : "none" }}>
+                      {post.text}
+                      {post.images?.length > 1 && <span style={{ color: "var(--text-muted)" }}> ({post.images.length} images)</span>}
+                    </div>
+                    <button
+                      onClick={() => handleHideFeedPost(post._id, !post.hidden)}
+                      style={{
+                        padding: "0.25rem 0.5rem",
+                        backgroundColor: post.hidden ? "var(--status-positive)" : "var(--status-negative)",
+                        color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem"
+                      }}
+                    >
+                      {post.hidden ? "Show" : "Hide"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

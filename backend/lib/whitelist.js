@@ -24,8 +24,14 @@ async function isWhitelisted(wallet) {
   return Boolean(entry);
 }
 
+// Every roster entry, addresses in canonical form.
+async function listRoster() {
+  const entries = await Whitelist.find().lean();
+  return entries.map((e) => ({ ...e, wallet: normalizeWallet(e.wallet) }));
+}
+
 // The single refusal message, so every gate reads identically to a student.
 const NOT_WHITELISTED_MESSAGE =
   "This wallet isn't on the class roster - ask your instructor to add it.";
 
-module.exports = { normalizeWallet, isWhitelisted, NOT_WHITELISTED_MESSAGE };
+module.exports = { normalizeWallet, isWhitelisted, listRoster, NOT_WHITELISTED_MESSAGE };

@@ -13,7 +13,9 @@ const { REAL_TX_HASH } = require("../models/Transaction");
 const Deploy = require("../models/Deploy");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
-const { normalizeWallet } = require("../lib/whitelist");
+const FeedPost = require("../models/FeedPost");
+const { normalizeWallet, listRoster } = require("../lib/whitelist");
+const { getFeedConfig, computeQuota, isValidTimeZone } = require("../lib/feed");
 const { ethers } = require('ethers');
 const chain = require("../lib/chain");
 const { getBalances } = require("../lib/balances");
@@ -871,6 +873,114 @@ router.post("/projects/archive", authenticateAdmin, async (req, res) => {
     });
   } catch (err) {
     console.error("Archive project error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// GET The Feed with full authorship, plus each poster's quota. The public feed
+// never carries the author; this is the instructor's normal view of the same
+// rows. Hidden posts are included and flagged.
+router.get("/feed/:adminWallet", adminRateLimit, [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const [posts, profiles, roster, config] = await Promise.all([
+      FeedPost.find().sort({ createdAt: -1 }).lean(),
+      Profile.find().lean(),
+      listRoster(),
+      getFeedConfig()
+    ]);
+    const nameByWallet = Object.fromEntries(
+      profiles.map(p => [p.wallet.toLowerCase(), p.name])
+    );
+    const labelByWallet = Object.fromEntries(
+      roster.map(w => [w.wallet, w.label])
+    );
+    const displayName = (wallet) => nameByWallet[wallet] || labelByWallet[wallet] || wallet;
+
+    const createdAtsByAuthor = {};
+    posts.forEach(p => {
+      (createdAtsByAuthor[p.authorWallet] = createdAtsByAuthor[p.authorWallet] || []).push(p.createdAt);
+    });
+
+    // Every roster member appears, including those who have not posted.
+    const authors = new Set([...roster.map(w => w.wallet), ...Object.keys(createdAtsByAuthor)]);
+    const quotas = [...authors].map(wallet => ({
+      authorWallet: wallet,
+      authorName: displayName(wallet),
+      ...computeQuota(createdAtsByAuthor[wallet] || [], config)
+    })).sort((a, b) => a.authorName.localeCompare(b.authorName));
+
+    res.json({
+      config,
+      quotas,
+      posts: posts.map(p => ({ ...p, authorName: displayName(p.authorWallet) }))
+    });
+  } catch (err) {
+    console.error("Feed admin fetch error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// POST The Feed's run configuration, all four keys under one signature
+router.post("/feed/settings", authenticateAdmin, async (req, res) => {
+  const { runStart, runDays, dailyTarget, timeZone, adminWallet } = req.body;
+
+  if (runStart && !/^\d{4}-\d{2}-\d{2}$/.test(runStart)) {
+    return res.status(400).json({ error: "Run start must be a YYYY-MM-DD date" });
+  }
+  const days = parseInt(runDays, 10);
+  const target = parseInt(dailyTarget, 10);
+  if (!(days > 0 && days <= 366) || !(target > 0 && target <= 1000)) {
+    return res.status(400).json({ error: "Run days and daily target must be positive whole numbers" });
+  }
+  if (!isValidTimeZone(timeZone)) {
+    return res.status(400).json({ error: "Unknown time zone - use an IANA name like America/New_York" });
+  }
+
+  try {
+    const values = { feedRunStart: runStart || null, feedRunDays: days, feedDailyTarget: target, feedTimeZone: timeZone };
+    await Promise.all(Object.entries(values).map(([key, value]) =>
+      SystemSettings.findOneAndUpdate(
+        { key },
+        { value, updatedAt: new Date(), updatedBy: adminWallet.toLowerCase() },
+        { upsert: true }
+      )
+    ));
+    res.json({ message: "Feed settings updated", config: await getFeedConfig() });
+  } catch (err) {
+    console.error("Feed settings error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
+// POST hide/unhide a feed post
+router.post("/feed/hide", authenticateAdmin, async (req, res) => {
+  const { postId, hide } = req.body;
+
+  if (!postId) {
+    return res.status(400).send("Post ID required");
+  }
+
+  try {
+    const post = await FeedPost.findByIdAndUpdate(
+      postId,
+      { hidden: Boolean(hide), hiddenAt: hide ? new Date() : null },
+      { new: true }
+    );
+
+    if (!post) {
+      return res.status(404).send("Post not found");
+    }
+
+    res.json({ message: `Feed post ${hide ? 'hidden' : 'unhidden'} successfully`, post });
+  } catch (err) {
+    console.error("Hide feed post error:", err);
     res.status(500).send("Database error");
   }
 });

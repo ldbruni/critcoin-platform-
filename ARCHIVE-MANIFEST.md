@@ -27,11 +27,12 @@ the read-only viewer is [frontend/src/pages/Archive.js](frontend/src/pages/Archi
 | `transactions` | all rows | `transactions[]` | Explorer |
 | `bounties` | all rows | `bounties[]` | *(captured; no tab — see Known gaps)* |
 | `predictions` | `archived != true` | `predictions[]` | *(captured; no tab — see Known gaps)* |
+| `feedposts` | `hidden != true` | `feedPosts[]` — **with authorship** | Feed *(author-free; tab shown only when the archive has feed posts)* |
 | *(derived from `projects`)* | top 3 by `totalReceived`, **per project number 1–5** | `leaderboard[]` | Leaderboard + Overview |
 
 `stats{}` holds counts of each of the above: `totalProfiles`, `totalProjects`,
 `totalPosts`, `totalComments`, `totalTransactions`, `totalBounties`,
-`totalPredictions`, `totalCritCoinTransferred`.
+`totalPredictions`, `totalFeedPosts`, `totalCritCoinTransferred`.
 
 Wallet addresses are resolved to display names **at snapshot time**, so archives
 stay readable after the profiles behind them are deleted.
@@ -47,6 +48,26 @@ project's `totalReceived`.
 
 The **leaderboard is the exception**: it is derived, not copied, by a loop over
 an explicit range of project numbers.
+
+### Feed posts: captured with authorship, served without it
+
+The Feed shows posts without names (see [ARCHITECTURE.md](ARCHITECTURE.md),
+"Feed authorship"). The archive is the instructor's record, so each archived
+feed post keeps `authorWallet` and `authorName` alongside `text`, `images[]`
+(Cloudinary URL, width, height) and `createdAt`.
+
+The public archive routes must not undo the live feed's guarantee:
+
+- `GET /:archiveId` **excludes `feedPosts` entirely** (`.select('-feedPosts')`);
+  only the count in `stats` is public.
+- `GET /:archiveId/feed` serves the posts through the same author-free
+  serializer as the live feed (`toPublicPost` in `backend/lib/feed.js`).
+- `GET /admin/:adminWallet/feed/:archiveId` (admin-signed) returns them with
+  authorship.
+
+Any new public route that reads `feedPosts` must go through `toPublicPost`.
+Verified by `node backend/scripts/verify-feed.js`, which archives a test
+semester and checks all three.
 
 ## Adding a project number
 
@@ -75,13 +96,14 @@ projects 2–5.
 |---|---|
 | `whitelists` | The class roster is admin intent that **persists across semesters**, not per-semester content. Like bounties, it is not cleared by `clear-current`. |
 | `deploys` | Operational deploy-round tracking. The value it moves already lands in `transactions` (the authoritative ledger), which *is* archived. |
-| `systemsettings` | Live configuration, not semester content. Note this means the per-project prediction open/closed flags are **not** captured. |
+| `systemsettings` | Live configuration, not semester content. Note this means the per-project prediction open/closed flags and the Feed's run settings (start date, days, daily target, time zone) are **not** captured. |
 | `semesterarchives` | The archive container itself. |
 
 ## Clear-current behavior (post-archive reset)
 
 `POST /clear-current` deletes `profiles` (except the admin wallet), `projects`,
-`posts`, `comments`, `transactions`, and `predictions`. It does **not** delete
+`posts`, `comments`, `transactions`, `predictions`, and `feedposts` (their
+Cloudinary images are kept — the archive still points at them). It does **not** delete
 `bounties` or `whitelists` — those are intentionally durable. Nothing on-chain is
 touched; student wallets keep whatever CritCoin they hold on Sepolia.
 
@@ -93,7 +115,8 @@ touched; student wallets keep whatever CritCoin they hold on Sepolia.
   UI renders 0 for every count. It does **not** affect what `POST /create`
   captures. Any literal GET path added to this router must be declared before
   `/:archiveId`.
-- **`GET /preview` does not count predictions**, even once un-shadowed.
+- **`GET /preview` does not count predictions**, even once un-shadowed. (It
+  does count feed posts.)
 - **Bounties and predictions have no read-only tab** in `Archive.js`, though both
   are captured and counted. The viewer's tabs are overview, profiles, projects,
   leaderboard, forum, explorer.

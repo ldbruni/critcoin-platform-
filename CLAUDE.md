@@ -39,6 +39,10 @@ read alike; never query the `Whitelist` collection directly.
 
 - **The `main` whitelist gates on claimed address; real enforcement depends on
   SIWE from the security branch, merged later.**
+- **The public Feed API never carries authorship.** Every public feed
+  response goes through `toPublicPost` in `backend/lib/feed.js`; never spread a
+  `FeedPost` into one, and never put a wallet in a feed image's public id. See
+  ARCHITECTURE.md, "Feed authorship".
 - **Never import from `security-hardening`.** That branch is quarantined —
   `requireAdmin`, `middleware/auth`, SIWE, its `SystemSettings`. Needing any of
   them means the wrong thing is being built. Admin routes use the existing

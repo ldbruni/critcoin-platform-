@@ -30,6 +30,7 @@ const adminRoutes = require("./routes/admin");
 const commentRoutes = require("./routes/comments");
 const archiveRoutes = require("./routes/archive");
 const predictionRoutes = require("./routes/predictions");
+const feedRoutes = require("./routes/feed");
 const Prediction = require("./models/Prediction");
 const Transaction = require("./models/Transaction");
 
@@ -152,6 +153,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/archive", archiveRoutes);
 app.use("/api/predictions", predictionRoutes);
+app.use("/api/feed", feedRoutes);
 
 // Debug environment variables
 console.log("🔍 Environment check:");

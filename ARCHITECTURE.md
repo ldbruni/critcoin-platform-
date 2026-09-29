@@ -113,6 +113,46 @@ claimed one. Nothing here depends on that branch.
 
 ---
 
+## Feed authorship
+
+**The Feed hides authorship in the API, not in the UI.** Posts are stored
+like any other content — `FeedPost.authorWallet`, visible to the instructor in
+the admin panel, the database, and the semester archive. What students get is
+different: the public feed response carries no author field of any kind.
+
+Hiding the name only in React would still ship it in the JSON, where anyone
+can read it in the browser's network tab. So the guarantee lives on the server:
+
+- **One serializer.** `toPublicPost` in
+  [backend/lib/feed.js](backend/lib/feed.js) is the only shape in which a feed
+  post leaves the server on a public route. It is an allow-list (`_id`, `text`,
+  `images`, `createdAt`), so a field added to the model later does not leak by
+  default. The feed query also projects `authorWallet` out, as a second guard.
+- **Image URLs carry no identity.** Feed images get random Cloudinary public
+  ids; the project uploader's `project_<wallet>_…` naming would put the author
+  in every URL.
+- **Own posts need a signature.** On `main` a request's wallet is whatever the
+  client claims (see "Whitelist admission"). A "posts by wallet X" endpoint
+  that believed the claim would let anyone map the whole feed by querying each
+  roster wallet. So `POST /api/feed/mine` requires a `personal_sign` by that
+  wallet — the same `verifyMessage` check the admin routes use — valid for 12
+  hours so a student signs once per session. Posting itself still trusts the
+  claimed wallet, like every other student write on `main`; a forged post is
+  a roster problem, not a privacy leak.
+- **The archive keeps authorship but serves it only to the admin.** See
+  [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md).
+
+This is display-hiding, not anonymity: the instructor and database always know
+who posted what, and posting times are public, so a determined observer can
+still correlate timing. There is no reveal flow because nothing was ever hidden
+server-side.
+
+The quota (posts today / this run) is computed server-side in the class time
+zone (`feedTimeZone`, default `America/New_York`) and shown only to the signed
+poster and the admin.
+
+---
+
 ## Transaction hashes
 
 `Transaction.txHash` holds a real Sepolia hash or `null`. It is **never**

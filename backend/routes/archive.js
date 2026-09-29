@@ -10,6 +10,8 @@ const Comment = require("../models/Comment");
 const Transaction = require("../models/Transaction");
 const Bounty = require("../models/Bounty");
 const Prediction = require("../models/Prediction");
+const FeedPost = require("../models/FeedPost");
+const { toPublicPost } = require("../lib/feed");
 const { ethers } = require('ethers');
 
 // Admin authentication middleware with signature verification
@@ -131,7 +133,10 @@ router.get("/", async (req, res) => {
 // GET single semester archive details (public)
 router.get("/:archiveId", async (req, res) => {
   try {
-    const archive = await SemesterArchive.findById(req.params.archiveId);
+    // Feed posts carry authorship, which the public never sees; they are
+    // served author-free by GET /:archiveId/feed instead.
+    const archive = await SemesterArchive.findById(req.params.archiveId)
+      .select('-feedPosts');
     if (!archive) {
       return res.status(404).json({ error: 'Archive not found' });
     }
@@ -235,6 +240,27 @@ router.get("/:archiveId/forum", async (req, res) => {
   }
 });
 
+// GET archived feed posts for a semester - author-free, like the live feed.
+router.get("/:archiveId/feed", async (req, res) => {
+  try {
+    const archive = await SemesterArchive.findById(req.params.archiveId)
+      .select('name feedPosts');
+    if (!archive) {
+      return res.status(404).json({ error: 'Archive not found' });
+    }
+    const posts = [...(archive.feedPosts || [])]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map((p, i) => ({ ...toPublicPost(p), _id: String(i) }));
+    res.json({
+      semesterName: archive.name,
+      posts
+    });
+  } catch (err) {
+    console.error("Archive feed fetch error:", err);
+    res.status(500).json({ error: 'Failed to fetch archived feed' });
+  }
+});
+
 // GET archived transactions for a semester
 router.get("/:archiveId/explorer", async (req, res) => {
   try {
@@ -275,6 +301,28 @@ router.get("/admin/:adminWallet", [
   }
 });
 
+// GET archived feed posts WITH authorship (admin only)
+router.get("/admin/:adminWallet/feed/:archiveId", [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const archive = await SemesterArchive.findById(req.params.archiveId)
+      .select('name feedPosts');
+    if (!archive) {
+      return res.status(404).json({ error: 'Archive not found' });
+    }
+    res.json({ semesterName: archive.name, posts: archive.feedPosts });
+  } catch (err) {
+    console.error("Admin archive feed fetch error:", err);
+    res.status(500).json({ error: 'Failed to fetch archived feed' });
+  }
+});
+
 // GET preview of what will be archived (public endpoint for admin UI)
 router.get("/preview", async (req, res) => {
   try {
@@ -284,6 +332,7 @@ router.get("/preview", async (req, res) => {
     const commentCount = await Comment.countDocuments({ archived: { $ne: true } });
     const transactionCount = await Transaction.countDocuments();
     const bountyCount = await Bounty.countDocuments();
+    const feedPostCount = await FeedPost.countDocuments({ hidden: { $ne: true } });
 
     res.json({
       profiles: profileCount,
@@ -291,7 +340,8 @@ router.get("/preview", async (req, res) => {
       posts: postCount,
       comments: commentCount,
       transactions: transactionCount,
-      bounties: bountyCount
+      bounties: bountyCount,
+      feedPosts: feedPostCount
     });
   } catch (err) {
     console.error("Archive preview error:", err);
@@ -324,6 +374,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
     const transactions = await Transaction.find();
     const bounties = await Bounty.find();
     const predictions = await Prediction.find({ archived: { $ne: true } });
+    const feedPosts = await FeedPost.find({ hidden: { $ne: true } }).sort({ createdAt: 1 });
 
     // Create profile lookup map
     const profileMap = {};
@@ -437,6 +488,15 @@ router.post("/create", authenticateAdmin, async (req, res) => {
       createdAt: pred.createdAt
     }));
 
+    // Archive feed posts, authorship included
+    const archivedFeedPosts = feedPosts.map(f => ({
+      authorWallet: f.authorWallet,
+      authorName: profileMap[f.authorWallet?.toLowerCase()] || 'Unknown',
+      text: f.text,
+      images: (f.images || []).map(img => ({ url: img.url, width: img.width, height: img.height })),
+      createdAt: f.createdAt
+    }));
+
     // Build leaderboard snapshot (top 3 per project)
     const leaderboard = [];
     for (let projectNum = 1; projectNum <= 5; projectNum++) {
@@ -473,6 +533,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
         totalTransactions: transactions.length,
         totalBounties: bounties.length,
         totalPredictions: predictions.length,
+        totalFeedPosts: feedPosts.length,
         totalCritCoinTransferred
       },
       profiles: archivedProfiles,
@@ -481,7 +542,8 @@ router.post("/create", authenticateAdmin, async (req, res) => {
       transactions: archivedTransactions,
       bounties: archivedBounties,
       leaderboard,
-      predictions: archivedPredictions
+      predictions: archivedPredictions,
+      feedPosts: archivedFeedPosts
     });
 
     await archive.save();
@@ -538,6 +600,10 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
     // Delete all predictions
     const predictionResult = await Prediction.deleteMany({});
 
+    // Delete all feed posts (their images stay on Cloudinary, referenced by
+    // the archive)
+    const feedPostResult = await FeedPost.deleteMany({});
+
     // Note: Bounties are NOT deleted - they persist across semesters
 
     console.log('Site data cleared successfully');
@@ -550,7 +616,8 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
         posts: postResult.deletedCount,
         comments: commentResult.deletedCount,
         transactions: transactionResult.deletedCount,
-        predictions: predictionResult.deletedCount
+        predictions: predictionResult.deletedCount,
+        feedPosts: feedPostResult.deletedCount
       }
     });
   } catch (err) {

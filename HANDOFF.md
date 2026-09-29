@@ -72,9 +72,10 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn. See §11. |
 | `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
-| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`. |
-| `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The class roster. Consulted on every profile creation, post, comment and project submission. |
-| `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions` | Fully self-contained snapshot; wallet→name resolved at archive time. |
+| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`, `feedRunStart`, `feedRunDays`, `feedDailyTarget`, `feedTimeZone`. |
+| `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The class roster. Consulted on every profile creation, post, comment, project submission and feed post. |
+| `FeedPost` | `authorWallet` (lowercase), `text`, `images[]` (`url`, `width`, `height`), `hidden` | The Feed. Authorship stored normally; the **public API never sends it**. Images are Cloudinary URLs, never bytes. Indexed on `(authorWallet, createdAt)` and `(createdAt, _id)`. |
+| `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions/feedPosts` | Fully self-contained snapshot; wallet→name resolved at archive time. `feedPosts` keeps authorship but is excluded from public reads. |
 
 ### Migration on boot
 
@@ -106,6 +107,9 @@ Base: `http://localhost:3001` in dev, `https://critcoin-platform-production.up.r
 **Comments** — `/api/comments`
 `GET /post/:postId` · `POST /` · `POST /:commentId/vote` · `POST /:commentId/unvote` · `DELETE /:commentId`
 
+**Feed** — `/api/feed`
+`GET /?before=<cursor>&limit=N` *(public; no author field of any kind)* · `POST /` (multipart, whitelist-gated) · `POST /mine` *(wallet-signed; the signer's own posts + quota)*
+
 **Predictions** — `/api/predictions`
 `GET /settings` · `GET /?project=N` · `GET /check/:wallet?project=N` · `POST /`
 
@@ -113,11 +117,11 @@ Base: `http://localhost:3001` in dev, `https://critcoin-platform-production.up.r
 `GET /balance/:wallet` *(the authoritative balance — every balance in the UI comes from here)* · `GET /transactions` · `GET /transaction/:id` · `GET /stats` · `GET /wallet/:address` · `POST /sample-data`
 
 **Archive** — `/api/archive`
-Public reads: `GET /` · `GET /:archiveId` · `GET /:archiveId/profiles|projects|leaderboard|forum|explorer` · `GET /:archiveId/projects/:projectNumber`
-Admin: `GET /admin/:adminWallet` · `GET /preview` · `POST /create` · `POST /clear-current` · `POST /delete` · `POST /update`
+Public reads: `GET /` · `GET /:archiveId` *(minus `feedPosts`)* · `GET /:archiveId/profiles|projects|leaderboard|forum|explorer|feed` · `GET /:archiveId/projects/:projectNumber`
+Admin: `GET /admin/:adminWallet` · `GET /admin/:adminWallet/feed/:archiveId` *(feed with authorship)* · `GET /preview` · `POST /create` · `POST /clear-current` · `POST /delete` · `POST /update`
 
 **Admin** — `/api/admin` (all admin-authenticated except the last)
-`GET /dashboard/:adminWallet` · `GET|POST /profiles*` · `GET|POST /posts*` · `GET|POST /projects*` · `GET|POST /bounties*` · `GET|POST /settings*` · `GET|POST /whitelist*` · `GET /public/bounties` *(public)*
+`GET /dashboard/:adminWallet` · `GET|POST /profiles*` · `GET|POST /posts*` · `GET|POST /feed*` · `GET|POST /projects*` · `GET|POST /bounties*` · `GET|POST /settings*` · `GET|POST /whitelist*` · `GET /public/bounties` *(public)*
 
 Deploy (see §12): `POST /deploy/start` · `POST /deploy/record` · `GET /deploy/latest/:adminWallet`
 Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and never sends a transaction
@@ -144,8 +148,8 @@ Resubmitting the same hash is a no-op: the backend returns the existing record r
 Admin → **Semester** tab. Order matters:
 
 1. **Preview** (`GET /api/archive/preview`) — live counts of what will be captured.
-2. **Create archive** (`POST /api/archive/create`) — requires a unique name. Snapshots active profiles, active projects, visible posts with their comment trees, all transactions, all bounties, active predictions, and a computed leaderboard. Wallet addresses are resolved to display names at snapshot time so archives stay readable after profiles are deleted.
-3. **Clear current** (`POST /api/archive/clear-current`) — requires `confirmed: true`. Hard-deletes profiles (**except the admin wallet**), projects, posts, comments, transactions, and predictions.
+2. **Create archive** (`POST /api/archive/create`) — requires a unique name. Snapshots active profiles, active projects, visible posts with their comment trees, all transactions, all bounties, active predictions, visible feed posts (with authorship), and a computed leaderboard. Wallet addresses are resolved to display names at snapshot time so archives stay readable after profiles are deleted.
+3. **Clear current** (`POST /api/archive/clear-current`) — requires `confirmed: true`. Hard-deletes profiles (**except the admin wallet**), projects, posts, comments, transactions, predictions, and feed posts.
 
 **Bounties are deliberately not deleted** (`1e37937`) — they're reusable course content.
 
@@ -157,7 +161,11 @@ Archives are read-only and browsable by anyone at `/archive` and `/archive/:arch
 
 ## 7. Images
 
-Uploads go to **Cloudinary** ([backend/routes/profiles.js](backend/routes/profiles.js) and [backend/routes/projects.js](backend/routes/projects.js)) via `upload_stream`, after Sharp resizing. Requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+Uploads go to **Cloudinary** via `upload_stream`, after Sharp resizing. Requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`. Projects and the Feed share one pipeline, [backend/lib/images.js](backend/lib/images.js); profile photos still have their own in [backend/routes/profiles.js](backend/routes/profiles.js).
+
+- **Feed uploads** opt into `autoOrient` (applies EXIF orientation before Sharp re-encodes and drops it) and `allowHeic` (Sharp's bundled libvips cannot decode iPhone HEIC, so undecodable input goes to Cloudinary as-is and is stored as JPEG). Project uploads keep their original behavior — neither flag.
+- **Delivery sizes are URL transformations**, not stored copies: [frontend/src/utils/cloudinary.js](frontend/src/utils/cloudinary.js) splices `c_limit,w_400,f_auto,q_auto` (thumbnail), `w_800` (2×), or `w_1600` (expanded) into the stored URL. Transformed delivery also strips EXIF/GPS from what browsers receive.
+- **Feed public ids are random** (`feed_<24 hex>`). Project ids embed the wallet (`project_<wallet>_…`), which is fine for projects but would publish the author in a feed image URL.
 
 Legacy images live in `backend/uploads/` and are served by `GET /api/profiles/photo/:filename` and `GET /api/projects/image/:filename`. Both apply strict filename validation to block path traversal — project images must match `project_0x<40 hex>_<13 digits>_<8-20 chars>.jpg` exactly, or the request is rejected. If an old image 404s, this pattern is the usual reason.
 
@@ -212,6 +220,7 @@ Ordered roughly by how much trouble they'll cause.
 | Add an admin control | `backend/routes/admin.js` (behind `authenticateAdmin`), tab in `frontend/src/pages/Admin.js` |
 | Add a toggleable setting | write a `SystemSettings` key via `POST /api/admin/settings`, read it where enforced |
 | Change token behavior | `contracts/Token.sol` → `npx hardhat test` → redeploy → copy ABI/address to `frontend/src/contracts/` and `backend/sepolia.json` |
+| Change what the public feed returns | `toPublicPost` in `backend/lib/feed.js` — an allow-list; never spread a `FeedPost` into a public response. Re-run `node backend/scripts/verify-feed.js` |
 | Include new data in archives | `backend/models/SemesterArchive.js` (sub-schema), `backend/routes/archive.js` (`/create` and the read routes), `frontend/src/pages/Archive.js` — register it in [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md) |
 | Add a project number | Every site listed in [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md), "Adding a project number" — the set is hardcoded, and the archive's leaderboard loop and the archive viewer's tabs are the two that fail silently |
 | Allow a new frontend origin | `allowedOrigins` in `backend/server.js` |

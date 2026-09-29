@@ -83,6 +83,22 @@ const archivedPredictionSchema = new mongoose.Schema({
   createdAt: Date
 }, { _id: false });
 
+// Schema for archived feed post data. Authorship is kept - the archive is the
+// instructor's record - but the public archive routes never send it; see
+// routes/archive.js.
+const archivedFeedPostSchema = new mongoose.Schema({
+  authorWallet: String,
+  authorName: String,
+  text: String,
+  images: [{
+    url: String,
+    width: Number,
+    height: Number,
+    _id: false
+  }],
+  createdAt: Date
+}, { _id: false });
+
 // Schema for leaderboard snapshot
 const leaderboardEntrySchema = new mongoose.Schema({
   projectNumber: Number,
@@ -118,6 +134,7 @@ const semesterArchiveSchema = new mongoose.Schema({
     totalTransactions: Number,
     totalBounties: Number,
     totalPredictions: Number,
+    totalFeedPosts: Number,
     totalCritCoinTransferred: Number
   },
 
@@ -128,7 +145,8 @@ const semesterArchiveSchema = new mongoose.Schema({
   transactions: [archivedTransactionSchema],
   bounties: [archivedBountySchema],
   leaderboard: [leaderboardEntrySchema],
-  predictions: [archivedPredictionSchema]
+  predictions: [archivedPredictionSchema],
+  feedPosts: [archivedFeedPostSchema]
 });
 
 // Index for efficient queries

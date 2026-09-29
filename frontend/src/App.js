@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import Leaderboard from "./pages/Leaderboard";
 import Archive from "./pages/Archive";
 import Prediction from "./pages/Prediction";
+import Feed from "./pages/Feed";
 import ThemeScope from "./theme/ThemeScope";
 // Order matters, and so does the fact that index.js imports this module before
 // bootstrap.css: the theme rules must keep landing ahead of bootstrap so it
@@ -42,6 +43,7 @@ function Navigation({ isAdmin }) {
       <div className="nav-row">
         <Link to="/explorer" className={`nav-link ${isActive('/explorer') ? 'active' : ''}`}>Explorer</Link>
         <Link to="/forum" className={`nav-link ${isActive('/forum') ? 'active' : ''}`}>Forum</Link>
+        <Link to="/feed" className={`nav-link ${isActive('/feed') ? 'active' : ''}`}>Feed</Link>
         <Link to="/bounties" className={`nav-link ${isActive('/bounties') ? 'active' : ''}`}>Bounties</Link>
         <Link to="/prediction" className={`nav-link ${isActive('/prediction') ? 'active' : ''}`}>Prediction</Link>
         <Link to="/archive" className={`nav-link ${isActive('/archive') ? 'active' : ''}`}>Archive</Link>
@@ -128,6 +130,7 @@ export default function App() {
         <Route path="/explorer" element={pageV2(<Explorer />)} />
         <Route path="/admin" element={pageV2(<Admin />)} />
         <Route path="/forum" element={pageV2(<FormPage />)} />
+        <Route path="/feed" element={pageV2(<Feed />)} />
         <Route path="/archive" element={<Archive />} />
         <Route path="/archive/:archiveId" element={<Archive />} />
         <Route path="/prediction" element={pageV2(<Prediction />)} />

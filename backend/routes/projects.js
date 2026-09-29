@@ -6,18 +6,10 @@ const Profile = require("../models/Profiles");
 const Transaction = require("../models/Transaction");
 const { REAL_TX_HASH } = require("../models/Transaction");
 const { isWhitelisted, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
+const { uploadImage } = require("../lib/images");
 const multer = require("multer");
-const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
-const cloudinary = require('cloudinary').v2;
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -178,29 +170,9 @@ router.post("/", upload.single('image'), async (req, res) => {
 
     // Process and upload image to Cloudinary - accommodate phone photos
     // Max dimensions: 1920px, maintain aspect ratio
-    const processedImageBuffer = await sharp(req.file.buffer)
-      .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    // Upload to Cloudinary
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'critcoin/projects',
-          public_id: `project_${wallet.toLowerCase()}_${projNum}_${Date.now()}`,
-          resource_type: 'image',
-          transformation: [
-            { width: 1920, height: 1920, crop: 'limit' },
-            { quality: 'auto:good' }
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(processedImageBuffer);
+    const uploadResult = await uploadImage(req.file.buffer, {
+      folder: 'critcoin/projects',
+      publicId: `project_${wallet.toLowerCase()}_${projNum}_${Date.now()}`
     });
 
     const imageUrl = uploadResult.secure_url;

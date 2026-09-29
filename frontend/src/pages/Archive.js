@@ -1,8 +1,9 @@
 // src/pages/Archive.js
 // Semester Archive Viewer - matches live site styling
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import ThemeScope from "../theme/ThemeScope";
+import FeedGrid, { FeedPostViewer } from "../components/FeedGrid";
 
 const API_URL = process.env.REACT_APP_API_URL
   ? `${process.env.REACT_APP_API_URL}/api/archive`
@@ -54,12 +55,18 @@ export default function Archive() {
   const [loading, setLoading] = useState(true);
   const [activeProject, setActiveProject] = useState(1);
   const [showComments, setShowComments] = useState({});
+  // Archived feed posts come from their own route, which (like the live feed)
+  // never carries authorship.
+  const [feedPosts, setFeedPosts] = useState(null);
+  const [openFeedPost, setOpenFeedPost] = useState(null);
+  const closeFeedPost = useCallback(() => setOpenFeedPost(null), []);
 
   useEffect(() => {
     fetchArchives();
   }, []);
 
   useEffect(() => {
+    setFeedPosts(null);
     if (archiveId) {
       fetchArchiveDetails(archiveId);
     } else {
@@ -96,6 +103,17 @@ export default function Archive() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeSection !== "feed" || !archiveId || feedPosts) return;
+    fetch(`${API_URL}/${archiveId}/feed`)
+      .then((res) => (res.ok ? res.json() : { posts: [] }))
+      .then((data) => setFeedPosts(data.posts))
+      .catch((err) => {
+        console.error("Failed to fetch archived feed:", err);
+        setFeedPosts([]);
+      });
+  }, [activeSection, archiveId, feedPosts]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -277,7 +295,9 @@ export default function Archive() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem", borderBottom: "2px solid var(--dark-elevated)", paddingBottom: "1rem" }}>
-        {["overview", "profiles", "projects", "leaderboard", "forum", "explorer"].map((tab) => (
+        {["overview", "profiles", "projects", "leaderboard", "forum", "explorer"]
+          .concat(selectedArchive?.stats?.totalFeedPosts > 0 ? ["feed"] : [])
+          .map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveSection(tab)}
@@ -1058,6 +1078,22 @@ export default function Archive() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Feed Section - read-only, author-free like the live feed */}
+          {activeSection === "feed" && (
+            <div>
+              <h2 className="copper-text" style={{ fontFamily: 'Cinzel, serif', marginBottom: '0.5rem' }}>The Feed</h2>
+              <p style={{ color: "var(--text-muted, rgba(255,255,255,0.6))", marginBottom: "1.5rem" }}>
+                {selectedArchive.stats?.totalFeedPosts} posts, shown without names.
+              </p>
+              {feedPosts === null ? (
+                <p>Loading...</p>
+              ) : (
+                <FeedGrid posts={feedPosts} onOpen={setOpenFeedPost} absoluteDates />
+              )}
+              <FeedPostViewer post={openFeedPost} onClose={closeFeedPost} />
             </div>
           )}
         </>
