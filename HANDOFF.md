@@ -28,18 +28,16 @@ The React app talks to the chain **directly** through MetaMask. The backend neve
 
 ### Which balance is authoritative — read this first
 
-**The MongoDB `Transaction` ledger is authoritative for every balance shown in the app.** The chain is an experiential layer that students verify on Sepolia Etherscan, never a source the UI reads back from.
+**The chain is the record of transfers; the `Transaction` ledger is an index of them.** Every balance in the app is computed from the ledger, which is filled by importing real on-chain transfers (Admin → **Sync from Chain**, §13) plus labelled off-chain `manualAdjustment` rows.
 
-| | Database ledger | On-chain balance |
+| | Database ledger | On-chain |
 |---|---|---|
-| Role | **Authoritative** | Experiential / verification |
-| Source | `Transaction` documents in MongoDB | `Token.balanceOf(wallet)` on Sepolia |
-| Shown on | Everywhere in the app | Nowhere in the app — Etherscan links only |
-| Changed by | Tips, deploys, admin corrections | Tips and deploys (real transfers) |
+| Role | Index of transfers; what the app displays | Record of transfers |
+| Source | `Transaction` documents in MongoDB | `Transfer` events on Sepolia, read via the Etherscan API |
+| Shown on | Everywhere in the app | Etherscan links |
+| Changed by | Chain sync, the project-page send flow, manual adjustments | Real `transfer()` calls (MetaMask) |
 
-Admin → **Deploy CritCoin** now does **both**: it credits the ledger *and* transfers real tokens from the admin's MetaMask wallet, tracking each student's on-chain status individually.
-
-The two can still disagree — admin corrections are database-only by design. That gap is **expected**, is reported by `GET /api/admin/reconcile/:adminWallet`, and is never corrected automatically.
+Mismatches between a student's ledger and on-chain balance are listed after every sync — never forced to agree.
 
 Full reasoning in [ARCHITECTURE.md](ARCHITECTURE.md) — "Balance authority". The working rule for anyone (human or agent) editing this code is in [CLAUDE.md](CLAUDE.md).
 
@@ -69,7 +67,7 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | `Post` | `authorWallet`, `content`, `upvotes`, `downvotes`, `votes` (Map), `hidden` | Moderation is `hidden`, not deletion. |
 | `Comment` | `postId`, `authorWallet`, `text`, `parentCommentId`, `upvotes[]`, `downvotes[]`, `archived` | `parentCommentId` gives one level of replies. Votes are arrays of wallets. |
 | `Bounty` | `title`, `description`, `reward`, `status`, `completedBy`, `crossedOut` | **Survives semester clears.** |
-| `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn. See §11. |
+| `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn / adminGrant / manualAdjustment. See §11, §13. |
 | `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
 | `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`, `feedRunStart`, `feedRunDays`, `feedDailyTarget`, `feedTimeZone`. |
@@ -90,7 +88,7 @@ Separately, [backend/migrations/flag-fabricated-hashes.js](backend/migrations/fl
 
 ## 4. API surface
 
-Base: `http://localhost:3001` in dev, `https://critcoin-platform-production.up.railway.app` in production. All routes are under `/api/*`.
+Base: `http://localhost:3001` in dev, `https://critcoin.up.railway.app` in production. All routes are under `/api/*`.
 
 **Health** — `GET /api/health` (declared ahead of the rate limiter so Railway's probe is never throttled)
 
@@ -125,6 +123,7 @@ Admin: `GET /admin/:adminWallet` · `GET /admin/:adminWallet/feed/:archiveId` *(
 
 Deploy (see §12): `POST /deploy/start` · `POST /deploy/record` · `GET /deploy/latest/:adminWallet`
 Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and never sends a transaction
+Chain sync (see §13): `GET /chain-sync/status/:adminWallet` · `GET /chain-sync/preview/:adminWallet?since=&project=` · `POST /chain-sync/commit` · `POST /ledger/adjust`
 
 ---
 
@@ -139,7 +138,9 @@ Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and n
 
 Resubmitting the same hash is a no-op: the backend returns the existing record rather than crediting `totalReceived` twice.
 
-⚠️ The in-app balance check uses the ledger, but the transfer is real. A student in drift (ledger > chain) passes the check and then hits `Not enough tokens` from the contract. That is handled with an explicit message and is **not** auto-corrected — see [ARCHITECTURE.md](ARCHITECTURE.md).
+Sends made outside the project page (e.g. MetaMask from the homepage) are picked up by the chain sync (§13); a send made here is recognized by its hash and not imported twice.
+
+⚠️ The in-app balance check uses the ledger, but the transfer is real. A student whose ledger exceeds their chain balance passes the check and then hits `Not enough tokens` from the contract, which shows an explicit message.
 
 ---
 
@@ -149,7 +150,7 @@ Admin → **Semester** tab. Order matters:
 
 1. **Preview** (`GET /api/archive/preview`) — live counts of what will be captured.
 2. **Create archive** (`POST /api/archive/create`) — requires a unique name. Snapshots active profiles, active projects, visible posts with their comment trees, all transactions, all bounties, active predictions, visible feed posts (with authorship), and a computed leaderboard. Wallet addresses are resolved to display names at snapshot time so archives stay readable after profiles are deleted.
-3. **Clear current** (`POST /api/archive/clear-current`) — requires `confirmed: true`. Hard-deletes profiles (**except the admin wallet**), projects, posts, comments, transactions, predictions, and feed posts.
+3. **Clear current** (`POST /api/archive/clear-current`) — requires `confirmed: true`. Hard-deletes profiles (**except the admin wallet**), projects, posts, comments, transactions, predictions, and feed posts, and clears the chain sync's saved start time so auto-sync pauses until the next semester's first manual sync (otherwise it would re-import the cleared semester's transfers).
 
 **Bounties are deliberately not deleted** (`1e37937`) — they're reusable course content.
 
@@ -254,3 +255,21 @@ Credits the ledger **and** transfers real tokens. The admin's MetaMask signs; th
 **Interrupted deploys are resumed, not restarted.** `/deploy/start` returns `409` if a round is still `in_progress` — restarting instead of resuming would credit everyone twice. Use the *Resume deploy* button. Confirmed students are skipped; failed ones retried.
 
 Requires `SEPOLIA_RPC_URL` (or the existing `ALCHEMY_API_KEY`, which already holds a full RPC URL) on the server.
+
+## 13. Sync from Chain
+
+Admin → **Sync from Chain** imports on-chain CritCoin transfers as `Transaction` rows. Logic: [backend/lib/chainSync.js](backend/lib/chainSync.js). Reads the Etherscan API V2 (`tokentx`, `chainid=11155111`, our contract) — **no RPC**. Needs `ETHERSCAN_API_KEY` on the server.
+
+| Transfer | Recorded as | Counts as an investment? |
+|---|---|---|
+| Admin wallet → profile | `adminGrant` | No — balance only. Excluded from project totals, leaderboard, Explorer volume/24h, archive `totalCritCoinTransferred` |
+| Profile → profile | `project_tip` on the recipient's submission for the **active critique project**; increments `totalReceived` | Yes |
+| No profile, sent to the admin, recipient has no submission for the active project, self-send | skipped, listed with reason | — |
+
+1. Choose **Active critique** (Project N) and **Transfers since** (default: last 24h). **Preview** writes nothing.
+2. **Confirm** imports, then reports ledger vs chain balance per student. Mismatches are listed, never forced. A student's chain balance is the sum of their transfer events.
+3. Confirm also saves the active project and start time (`SystemSettings` keys `activeCritiqueProject`, `chainSyncSince`). From then on the server re-runs the sync every 5 minutes (started in `server.js`). Change the active project here when the next critique starts.
+
+Every run is idempotent: rows are keyed by real txHash (partial unique index); a project total is incremented only after its row inserts.
+
+**Manual adjustment** (same tab): wallet, ± whole amount, note → one `manualAdjustment` row to/from `system`, `txHash: null`. Balance only; never an investment. For mistakes that can't be fixed on-chain — normal distributions should be real sends from the admin wallet.

@@ -52,6 +52,14 @@ export default function Admin() {
   const [latestDeploy, setLatestDeploy] = useState(null);
   const [reconcile, setReconcile] = useState(null);
   const [reconcileLoading, setReconcileLoading] = useState(false);
+
+  // Sync from Chain: import on-chain transfers; manual ledger adjustment
+  const [chainSyncStatus, setChainSyncStatus] = useState(null);
+  const [chainSyncForm, setChainSyncForm] = useState({ project: 1, since: "" });
+  const [chainSyncPreview, setChainSyncPreview] = useState(null);
+  const [chainSyncResult, setChainSyncResult] = useState(null);
+  const [chainSyncLoading, setChainSyncLoading] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({ wallet: "", amount: "", note: "" });
   
   // Bounty form
   const [bountyForm, setBountyForm] = useState({ title: "", description: "", reward: "" });
@@ -90,6 +98,7 @@ export default function Admin() {
       if (activeTab === "semester") fetchSemesterArchives();
       if (activeTab === "deploy") fetchLatestDeploy();
       if (activeTab === "reconcile") fetchReconcile();
+      if (activeTab === "chainsync") fetchChainSyncStatus();
     }
   }, [isAdmin, activeTab]);
 
@@ -736,6 +745,96 @@ export default function Admin() {
     }
   };
 
+  // Sync from Chain Functions
+  // <input type="datetime-local"> value for a Date, in local time.
+  const toLocalInput = (date) => {
+    const d = new Date(date);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+
+  const fetchChainSyncStatus = async () => {
+    try {
+      const res = await fetchWithSignature(`${API.admin}/chain-sync/status/${wallet}`, 'admin_get_chain_sync_status');
+      if (!res.ok) return;
+      const status = await res.json();
+      setChainSyncStatus(status);
+      setChainSyncForm({
+        project: status.settings.activeProject || 1,
+        since: toLocalInput(status.settings.since || Date.now() - 24 * 60 * 60 * 1000)
+      });
+    } catch (err) {
+      console.error("Chain sync status error:", err);
+    }
+  };
+
+  const previewChainSync = async () => {
+    setChainSyncLoading(true);
+    setChainSyncResult(null);
+    try {
+      const { message, signature } = await createSignedAdminRequest('admin_get_chain_sync_preview');
+      const params = new URLSearchParams({
+        since: new Date(chainSyncForm.since).toISOString(),
+        project: chainSyncForm.project,
+        message,
+        signature
+      });
+      const data = await (await fetch(`${API.admin}/chain-sync/preview/${wallet}?${params}`)).json();
+      if (data.error) alert(data.error);
+      else setChainSyncPreview(data);
+    } catch (err) {
+      console.error("Chain sync preview error:", err);
+      alert("Failed to preview chain sync.");
+    } finally {
+      setChainSyncLoading(false);
+    }
+  };
+
+  const commitChainSync = async () => {
+    setChainSyncLoading(true);
+    try {
+      const res = await postWithSignature(`${API.admin}/chain-sync/commit`, 'admin_post_chain_sync_commit', {
+        since: chainSyncPreview.since,
+        project: chainSyncPreview.activeProject
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Chain sync failed");
+        return;
+      }
+      setChainSyncResult(data);
+      setChainSyncPreview(null);
+      fetchChainSyncStatus();
+    } catch (err) {
+      console.error("Chain sync commit error:", err);
+      alert("Failed to run chain sync.");
+    } finally {
+      setChainSyncLoading(false);
+    }
+  };
+
+  const submitAdjustment = async (e) => {
+    e.preventDefault();
+    const amount = Number(adjustForm.amount);
+    if (!window.confirm(`${amount > 0 ? "Credit" : "Debit"} ${Math.abs(amount)} CritCoin ${amount > 0 ? "to" : "from"} ${adjustForm.wallet}?`)) return;
+    try {
+      const res = await postWithSignature(`${API.admin}/ledger/adjust`, 'admin_post_ledger_adjust', {
+        wallet: adjustForm.wallet.trim(),
+        amount,
+        note: adjustForm.note
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Adjustment failed");
+        return;
+      }
+      alert(`Adjustment recorded. New balance: ${data.balance} CritCoin`);
+      setAdjustForm({ wallet: "", amount: "", note: "" });
+    } catch (err) {
+      console.error("Adjustment error:", err);
+      alert("Failed to record adjustment.");
+    }
+  };
+
   // Semester Archive Functions
   const fetchSemesterArchives = async () => {
     setArchiveLoading(true);
@@ -922,7 +1021,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "feed", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "reconcile"].map(tab => (
+        {["dashboard", "profiles", "posts", "feed", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "chainsync", "reconcile"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -937,7 +1036,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-{tab === "deploy" ? "Deploy CritCoin" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab === "feed" ? "The Feed" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "chainsync" ? "Sync from Chain" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab === "feed" ? "The Feed" : tab}
           </button>
         ))}
       </div>
@@ -2217,6 +2316,182 @@ export default function Admin() {
           )}
         </div>
       )}
+
+      {/* Sync from Chain Tab - import on-chain transfers; manual adjustment */}
+      {activeTab === "chainsync" && (() => {
+        const cell = { padding: "0.4rem", border: "1px solid var(--surface-card-border)" };
+        const who = (name, address) => name || `${address.slice(0, 6)}...${address.slice(-4)}`;
+        const when = (t) => new Date(t).toLocaleString();
+        const transferTable = (rows, lastColumn, lastValue) => (
+          <div style={{ overflowX: "auto", maxHeight: "420px", overflowY: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+              <thead>
+                <tr style={{ backgroundColor: "var(--surface-muted)", textAlign: "left" }}>
+                  <th style={cell}>Time</th><th style={cell}>From</th><th style={cell}>To</th>
+                  <th style={cell}>Amount</th><th style={cell}>{lastColumn}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.txHash + r.to}>
+                    <td style={cell}>{when(r.timestamp)}</td>
+                    <td style={cell}>{who(r.fromName, r.from)}</td>
+                    <td style={cell}>{who(r.toName, r.to)}</td>
+                    <td style={cell}>{r.amount}</td>
+                    <td style={cell}>{lastValue(r)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+        return (
+          <div>
+            <h2>Sync from Chain</h2>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", maxWidth: "800px" }}>
+              Imports on-chain CritCoin transfers (read from Etherscan) as ledger records. Sends from the
+              admin wallet become <strong>admin grants</strong> (balance only, never investments). Student-to-student
+              sends become investments in the recipient's submission for the active critique project. Anything else is
+              skipped and listed. Re-running never creates duplicates. After the first sync, new transfers are imported
+              automatically every 5 minutes using the settings below.
+            </p>
+
+            {chainSyncStatus && !chainSyncStatus.configured && (
+              <p style={{ color: "var(--status-warning)", backgroundColor: "var(--tint-warning)", padding: "0.75rem", borderRadius: "4px" }}>
+                ⚠️ ETHERSCAN_API_KEY is not set on the server — sync is unavailable.
+              </p>
+            )}
+            {chainSyncStatus && (
+              <p style={{ fontSize: "0.9rem" }}>
+                Auto-sync:{" "}
+                {chainSyncStatus.settings.since
+                  ? <>on — Project {chainSyncStatus.settings.activeProject}, transfers since {when(chainSyncStatus.settings.since)}</>
+                  : "off until the first sync below"}
+                {chainSyncStatus.lastAutoSync && (
+                  <> · last run {when(chainSyncStatus.lastAutoSync.at)}:{" "}
+                    {chainSyncStatus.lastAutoSync.error
+                      ? <span style={{ color: "var(--status-negative)" }}>{chainSyncStatus.lastAutoSync.error}</span>
+                      : `${chainSyncStatus.lastAutoSync.imported} imported, ${chainSyncStatus.lastAutoSync.mismatches} balance mismatch(es)`}
+                  </>
+                )}
+              </p>
+            )}
+
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "end", marginBottom: "1rem" }}>
+              <label>
+                Active critique<br />
+                <select
+                  value={chainSyncForm.project}
+                  onChange={(e) => { setChainSyncForm({ ...chainSyncForm, project: Number(e.target.value) }); setChainSyncPreview(null); }}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>Project {n}</option>)}
+                </select>
+              </label>
+              <label>
+                Transfers since<br />
+                <input
+                  type="datetime-local"
+                  value={chainSyncForm.since}
+                  onChange={(e) => { setChainSyncForm({ ...chainSyncForm, since: e.target.value }); setChainSyncPreview(null); }}
+                />
+              </label>
+              <button onClick={previewChainSync} disabled={chainSyncLoading || !chainSyncForm.since}>
+                {chainSyncLoading && !chainSyncPreview ? "Loading..." : "Preview"}
+              </button>
+            </div>
+
+            {chainSyncPreview && (
+              <div style={{ marginBottom: "2rem" }}>
+                <h3>Preview — nothing has been written</h3>
+                <p>
+                  <strong>{chainSyncPreview.counts.adminGrant}</strong> admin grant(s) ·{" "}
+                  <strong>{chainSyncPreview.counts.investment}</strong> Project {chainSyncPreview.activeProject} investment(s) ·{" "}
+                  <strong>{chainSyncPreview.counts.skipped}</strong> skipped ·{" "}
+                  {chainSyncPreview.counts.alreadyImported} already imported
+                </p>
+                {transferTable(chainSyncPreview.toImport, "Classification", (r) =>
+                  r.type === "adminGrant" ? "Admin grant" : `Investment → ${r.projectTitle}`)}
+                {chainSyncPreview.skipped.length > 0 && (
+                  <>
+                    <h4>Skipped</h4>
+                    {transferTable(chainSyncPreview.skipped, "Reason", (r) => r.reason)}
+                  </>
+                )}
+                <button
+                  onClick={commitChainSync}
+                  disabled={chainSyncLoading || chainSyncPreview.toImport.length === 0}
+                  style={{ marginTop: "1rem", padding: "0.75rem 1.5rem", backgroundColor: "var(--status-positive)", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                >
+                  {chainSyncLoading ? "Importing..." : `Confirm — import ${chainSyncPreview.toImport.length} transfer(s)`}
+                </button>
+              </div>
+            )}
+
+            {chainSyncResult && (
+              <div style={{ marginBottom: "2rem" }}>
+                <h3>✅ Imported {chainSyncResult.imported} transfer(s)</h3>
+                <p>
+                  {chainSyncResult.counts.adminGrant} admin grant(s), {chainSyncResult.counts.investment} investment(s) ·{" "}
+                  {chainSyncResult.counts.skipped} skipped · {chainSyncResult.counts.alreadyImported} already imported
+                </p>
+                <h4>Balances: ledger vs chain</h4>
+                {chainSyncResult.balances.mismatches.length === 0 ? (
+                  <p>Every student's balance matches the chain.</p>
+                ) : (
+                  <table style={{ borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "var(--surface-muted)", textAlign: "left" }}>
+                        <th style={cell}>Student</th><th style={cell}>Ledger</th><th style={cell}>Chain</th><th style={cell}>Drift</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chainSyncResult.balances.mismatches.map((r) => (
+                        <tr key={r.wallet}>
+                          <td style={cell}>{r.name}</td><td style={cell}>{r.dbBalance}</td>
+                          <td style={cell}>{r.chainBalance}</td>
+                          <td style={{ ...cell, color: "var(--status-negative)", fontWeight: "bold" }}>{r.drift}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            <h2>Manual adjustment</h2>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", maxWidth: "800px" }}>
+              For mistakes that can't be fixed on-chain. Changes the balance only — never counts as an investment.
+              Normal distributions should be real sends from the admin wallet, which the sync picks up as admin grants.
+            </p>
+            <form onSubmit={submitAdjustment} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                placeholder="Wallet (0x...)"
+                value={adjustForm.wallet}
+                onChange={(e) => setAdjustForm({ ...adjustForm, wallet: e.target.value })}
+                style={{ width: "26rem", maxWidth: "100%" }}
+                required
+              />
+              <input
+                type="number"
+                step="1"
+                placeholder="Amount (+ or −)"
+                value={adjustForm.amount}
+                onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                required
+              />
+              <input
+                placeholder="Note"
+                value={adjustForm.note}
+                onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
+                style={{ width: "20rem", maxWidth: "100%" }}
+                required
+              />
+              <button type="submit">Record adjustment</button>
+            </form>
+          </div>
+        );
+      })()}
 
       {/* Reconciliation Tab - read-only diagnostic */}
       {activeTab === "reconcile" && (

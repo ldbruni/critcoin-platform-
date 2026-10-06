@@ -19,6 +19,7 @@ const { getFeedConfig, computeQuota, isValidTimeZone } = require("../lib/feed");
 const { ethers } = require('ethers');
 const chain = require("../lib/chain");
 const { getBalances } = require("../lib/balances");
+const chainSync = require("../lib/chainSync");
 
 // Admin authentication middleware with signature verification
 const authenticateAdmin = async (req, res, next) => {
@@ -812,6 +813,106 @@ router.get("/reconcile/:adminWallet", [
   } catch (err) {
     console.error("Reconcile error:", err);
     res.status(500).json({ error: "Failed to build reconciliation report" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Sync from Chain: import on-chain CritCoin transfers as Transaction rows
+//
+// Reads transfers from the Etherscan API (no RPC). Preview writes nothing;
+// commit imports, saves the active critique project and start time, and those
+// settings drive the automatic sync from then on. See lib/chainSync.js.
+//
+//   GET  /chain-sync/status/:adminWallet   saved settings, last auto-sync
+//   GET  /chain-sync/preview/:adminWallet  ?since=ISO&project=N - no writes
+//   POST /chain-sync/commit                { since, project }
+// ---------------------------------------------------------------------------
+
+const parseSyncParams = (since, project) => {
+  const sinceDate = new Date(since);
+  const activeProject = parseInt(project, 10);
+  if (!since || isNaN(sinceDate.getTime())) return { error: "A valid start time is required" };
+  if (!(activeProject >= 1 && activeProject <= 5)) return { error: "Active critique project must be 1-5" };
+  return { since: sinceDate.toISOString(), activeProject };
+};
+
+router.get("/chain-sync/status/:adminWallet", [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  try {
+    res.json({
+      configured: chainSync.isConfigured(),
+      settings: await chainSync.getSyncSettings(),
+      lastAutoSync: chainSync.getLastAutoSync()
+    });
+  } catch (err) {
+    console.error("Chain sync status error:", err);
+    res.status(500).json({ error: "Failed to fetch chain sync status" });
+  }
+});
+
+router.get("/chain-sync/preview/:adminWallet", [
+  param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
+], authenticateAdminGET, async (req, res) => {
+  const params = parseSyncParams(req.query.since, req.query.project);
+  if (params.error) return res.status(400).json({ error: params.error });
+
+  try {
+    res.json(await chainSync.planSync(params));
+  } catch (err) {
+    console.error("Chain sync preview error:", err);
+    res.status(502).json({ error: `Chain sync preview failed: ${err.message}` });
+  }
+});
+
+router.post("/chain-sync/commit", authenticateAdmin, async (req, res) => {
+  const params = parseSyncParams(req.body.since, req.body.project);
+  if (params.error) return res.status(400).json({ error: params.error });
+
+  try {
+    const result = await chainSync.commitSync(params);
+    await chainSync.saveSyncSettings(params, req.body.adminWallet);
+    res.json(result);
+  } catch (err) {
+    console.error("Chain sync commit error:", err);
+    res.status(502).json({ error: `Chain sync failed: ${err.message}` });
+  }
+});
+
+// POST manual adjustment: a ledger-only correction for a mistake that cannot be
+// fixed on-chain. Positive credits the wallet, negative debits it. Affects
+// balance only; never counts as an investment.
+router.post("/ledger/adjust", authenticateAdmin, async (req, res) => {
+  const { wallet, amount, note } = req.body;
+  const address = String(wallet || '').toLowerCase();
+  const value = Number(amount);
+
+  if (!/^0x[a-f0-9]{40}$/.test(address)) {
+    return res.status(400).json({ error: "Invalid wallet address" });
+  }
+  if (!Number.isSafeInteger(value) || value === 0) {
+    return res.status(400).json({ error: "Amount must be a non-zero whole number" });
+  }
+  if (!note || !String(note).trim()) {
+    return res.status(400).json({ error: "A note is required" });
+  }
+
+  try {
+    if (!(await Profile.exists({ wallet: address }))) {
+      return res.status(404).json({ error: "No profile for that wallet" });
+    }
+    const transaction = await Transaction.create({
+      fromWallet: value > 0 ? 'system' : address,
+      toWallet: value > 0 ? address : 'system',
+      amount: Math.abs(value),
+      type: 'manualAdjustment',
+      description: `Manual adjustment: ${String(note).trim()}`,
+      txHash: null
+    });
+    res.json({ transaction, balance: (await getBalances([address])).get(address).balance });
+  } catch (err) {
+    console.error("Manual adjustment error:", err);
+    res.status(500).json({ error: "Failed to record adjustment" });
   }
 });
 

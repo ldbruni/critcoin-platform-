@@ -33,6 +33,7 @@ const predictionRoutes = require("./routes/predictions");
 const feedRoutes = require("./routes/feed");
 const Prediction = require("./models/Prediction");
 const Transaction = require("./models/Transaction");
+const chainSync = require("./lib/chainSync");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -228,6 +229,9 @@ mongoose.connection.once('open', async () => {
   } catch (e) {
     console.error('⚠️ txHash index migration failed:', e.message);
   }
+
+  // Import new on-chain CritCoin transfers every few minutes (lib/chainSync.js).
+  chainSync.startAutoSync();
 });
 
 // Monitor MongoDB connection

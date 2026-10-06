@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const Transaction = require("../models/Transaction");
+const { NON_INVESTMENT_TYPES } = require("../models/Transaction");
 const Profile = require("../models/Profiles");
 const { getBalance } = require("../lib/balances");
 
@@ -157,8 +158,14 @@ router.get("/transaction/:id", async (req, res) => {
 // GET transaction statistics
 router.get("/stats", async (req, res) => {
   try {
+    // Admin grants and manual adjustments move balances but are not
+    // investments: kept out of volume and the 24h figures, still listed in
+    // typeDistribution.
+    const investmentsOnly = { type: { $nin: NON_INVESTMENT_TYPES } };
+
     const totalTransactions = await Transaction.countDocuments();
     const totalVolume = await Transaction.aggregate([
+      { $match: investmentsOnly },
       {
         $group: {
           _id: null,
@@ -169,12 +176,13 @@ router.get("/stats", async (req, res) => {
 
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentTransactions = await Transaction.countDocuments({
+      ...investmentsOnly,
       timestamp: { $gte: last24h }
     });
 
     const recentVolume = await Transaction.aggregate([
       {
-        $match: { timestamp: { $gte: last24h } }
+        $match: { ...investmentsOnly, timestamp: { $gte: last24h } }
       },
       {
         $group: {

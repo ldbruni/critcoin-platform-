@@ -153,7 +153,9 @@ export default function Archive() {
       'forum_reward': 'var(--status-warning, #ffc107)',
       'system': 'var(--text-muted, #6c757d)',
       'mint': 'var(--status-info, #17a2b8)',
-      'burn': 'var(--status-negative, #dc3545)'
+      'burn': 'var(--status-negative, #dc3545)',
+      'adminGrant': 'var(--text-muted, #6c757d)',
+      'manualAdjustment': 'var(--text-muted, #6c757d)'
     };
     return colors[type] || 'var(--text-muted, #6c757d)';
   };
@@ -165,7 +167,9 @@ export default function Archive() {
       'forum_reward': '💬',
       'system': '⚙️',
       'mint': '➕',
-      'burn': '🔥'
+      'burn': '🔥',
+      'adminGrant': '🎁',
+      'manualAdjustment': '⚖️'
     };
     return icons[type] || '📝';
   };

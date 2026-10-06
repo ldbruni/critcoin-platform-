@@ -31,7 +31,7 @@ Push to `main` — Railway and Vercel both auto-deploy. Watch both dashboards fo
 
 ## After deploy
 
-- [ ] `curl https://critcoin-platform-production.up.railway.app/health` returns `mongodb: Connected`
+- [ ] `curl https://critcoin.up.railway.app/health` returns `mongodb: Connected`
 - [ ] https://critcoin.art loads over HTTPS
 - [ ] MetaMask connects and shows a Sepolia CritCoin balance
 - [ ] Profile creation with a photo works (exercises Cloudinary)

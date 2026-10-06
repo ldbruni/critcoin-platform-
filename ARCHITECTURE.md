@@ -8,17 +8,21 @@ see [HANDOFF.md](HANDOFF.md).
 
 ## Balance authority
 
-**The MongoDB `Transaction` ledger is authoritative for every balance shown in
-the app.** The chain is an experiential and verification layer that students and
-the instructor inspect on Sepolia Etherscan, not through our UI.
+**The chain is the record of transfers. The MongoDB `Transaction` ledger is an
+index of them**, filled by importing real on-chain transfers (Sync from Chain,
+[backend/lib/chainSync.js](backend/lib/chainSync.js)), plus a small number of
+off-chain admin corrections. Every balance shown in the app is computed from
+that ledger.
 
-This is the single most important rule in the codebase. Everything below follows
-from it.
+> This supersedes the earlier rule that the database is authoritative and drift
+> is only ever reported. That rule broke in Fall 2026: the admin distributed
+> CritCoin by hand from MetaMask and students invested from the homepage, so
+> every real transfer was on Sepolia and none was in the database.
 
 ### The rules
 
-1. **The database is the ledger.** Every balance rendered anywhere in the
-   frontend is computed from `Transaction` documents, via
+1. **Balances come from the ledger.** Every balance rendered in the frontend is
+   computed from `Transaction` documents, via
    `GET /api/explorer/balance/:wallet` (backed by
    [backend/lib/balances.js](backend/lib/balances.js)). No page calls
    `balanceOf`. The only exception is
@@ -27,52 +31,40 @@ from it.
 
 2. **Balance is derived, never cached.** It is always
    `sum(received) − sum(sent)` over the ledger. A stored balance field would be a
-   second ledger that could itself fall out of step with the transactions — the
-   exact class of problem this design exists to eliminate.
+   second ledger that could itself fall out of step with the transactions.
 
-3. **The chain is best-effort, and verified externally.** Real transfers do
-   happen on Sepolia: students tip through MetaMask, and admin deploys transfer
-   real tokens. Those are visible on Etherscan through the links rendered by
-   [frontend/src/components/ChainLink.js](frontend/src/components/ChainLink.js).
-   The app never reads a balance back from the chain to display it.
+3. **On-chain transfers are imported, from Etherscan.** Sync from Chain reads
+   the contract's transfers from the Etherscan API (never the Sepolia RPC) and
+   writes one `Transaction` per real txHash:
+   - from the admin wallet → `adminGrant` (balance only; never an investment);
+   - student → student → `project_tip`, credited to the recipient's submission
+     for the **active critique project** (an admin setting);
+   - anything else (no profile, sent to the admin, recipient has no submission)
+     → skipped and listed. A profile is never invented.
 
-4. **The database wins on disagreement.** If the ledger says a student holds
-   10,000 CritCoin and the chain says 0, the app shows 10,000. The student
-   genuinely has 10,000 CritCoin as far as the course is concerned.
+   The admin previews and confirms the first sync; after that it runs every 5
+   minutes on its own. The txHash unique index makes every run idempotent, and a
+   tip already recorded by the project page's send flow counts as imported.
 
-5. **Admin corrections are database-only, and produce expected drift.** An
-   instructor adjusting a balance writes a `Transaction` and nothing else. The
-   resulting gap between ledger and chain is a known, accepted state — not a bug.
+4. **Off-chain rows are the exception, and are labelled.** `manualAdjustment`
+   (Admin → Sync from Chain → Manual adjustment) fixes mistakes that cannot be
+   fixed on-chain; it affects balance only. Normal distributions are real sends
+   from the admin wallet, picked up as `adminGrant`.
 
-6. **Drift is surfaced, never auto-corrected.**
-   `GET /api/admin/reconcile/:adminWallet` reports database balance, live chain
-   balance, and the difference, for every student. It is strictly diagnostic:
-   **it never writes to the database and never sends a transaction.** A human
-   decides what, if anything, to do about drift.
+5. **Mismatches are reported, not forced.** After every sync the ledger balance
+   of each student is compared with their on-chain balance (the sum of their
+   transfer events — `Token.sol` moves balances only through `transfer()`).
+   Expected causes: a skipped transfer, transfers from before the sync's start
+   time (e.g. a wallet reused from an earlier semester), a manual adjustment.
+   `GET /api/admin/reconcile/:adminWallet` remains a read-only RPC diagnostic.
 
-### Why the ledger and not the chain
+### Why import instead of reading balances from the chain
 
-The chain cannot express what the course needs. `Token.sol` has no minting, so
-an instructor cannot issue coins to a student who joins mid-semester without
-manually transferring from the deployer wallet. Corrections, forum rewards, and
-retroactive adjustments all need to be reversible bookkeeping, not irreversible
-transfers. Meanwhile the chain gives students something the database cannot: a
-real, public, independently verifiable record of their transactions.
-
-Making the ledger authoritative and the chain experiential gets both. The cost is
-drift, which is why drift is measured rather than prevented.
-
-### Where the two can visibly disagree
-
-Tipping is a real on-chain `transfer()` signed in MetaMask, but the balance a
-student sees — and the pre-flight check in
-[frontend/src/pages/Projects.js](frontend/src/pages/Projects.js) — comes from the
-ledger. A student whose ledger balance exceeds their on-chain balance will pass
-the in-app check and then have the contract revert with `Not enough tokens`.
-
-That is handled with an explicit message telling them to contact the instructor.
-It is deliberately **not** repaired by writing to the database or by sending a
-compensating transaction. See the working rule in [CLAUDE.md](CLAUDE.md).
+A raw `balanceOf` cannot say *why* a student holds what they hold. The app needs
+each transfer classified — grant or investment, and in which project — for
+project totals, the leaderboard and the Explorer. Importing transfers gives both:
+the chain stays the source of truth for what moved, and the ledger adds the
+course meaning.
 
 ---
 

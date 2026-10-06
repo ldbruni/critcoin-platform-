@@ -158,7 +158,8 @@ export default function Explorer() {
       'system': 'System',
       'mint': 'Mint',
       'burn': 'Burn',
-      'adminGrant': 'Admin grant'
+      'adminGrant': 'Admin grant',
+      'manualAdjustment': 'Manual adjustment'
     };
     return labels[type] || type.replace(/_/g, ' ');
   };
@@ -277,6 +278,8 @@ export default function Explorer() {
             <option value="system">System</option>
             <option value="mint">Mint</option>
             <option value="burn">Burn</option>
+            <option value="adminGrant">Admin Grant</option>
+            <option value="manualAdjustment">Manual Adjustment</option>
           </select>
           
           <input

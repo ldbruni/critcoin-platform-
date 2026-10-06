@@ -6,6 +6,12 @@ const mongoose = require("mongoose");
 // are roughly 19 characters long).
 const REAL_TX_HASH = /^0x[0-9a-f]{64}$/i;
 
+// Rows that move a balance but are not investments: adminGrant (the admin's
+// on-chain sends, imported by lib/chainSync.js) and manualAdjustment (admin
+// ledger corrections). Excluded from Explorer volume/24h stats and the
+// archive's totalCritCoinTransferred.
+const NON_INVESTMENT_TYPES = ['adminGrant', 'manualAdjustment'];
+
 const transactionSchema = new mongoose.Schema({
   // Null for off-chain rows (deploy credits, admin corrections).
   // Never fabricate a value here - a missing hash is a drift signal.
@@ -19,7 +25,7 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['transfer', 'project_tip', 'forum_reward', 'system', 'mint', 'burn']
+    enum: ['transfer', 'project_tip', 'forum_reward', 'system', 'mint', 'burn', 'adminGrant', 'manualAdjustment']
   },
   description: { type: String }, // Description of the transaction
   relatedId: { type: String }, // ID of related post/project/etc
@@ -48,3 +54,4 @@ transactionSchema.index(
 
 module.exports = mongoose.model("Transaction", transactionSchema);
 module.exports.REAL_TX_HASH = REAL_TX_HASH;
+module.exports.NON_INVESTMENT_TYPES = NON_INVESTMENT_TYPES;

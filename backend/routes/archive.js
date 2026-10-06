@@ -8,6 +8,9 @@ const Project = require("../models/Project");
 const Post = require("../models/Post");
 const Comment = require("../models/Comment");
 const Transaction = require("../models/Transaction");
+const { NON_INVESTMENT_TYPES } = require("../models/Transaction");
+const { SYNC_SINCE_KEY } = require("../lib/chainSync");
+const SystemSettings = require("../models/SystemSettings");
 const Bounty = require("../models/Bounty");
 const Prediction = require("../models/Prediction");
 const FeedPost = require("../models/FeedPost");
@@ -460,7 +463,7 @@ router.post("/create", authenticateAdmin, async (req, res) => {
       fromWallet: t.fromWallet,
       fromName: t.fromWallet === 'system' ? 'System' : (profileMap[t.fromWallet?.toLowerCase()] || 'Unknown'),
       toWallet: t.toWallet,
-      toName: profileMap[t.toWallet?.toLowerCase()] || 'Unknown',
+      toName: t.toWallet === 'system' ? 'System' : (profileMap[t.toWallet?.toLowerCase()] || 'Unknown'),
       amount: t.amount,
       type: t.type,
       description: t.description,
@@ -518,7 +521,11 @@ router.post("/create", authenticateAdmin, async (req, res) => {
     }
 
     // Calculate statistics
-    const totalCritCoinTransferred = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Admin grants and manual adjustments are captured above but are not
+    // transfers between students.
+    const totalCritCoinTransferred = transactions
+      .filter((t) => !NON_INVESTMENT_TYPES.includes(t.type))
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
 
     // Create the archive
     const archive = new SemesterArchive({
@@ -596,6 +603,11 @@ router.post("/clear-current", authenticateAdmin, async (req, res) => {
 
     // Delete all transactions
     const transactionResult = await Transaction.deleteMany({});
+
+    // Pause chain auto-sync: its saved start time belongs to the semester just
+    // cleared, and would re-import that semester's transfers. The next manual
+    // Sync from Chain sets a new one.
+    await SystemSettings.deleteOne({ key: SYNC_SINCE_KEY });
 
     // Delete all predictions
     const predictionResult = await Prediction.deleteMany({});

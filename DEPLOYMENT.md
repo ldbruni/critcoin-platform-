@@ -7,7 +7,7 @@ How the platform gets to **https://critcoin.art**. For architecture and known is
 | Piece | Host | URL |
 |---|---|---|
 | Frontend (React SPA) | Vercel | https://critcoin.art |
-| Backend (Express API) | Railway | https://critcoin-platform-production.up.railway.app |
+| Backend (Express API) | Railway | https://critcoin.up.railway.app |
 | Database | MongoDB Atlas | — |
 | Images | Cloudinary | — |
 | Token contract | Sepolia testnet | `0x8e9A8155dD4f5F1b3f63461659b8C1B3232646d8` |
@@ -34,6 +34,10 @@ CLOUDINARY_API_SECRET=your-secret
 
 # Read-only Sepolia RPC. Required for deploy preflight and /api/admin/reconcile.
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
+
+# Etherscan API key (free, etherscan.io/myapikey). Sync from Chain reads
+# CritCoin transfers through it; without it the sync and auto-sync are off.
+ETHERSCAN_API_KEY=your-etherscan-key
 ```
 
 `PORT` is injected by Railway — don't hardcode it.
@@ -68,7 +72,7 @@ The health check is `GET /api/health`, matching `healthcheckPath` in `railway.js
 Environment variables — set in `vercel.json` and/or the Vercel dashboard:
 
 ```
-REACT_APP_API_URL=https://critcoin-platform-production.up.railway.app
+REACT_APP_API_URL=https://critcoin.up.railway.app
 REACT_APP_ADMIN_WALLET=0xYourAdminWalletAddress
 CI=false
 GENERATE_SOURCEMAP=false
@@ -135,10 +139,10 @@ Then:
 
 ```bash
 # Backend up and connected to Mongo
-curl https://critcoin-platform-production.up.railway.app/health
+curl https://critcoin.up.railway.app/health
 
 # A public data endpoint
-curl https://critcoin-platform-production.up.railway.app/api/profiles
+curl https://critcoin.up.railway.app/api/profiles
 ```
 
 Then in a browser at https://critcoin.art:

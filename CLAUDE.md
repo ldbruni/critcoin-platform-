@@ -1,21 +1,28 @@
 # Working rules for this repository
 
-## Balance drift
+## Balance authority
 
-> **Never "fix" balance drift by writing to the database to match the chain, or
-> by initiating chain transactions to match the database. Drift is surfaced, not
-> auto-corrected.**
+> **The chain is the record of transfers; the database is an index of them.**
+> On-chain CritCoin transfers are imported as `Transaction` rows by Sync from
+> Chain (`backend/lib/chainSync.js`, Etherscan API — never the Sepolia RPC).
+> This supersedes the earlier "database is authoritative, drift is only
+> reported" rule.
 
-The MongoDB `Transaction` ledger is authoritative for every balance shown in the
-app; the chain is verified externally on Sepolia Etherscan. When they disagree,
-the database wins and the gap is reported by
-`GET /api/admin/reconcile/:adminWallet` for a human to act on.
+- **Import, never invent.** A row for an on-chain transfer carries its real
+  txHash. Admin sends are `adminGrant` (never investments); student → student
+  sends are `project_tip` on the recipient's active-critique submission;
+  everything else is skipped and reported. Never create a profile or guess a
+  project to make a transfer fit.
+- **Off-chain rows are labelled exceptions.** The only one is the admin's
+  `manualAdjustment`. Don't add new ways to write balance rows that bypass the
+  import.
+- **Mismatches are reported, not forced.** After a sync, ledger vs chain
+  differences are listed for a human. Never write a balancing row or send a
+  transaction just to make the numbers agree.
 
-This applies to any code that notices a mismatch — reconciliation, deploy, tips,
-admin tooling. Report it, never silently repair it. See
-[ARCHITECTURE.md](ARCHITECTURE.md), "Balance authority".
+See [ARCHITECTURE.md](ARCHITECTURE.md), "Balance authority".
 
-## Related rules that follow from it
+## Related rules
 
 - **Never fabricate a transaction hash.** Store the real one or `null`. A null is
   a meaningful signal that a row is off-chain; a fake hash is a lie that resolves

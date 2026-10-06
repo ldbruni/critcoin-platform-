@@ -37,6 +37,19 @@ the read-only viewer is [frontend/src/pages/Archive.js](frontend/src/pages/Archi
 Wallet addresses are resolved to display names **at snapshot time**, so archives
 stay readable after the profiles behind them are deleted.
 
+### Transaction types `adminGrant` and `manualAdjustment`
+
+Both are ordinary `transactions` rows, so they are captured wholesale with the
+rest (`System` as the name on the `system` side of a manual adjustment). Both are
+**excluded from `stats.totalCritCoinTransferred`** (`NON_INVESTMENT_TYPES` in
+`backend/models/Transaction.js`): they move balances but are not transfers
+between students.
+
+| Type | Written by | `txHash` |
+|---|---|---|
+| `adminGrant` | Sync from Chain — a real send from the admin wallet ([HANDOFF.md](HANDOFF.md) §13) | real hash |
+| `manualAdjustment` | Admin manual adjustment | `null` |
+
 ### What "per project" capture means
 
 Project submissions are captured by a single unfiltered query over `projects` —
@@ -104,7 +117,8 @@ projects 2–5.
 `POST /clear-current` deletes `profiles` (except the admin wallet), `projects`,
 `posts`, `comments`, `transactions`, `predictions`, and `feedposts` (their
 Cloudinary images are kept — the archive still points at them). It does **not** delete
-`bounties` or `whitelists` — those are intentionally durable. Nothing on-chain is
+`bounties` or `whitelists` — those are intentionally durable. It also deletes the
+`chainSyncSince` setting, pausing chain auto-sync until the next manual sync. Nothing on-chain is
 touched; student wallets keep whatever CritCoin they hold on Sepolia.
 
 ## Known gaps (tracked, not yet closed)
