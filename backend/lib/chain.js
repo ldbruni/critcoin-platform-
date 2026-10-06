@@ -1,8 +1,9 @@
-// Read-only Sepolia access for preflight checks and reconciliation.
+// Read-only Sepolia access for the reconciliation diagnostic.
 //
 // This module deliberately holds NO signer and NO private key. The backend never
 // sends a transaction - the admin's MetaMask wallet signs every on-chain
-// transfer in the browser. Everything here is an eth_call or eth_getBalance.
+// transfer in the browser, including the CritCoin deploy. Everything here is an
+// eth_call.
 //
 // Configure with SEPOLIA_RPC_URL (e.g. an Alchemy or Infura HTTPS endpoint).
 // Every function degrades to null when the RPC is unreachable rather than
@@ -10,15 +11,6 @@
 
 const { ethers } = require("ethers");
 const contractInfo = require("../sepolia.json");
-
-// The Token contract writes two storage slots and emits one event. Real
-// transfers measure around 35-52k gas; this ceiling gives preflight headroom
-// when estimateGas is unavailable.
-const FALLBACK_TRANSFER_GAS = 65000;
-
-// Ask for meaningfully more Sepolia ETH than the estimate suggests, so a deploy
-// doesn't strand halfway through the roster on a gas price bump.
-const GAS_SAFETY_MARGIN = 1.5;
 
 let provider = null;
 let contract = null;
@@ -62,52 +54,8 @@ async function getCritBalance(address) {
   }
 }
 
-// Sepolia ETH balance in wei, as a BigNumber. Returns null if unreachable.
-async function getEthBalance(address) {
-  const p = getProvider();
-  if (!p) return null;
-  try {
-    return await p.getBalance(address);
-  } catch (err) {
-    console.warn(`⚠️ chain: getBalance(${address}) failed - ${err.message}`);
-    return null;
-  }
-}
-
-// Estimated wei cost of a single transfer, for roster-wide gas preflight.
-// Falls back to a fixed gas ceiling when estimateGas can't run (which it often
-// can't - estimating a transfer the deployer cannot afford reverts).
-async function estimateTransferCost({ from, to, amount }) {
-  const p = getProvider();
-  const c = getContract();
-  if (!p || !c) return null;
-
-  try {
-    const gasPrice = await p.getGasPrice();
-
-    let gasLimit = ethers.BigNumber.from(FALLBACK_TRANSFER_GAS);
-    if (from && to) {
-      try {
-        gasLimit = await c.estimateGas.transfer(to, amount, { from });
-      } catch (err) {
-        // Expected when the deployer is short on CritCoin - the balance check
-        // reports that far more clearly than a gas error would.
-        console.warn(`⚠️ chain: estimateGas failed, using fallback - ${err.message}`);
-      }
-    }
-
-    return gasPrice.mul(gasLimit);
-  } catch (err) {
-    console.warn(`⚠️ chain: gas estimation failed - ${err.message}`);
-    return null;
-  }
-}
-
 module.exports = {
   isConfigured,
   getCritBalance,
-  getEthBalance,
-  estimateTransferCost,
-  contractAddress: contractInfo.address,
-  GAS_SAFETY_MARGIN
+  contractAddress: contractInfo.address
 };

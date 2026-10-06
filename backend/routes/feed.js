@@ -18,6 +18,7 @@ const FeedPost = require("../models/FeedPost");
 const { isWhitelisted, normalizeWallet, NOT_WHITELISTED_MESSAGE } = require("../lib/whitelist");
 const { uploadImage, isAcceptedImage } = require("../lib/images");
 const { getFeedConfig, computeQuota, toPublicPost } = require("../lib/feed");
+const { requirePageVisible } = require("../lib/pageVisibility");
 
 const MAX_IMAGES = 4;
 const MAX_TEXT = 2000;
@@ -47,6 +48,10 @@ function parseCursor(before) {
 function cursorFor(post) {
   return `${new Date(post.createdAt).getTime()}_${post._id}`;
 }
+
+// While the Feed page is hidden, only the admin can read or post. The archive
+// reads feed posts through routes/archive.js instead, so it ignores the switch.
+router.use(requirePageVisible("feed"));
 
 // GET the public feed, newest first. No author field of any kind.
 router.get("/", async (req, res) => {

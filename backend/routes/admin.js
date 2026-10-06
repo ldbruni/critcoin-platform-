@@ -9,8 +9,6 @@ const Post = require("../models/Post");
 const Bounty = require("../models/Bounty");
 const Project = require("../models/Project");
 const Transaction = require("../models/Transaction");
-const { REAL_TX_HASH } = require("../models/Transaction");
-const Deploy = require("../models/Deploy");
 const SystemSettings = require("../models/SystemSettings");
 const Whitelist = require("../models/Whitelist");
 const FeedPost = require("../models/FeedPost");
@@ -20,6 +18,7 @@ const { ethers } = require('ethers');
 const chain = require("../lib/chain");
 const { getBalances } = require("../lib/balances");
 const chainSync = require("../lib/chainSync");
+const { TOGGLEABLE_PAGES, getPageVisibility, setPageVisible } = require("../lib/pageVisibility");
 
 // Admin authentication middleware with signature verification
 const authenticateAdmin = async (req, res, next) => {
@@ -176,6 +175,8 @@ router.get("/dashboard/:adminWallet", adminRateLimit, [
   }
 
   try {
+    const adminWallet = req.params.adminWallet.toLowerCase();
+
     // Get counts for dashboard
     const totalProfiles = await Profile.countDocuments({ archived: { $ne: true } });
     const totalProfilesExcludingAdmin = await Profile.countDocuments({ 
@@ -476,278 +477,49 @@ router.post("/bounties/delete", authenticateAdmin, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Deploy CritCoin
+// Deploy CritCoin - the profile checklist
 //
-// A deploy credits the database ledger AND transfers real tokens on Sepolia.
-// Signing happens in the browser with the admin's MetaMask wallet - the backend
-// holds no private key. The split of responsibility is:
+// The deploy itself runs entirely in the admin's browser: MetaMask preflights
+// and signs each transfer, and the Etherscan sync imports them as adminGrant
+// rows. The backend only supplies the checklist - read-only, no RPC.
 //
-//   POST /deploy/start   preflight, create/resume the round, credit Mongo
-//   (browser)            transfer to each student sequentially, awaiting each
-//   POST /deploy/record  store the real hash, or the failure, per student
-//   GET  /deploy/latest  the status table
-//
-// Re-running is safe: already-credited students are never credited twice, and
-// chain_confirmed students are skipped entirely.
+//   GET /deploy/roster/:adminWallet  active profiles + adminGrants received
 // ---------------------------------------------------------------------------
-
-const DEFAULT_DEPLOY_AMOUNT = 10000;
-
-// POST start (or resume) a deploy round
-router.post("/deploy/start", authenticateAdmin, async (req, res) => {
-  const { adminWallet, confirmed, resume } = req.body;
-  const amountPerStudent = Number(req.body.amountPerStudent) || DEFAULT_DEPLOY_AMOUNT;
-
-  if (!confirmed) {
-    return res.status(400).json({ error: "Confirmation required" });
-  }
-  if (!Number.isInteger(amountPerStudent) || amountPerStudent <= 0) {
-    return res.status(400).json({ error: "amountPerStudent must be a positive whole number" });
-  }
-
-  try {
-    // The deployer is the admin wallet, whose control authenticateAdmin has just
-    // proven via signature. Tokens are sent from this wallet in the browser.
-    const deployer = process.env.ADMIN_WALLET.toLowerCase();
-
-    let deploy = null;
-    const unfinished = await Deploy.findOne({ status: 'in_progress' }).sort({ createdAt: -1 });
-
-    if (resume) {
-      if (!unfinished) {
-        return res.status(400).json({ error: "No in-progress deploy to resume" });
-      }
-      deploy = unfinished;
-    } else if (unfinished) {
-      // Refuse to open a second round while one is unfinished. Without this, an
-      // admin re-clicking Deploy after a crash would credit everyone a second
-      // time. Resuming is the only way forward, so a crash can never double-credit.
-      return res.status(409).json({
-        error: "A deploy is already in progress - resume it instead of starting a new one",
-        deployId: unfinished._id,
-        awaiting: unfinished.rows.filter(
-          (r) => r.status === 'pending' || r.status === 'credited'
-        ).length,
-        failed: unfinished.rows.filter((r) => r.status === 'chain_failed').length,
-        hint: "Use the Resume deploy button. Starting fresh would credit these students twice."
-      });
-    }
-
-    // Roster for a new round: every active profile except the admin's own.
-    let roster;
-    if (deploy) {
-      roster = deploy.rows.map((r) => ({ wallet: r.wallet, name: r.name }));
-    } else {
-      const activeProfiles = await Profile.find({
-        archived: { $ne: true },
-        wallet: { $ne: deployer }
-      });
-      if (activeProfiles.length === 0) {
-        return res.status(400).json({ error: "No active profiles found (excluding admin)" });
-      }
-      roster = activeProfiles.map((p) => ({ wallet: p.wallet.toLowerCase(), name: p.name }));
-    }
-
-    // --- Preflight: abort loudly BEFORE any write ---------------------------
-    // Only students still needing an on-chain transfer count toward the cost.
-    const owing = deploy
-      ? deploy.rows.filter((r) => r.status !== 'chain_confirmed')
-      : roster;
-
-    if (!chain.isConfigured()) {
-      return res.status(503).json({
-        error: "SEPOLIA_RPC_URL is not configured - cannot verify the deployer wallet before deploying",
-        hint: "Set SEPOLIA_RPC_URL on the server, or the deploy would run blind."
-      });
-    }
-
-    const requiredCrit = owing.length * amountPerStudent;
-    const critBalance = await chain.getCritBalance(deployer);
-    const ethBalance = await chain.getEthBalance(deployer);
-    const perTransferCost = await chain.estimateTransferCost({
-      from: deployer,
-      to: owing[0]?.wallet,
-      amount: amountPerStudent
-    });
-
-    if (critBalance === null || ethBalance === null || perTransferCost === null) {
-      return res.status(503).json({
-        error: "Sepolia RPC unreachable - refusing to deploy without a preflight check"
-      });
-    }
-
-    if (critBalance < requiredCrit) {
-      return res.status(400).json({
-        error: "Deployer wallet has insufficient CritCoin",
-        required: requiredCrit,
-        available: critBalance,
-        shortfall: requiredCrit - critBalance,
-        students: owing.length,
-        amountPerStudent
-      });
-    }
-
-    const requiredWei = perTransferCost
-      .mul(owing.length)
-      .mul(Math.round(chain.GAS_SAFETY_MARGIN * 100))
-      .div(100);
-
-    if (ethBalance.lt(requiredWei)) {
-      return res.status(400).json({
-        error: "Deployer wallet has insufficient Sepolia ETH for gas",
-        requiredEth: ethers.utils.formatEther(requiredWei),
-        availableEth: ethers.utils.formatEther(ethBalance),
-        students: owing.length,
-        note: `Includes a ${chain.GAS_SAFETY_MARGIN}x safety margin`
-      });
-    }
-    // --- Preflight passed. Writes begin below. -----------------------------
-
-    if (!deploy) {
-      deploy = new Deploy({
-        createdBy: deployer,
-        amountPerStudent,
-        rows: roster.map((r) => ({ wallet: r.wallet, name: r.name, status: 'pending' }))
-      });
-    }
-
-    // Credit the database ledger. Skip anyone already credited so a resumed or
-    // re-run deploy can never double-credit.
-    let credited = 0;
-    for (const row of deploy.rows) {
-      if (row.status !== 'pending') continue;
-
-      const transaction = await Transaction.create({
-        fromWallet: 'system',
-        toWallet: row.wallet,
-        amount: deploy.amountPerStudent,
-        type: 'system',
-        description: 'CritCoin deployment to all active profiles (excluding admin)',
-        txHash: null
-      });
-
-      row.creditTxId = transaction._id;
-      row.creditedAt = new Date();
-      row.status = 'credited';
-      credited += 1;
-    }
-
-    deploy.refreshStatus();
-    await deploy.save();
-
-    res.json({
-      deployId: deploy._id,
-      amountPerStudent: deploy.amountPerStudent,
-      credited,
-      preflight: {
-        deployer,
-        critBalance,
-        requiredCrit,
-        ethBalance: ethers.utils.formatEther(ethBalance),
-        requiredEth: ethers.utils.formatEther(requiredWei)
-      },
-      // Everyone the browser still needs to transfer to, in order.
-      rows: deploy.rows.map((r) => ({
-        wallet: r.wallet,
-        name: r.name,
-        status: r.status,
-        txHash: r.txHash,
-        error: r.error
-      }))
-    });
-  } catch (err) {
-    console.error("Deploy start error:", err);
-    res.status(500).json({ error: "Failed to start deploy" });
-  }
-});
-
-// POST record the on-chain outcome for one student
-router.post("/deploy/record", authenticateAdmin, async (req, res) => {
-  const { deployId, wallet, txHash, error } = req.body;
-
-  if (!deployId || !wallet) {
-    return res.status(400).json({ error: "deployId and wallet are required" });
-  }
-
-  try {
-    const deploy = await Deploy.findById(deployId);
-    if (!deploy) {
-      return res.status(404).json({ error: "Deploy not found" });
-    }
-
-    const row = deploy.rows.find((r) => r.wallet === wallet.toLowerCase());
-    if (!row) {
-      return res.status(404).json({ error: "Wallet is not part of this deploy" });
-    }
-
-    if (txHash) {
-      if (!REAL_TX_HASH.test(txHash)) {
-        return res.status(400).json({ error: "Malformed transaction hash - refusing to store" });
-      }
-      row.txHash = txHash.toLowerCase();
-      row.status = 'chain_confirmed';
-      row.error = null;
-      row.confirmedAt = new Date();
-
-      // Attach the real hash to the ledger row this deploy created, so the
-      // Explorer can link the credit straight to Etherscan.
-      if (row.creditTxId) {
-        await Transaction.findByIdAndUpdate(row.creditTxId, {
-          txHash: row.txHash,
-          hashFabricated: false
-        });
-      }
-    } else {
-      row.status = 'chain_failed';
-      // Truncated: provider errors can be enormous, and the row is a status
-      // record, not a log.
-      row.error = String(error || "Unknown error").slice(0, 500);
-    }
-
-    deploy.refreshStatus();
-    await deploy.save();
-
-    res.json({ wallet: row.wallet, status: row.status, deployStatus: deploy.status });
-  } catch (err) {
-    console.error("Deploy record error:", err);
-    res.status(500).json({ error: "Failed to record deploy result" });
-  }
-});
-
-// GET the most recent deploy, for the admin status table
-router.get("/deploy/latest/:adminWallet", [
+router.get("/deploy/roster/:adminWallet", [
   param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
 ], authenticateAdminGET, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
   try {
-    const deploy = await Deploy.findOne().sort({ createdAt: -1 });
-    if (!deploy) return res.json({ deploy: null });
+    const profiles = await Profile.find({ archived: { $ne: true } })
+      .select("wallet name").sort({ name: 1 }).lean();
+    const wallets = profiles.map((p) => p.wallet.toLowerCase());
 
+    // Transactions are cleared at each semester reset, so every adminGrant
+    // still in the ledger was received this semester.
+    const grants = await Transaction.aggregate([
+      { $match: { type: 'adminGrant', toWallet: { $in: wallets } } },
+      { $group: { _id: "$toWallet", amount: { $sum: "$amount" }, count: { $sum: 1 }, hashes: { $push: "$txHash" } } }
+    ]);
+    const byWallet = new Map(grants.map((g) => [g._id, g]));
+
+    const admin = process.env.ADMIN_WALLET.toLowerCase();
     res.json({
-      deploy: {
-        _id: deploy._id,
-        status: deploy.status,
-        amountPerStudent: deploy.amountPerStudent,
-        createdAt: deploy.createdAt,
-        completedAt: deploy.completedAt,
-        rows: deploy.rows,
-        summary: {
-          total: deploy.rows.length,
-          confirmed: deploy.rows.filter((r) => r.status === 'chain_confirmed').length,
-          failed: deploy.rows.filter((r) => r.status === 'chain_failed').length,
-          awaiting: deploy.rows.filter(
-            (r) => r.status === 'pending' || r.status === 'credited'
-          ).length
-        }
-      }
+      students: profiles.map((p) => {
+        const wallet = p.wallet.toLowerCase();
+        const grant = byWallet.get(wallet);
+        return {
+          wallet,
+          name: p.name,
+          isAdmin: wallet === admin,
+          granted: grant ? grant.amount : 0,
+          grantCount: grant ? grant.count : 0,
+          // Lets the browser tell which of its sends the sync has imported.
+          grantHashes: grant ? grant.hashes.filter(Boolean) : []
+        };
+      })
     });
   } catch (err) {
-    console.error("Deploy latest fetch error:", err);
-    res.status(500).json({ error: "Failed to fetch deploy status" });
+    console.error("Deploy roster error:", err);
+    res.status(500).json({ error: "Failed to load the deploy roster" });
   }
 });
 
@@ -826,6 +598,7 @@ router.get("/reconcile/:adminWallet", [
 //   GET  /chain-sync/status/:adminWallet   saved settings, last auto-sync
 //   GET  /chain-sync/preview/:adminWallet  ?since=ISO&project=N - no writes
 //   POST /chain-sync/commit                { since, project }
+//   POST /chain-sync/run                   import now, with the saved settings
 // ---------------------------------------------------------------------------
 
 const parseSyncParams = (since, project) => {
@@ -875,6 +648,21 @@ router.post("/chain-sync/commit", authenticateAdmin, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("Chain sync commit error:", err);
+    res.status(502).json({ error: `Chain sync failed: ${err.message}` });
+  }
+});
+
+// Run the sync now with the saved settings - what the auto-sync does, on demand.
+// Used right after a browser deploy so the grants appear without the 5-minute wait.
+router.post("/chain-sync/run", authenticateAdmin, async (req, res) => {
+  try {
+    const settings = await chainSync.getSyncSettings();
+    if (!settings.activeProject || !settings.since) {
+      return res.status(409).json({ error: "Sync from Chain has never been confirmed - run it once from its tab first" });
+    }
+    res.json(await chainSync.commitSync(settings));
+  } catch (err) {
+    console.error("Chain sync run error:", err);
     res.status(502).json({ error: `Chain sync failed: ${err.message}` });
   }
 });
@@ -1135,6 +923,23 @@ router.post("/settings", authenticateAdmin, async (req, res) => {
   }
 });
 
+// POST show or hide a live page for students
+router.post("/page-visibility", authenticateAdmin, async (req, res) => {
+  const { page, visible, adminWallet } = req.body;
+
+  if (!TOGGLEABLE_PAGES[page] || typeof visible !== "boolean") {
+    return res.status(400).json({ error: "Unknown page or invalid visibility" });
+  }
+
+  try {
+    const visibility = await setPageVisible(page, visible, adminWallet);
+    res.json({ message: `${TOGGLEABLE_PAGES[page]} is now ${visible ? "visible to" : "hidden from"} students`, visibility });
+  } catch (err) {
+    console.error("Page visibility error:", err);
+    res.status(500).send("Database error");
+  }
+});
+
 // GET whitelist
 router.get("/whitelist/:adminWallet", adminRateLimit, [
   param('adminWallet').isEthereumAddress().withMessage('Invalid wallet address')
@@ -1207,6 +1012,16 @@ router.post("/whitelist/remove", authenticateAdmin, async (req, res) => {
   } catch (err) {
     console.error("Remove from whitelist error:", err);
     res.status(500).send("Database error");
+  }
+});
+
+// Public endpoint - which toggleable pages students can see (nav + route gate)
+router.get("/public/page-visibility", async (req, res) => {
+  try {
+    res.json({ pages: TOGGLEABLE_PAGES, visibility: await getPageVisibility() });
+  } catch (err) {
+    console.error("Page visibility fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch page visibility" });
   }
 });
 

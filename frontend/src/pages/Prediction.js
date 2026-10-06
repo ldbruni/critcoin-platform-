@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchBalance } from "../utils/balance";
+import { viewerHeaders } from "../utils/pageVisibility";
 
 const API = {
   predictions: process.env.REACT_APP_API_URL
@@ -45,8 +46,8 @@ export default function Prediction() {
       // all it takes for its round to load here.
       const [profilesRes, settingsRes, ...predictionRes] = await Promise.all([
         fetch(API.profiles),
-        fetch(`${API.predictions}/settings`),
-        ...PROJECTS.map(p => fetch(`${API.predictions}?project=${p}`))
+        fetch(`${API.predictions}/settings`, { headers: viewerHeaders() }),
+        ...PROJECTS.map(p => fetch(`${API.predictions}?project=${p}`, { headers: viewerHeaders() }))
       ]);
 
       if (profilesRes.ok) setAllProfiles(await profilesRes.json());
@@ -74,7 +75,7 @@ export default function Prediction() {
     try {
       const results = await Promise.all(
         PROJECTS.map(p =>
-          fetch(`${API.predictions}/check/${wallet}?project=${p}`).then(r => r.json())
+          fetch(`${API.predictions}/check/${wallet}?project=${p}`, { headers: viewerHeaders() }).then(r => r.json())
         )
       );
       const map = {};
@@ -127,7 +128,7 @@ export default function Prediction() {
     try {
       const res = await fetch(API.predictions, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: viewerHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           predictorWallet: wallet,
           predictedWallet: selectedWallet,

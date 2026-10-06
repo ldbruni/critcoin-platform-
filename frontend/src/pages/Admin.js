@@ -5,21 +5,56 @@ import { Link } from "react-router-dom";
 import deployed from "../contracts/sepolia.json";
 import { AddressLink, TxLink } from "../components/ChainLink";
 import { cloudinaryVariant, THUMB } from "../utils/cloudinary";
+import { fetchPageVisibility } from "../utils/pageVisibility";
 
-// How each per-student deploy row reads in the status table.
+// How each per-student row reads during a browser deploy.
 const DEPLOY_STATUS_LABELS = {
-  pending: "pending",
-  credited: "credited (awaiting chain)",
-  chain_confirmed: "confirmed on-chain",
-  chain_failed: "chain transfer failed"
+  waiting: "waiting",
+  sending: "sending…",
+  sent: "sent",
+  rejected: "rejected in MetaMask",
+  failed: "failed"
 };
 
 const DEPLOY_STATUS_COLORS = {
-  pending: "var(--text-muted)",
-  credited: "var(--accent-orange)",
-  chain_confirmed: "var(--status-positive)",
-  chain_failed: "var(--status-negative)"
+  waiting: "var(--text-muted)",
+  sending: "var(--accent-orange)",
+  sent: "var(--status-positive)",
+  rejected: "var(--status-warning)",
+  failed: "var(--status-negative)"
 };
+
+const DEFAULT_DEPLOY_AMOUNT = 10000;
+const SEPOLIA_CHAIN_ID = 11155111;
+// Token.sol has no decimals: one on-chain unit is one CritCoin. The Etherscan
+// import divides by 10^tokenDecimal, so sending parseUnits(amount, 0) shows up
+// on the site as exactly `amount`.
+const TOKEN_DECIMALS = 0;
+
+// Gas (Sepolia ETH) for students. A CritCoin transfer costs ~50k gas; at a busy
+// 20 gwei that's ~0.001 ETH, so 0.005 ETH covers about five transfers and the
+// 0.01 ETH top-up target about ten. Faucet ETH is scarce, so keep these small.
+const DEFAULT_GAS_LOW = "0.005";
+const DEFAULT_GAS_TARGET = "0.01";
+const ETH_TRANSFER_GAS = 21000;
+const parseEthOrNull = (value) => {
+  try {
+    const wei = ethers.utils.parseEther(String(value).trim());
+    return wei.gt(0) ? wei : null;
+  } catch {
+    return null;
+  }
+};
+const formatEth = (wei) => Number(ethers.utils.formatEther(wei)).toFixed(4);
+
+// MetaMask rejections arrive as EIP-1193 code 4001, or ACTION_REJECTED from
+// newer ethers v5 releases.
+const isUserRejection = (err) =>
+  err?.code === 4001 || err?.code === "ACTION_REJECTED" || err?.error?.code === 4001;
+
+// wallet -> txHash for every transfer sent in this page session.
+const sentWallets = (status) =>
+  new Map(Object.keys(status).filter((w) => status[w].state === "sent").map((w) => [w, status[w].hash]));
 
 const API = {
   admin: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/admin` : "http://localhost:3001/api/admin",
@@ -43,13 +78,24 @@ export default function Admin() {
   const [projects, setProjects] = useState([]);
   const [settings, setSettings] = useState({});
   const [whitelist, setWhitelist] = useState([]);
+  const [pageVisibility, setPageVisibility] = useState(null); // { pages, visibility }
   const [loading, setLoading] = useState(false);
   
-  // Deploy CritCoin confirmation
-  const [showDeployConfirm, setShowDeployConfirm] = useState(false);
-  const [deployLoading, setDeployLoading] = useState(false);
-  const [deployProgress, setDeployProgress] = useState({ current: 0, total: 0, failed: [] });
-  const [latestDeploy, setLatestDeploy] = useState(null);
+  // Deploy CritCoin: profile checklist + browser-side MetaMask transfers
+  const [deployRoster, setDeployRoster] = useState(null);
+  const [deploySelected, setDeploySelected] = useState({}); // wallet -> checked
+  const [deployAmount, setDeployAmount] = useState(String(DEFAULT_DEPLOY_AMOUNT));
+  const [deployStatus, setDeployStatus] = useState({}); // wallet -> { state, hash, error }
+  const [deployRunning, setDeployRunning] = useState(false);
+  const [deployMessage, setDeployMessage] = useState(null); // { tone, text }
+  // Send gas: Sepolia ETH top-ups from the admin's MetaMask. Never touches the ledger.
+  const [gasBalances, setGasBalances] = useState({}); // wallet -> BigNumber wei
+  const [gasLow, setGasLow] = useState(DEFAULT_GAS_LOW);
+  const [gasTarget, setGasTarget] = useState(DEFAULT_GAS_TARGET);
+  const [gasSelected, setGasSelected] = useState({}); // wallet -> checked
+  const [gasStatus, setGasStatus] = useState({}); // wallet -> { state, hash, error }
+  const [gasRunning, setGasRunning] = useState(false);
+  const [gasMessage, setGasMessage] = useState(null); // { tone, text }
   const [reconcile, setReconcile] = useState(null);
   const [reconcileLoading, setReconcileLoading] = useState(false);
 
@@ -95,8 +141,9 @@ export default function Admin() {
       if (activeTab === "projects") fetchProjects();
       if (activeTab === "whitelist") fetchWhitelist();
       if (activeTab === "predictions") fetchSettings();
+      if (activeTab === "pages") fetchPageVisibilityAdmin();
       if (activeTab === "semester") fetchSemesterArchives();
-      if (activeTab === "deploy") fetchLatestDeploy();
+      if (activeTab === "deploy") fetchDeployRoster().then((students) => students && fetchGasBalances(students));
       if (activeTab === "reconcile") fetchReconcile();
       if (activeTab === "chainsync") fetchChainSyncStatus();
     }
@@ -545,6 +592,34 @@ export default function Admin() {
     }
   };
 
+  const fetchPageVisibilityAdmin = async () => {
+    try {
+      setPageVisibility(await fetchPageVisibility());
+    } catch (err) {
+      console.error("Page visibility fetch error:", err);
+      alert("Failed to fetch page visibility.");
+    }
+  };
+
+  const handleTogglePageVisibility = async (page, currentlyVisible) => {
+    try {
+      const res = await postWithSignature(`${API.admin}/page-visibility`, 'admin_post_page-visibility', {
+        page,
+        visible: !currentlyVisible
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPageVisibility(prev => ({ ...prev, visibility: data.visibility }));
+      } else {
+        const error = await res.json().catch(async () => ({ error: await res.text() }));
+        alert("Error: " + (error.error || error));
+      }
+    } catch (err) {
+      console.error("Toggle page visibility error:", err);
+      alert("Error changing page visibility. Please check your wallet connection.");
+    }
+  };
+
   const handleAddToWhitelist = async (e) => {
     e.preventDefault();
     
@@ -599,130 +674,270 @@ export default function Admin() {
     }
   };
 
-  // Load the most recent deploy round for the status table.
-  const fetchLatestDeploy = async () => {
+  // Deploy CritCoin
+  //
+  // Runs entirely in the browser: MetaMask preflights and signs every transfer,
+  // the same way the admin's manual sends work. The backend only supplies the
+  // checklist (active profiles + adminGrants already imported) and, afterwards,
+  // runs the Etherscan sync so the grants appear right away. txHash dedup in
+  // the import means re-syncing never double-counts.
+
+  // Load the checklist. Default: checked if no adminGrant yet. Students sent to
+  // in this session stay unchecked even before Etherscan has indexed them.
+  const fetchDeployRoster = async (alreadySent = sentWallets(deployStatus)) => {
     try {
-      const res = await fetchWithSignature(`${API.admin}/deploy/latest/${wallet}`, 'admin_get_deploy_latest');
-      if (res.ok) {
-        const data = await res.json();
-        setLatestDeploy(data.deploy);
+      const res = await fetchWithSignature(`${API.admin}/deploy/roster/${wallet}`, 'admin_get_deploy_roster');
+      const data = await res.json();
+      if (!res.ok) {
+        setDeployMessage({ tone: "negative", text: data.error || "Failed to load the deploy roster" });
+        return null;
       }
+      setDeployRoster(data.students);
+      setDeploySelected(Object.fromEntries(data.students.map((s) => [
+        s.wallet,
+        !s.isAdmin && s.grantCount === 0 && !alreadySent.has(s.wallet)
+      ])));
+      return data.students;
     } catch (err) {
-      console.error("Deploy status fetch error:", err);
+      console.error("Deploy roster fetch error:", err);
+      setDeployMessage({ tone: "negative", text: "Failed to load the deploy roster." });
+      return null;
     }
   };
 
-  // Deploy CritCoin: credit the database ledger AND transfer real tokens.
-  //
-  // The backend runs preflight and credits Mongo; the browser signs each
-  // transfer with MetaMask and reports each outcome back. Transfers are strictly
-  // sequential - concurrent sends from one wallet collide on the nonce.
-  //
-  // Safe to re-run: chain_confirmed students are skipped, chain_failed students
-  // are retried, and the backend never credits a student twice.
-  const handleDeployCritCoin = async (resume = false) => {
-    if (!showDeployConfirm && !resume) {
-      setShowDeployConfirm(true);
-      return;
-    }
+  const setDeployRow = (address, row) =>
+    setDeployStatus((prev) => ({ ...prev, [address]: row }));
 
-    if (!signer) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    setDeployLoading(true);
-    setDeployProgress({ current: 0, total: 0, failed: [] });
-
+  // Import the admin's sends now instead of waiting for the 5-minute auto-sync,
+  // then report any send from this session whose hash isn't in the ledger yet.
+  const syncDeployGrants = async (sent = sentWallets(deployStatus)) => {
+    setDeployMessage({ tone: "muted", text: "Importing the transfers from Etherscan…" });
     try {
-      // Preflight + ledger credit. Nothing is written if preflight fails.
-      const startRes = await postWithSignature(`${API.admin}/deploy/start`, 'admin_post_deploy_start', {
-        confirmed: true,
-        resume
-      });
-
-      if (!startRes.ok) {
-        const problem = await startRes.json().catch(() => ({ error: "Failed to start deploy" }));
-        // Preflight failures carry a detailed shortfall - show it verbatim.
-        const detail = [
-          problem.error,
-          problem.shortfall !== undefined
-            ? `Short by ${problem.shortfall} CritCoin (need ${problem.required}, wallet holds ${problem.available}).`
-            : null,
-          problem.requiredEth
-            ? `Need about ${problem.requiredEth} ETH for gas, wallet holds ${problem.availableEth} ETH.`
-            : null,
-          problem.hint
-        ].filter(Boolean).join("\n\n");
-
-        alert(`Deploy aborted.\n\n${detail}`);
-        setDeployLoading(false);
+      const res = await postWithSignature(`${API.admin}/chain-sync/run`, 'admin_post_chain_sync_run');
+      const data = await res.json();
+      const students = await fetchDeployRoster(sent);
+      if (!res.ok) {
+        setDeployMessage({ tone: "negative", text: `Transfers sent, but the sync failed: ${data.error}. The auto-sync will retry within 5 minutes.` });
         return;
       }
-
-      const { deployId, amountPerStudent, rows } = await startRes.json();
-
-      // Only students without a confirmed transfer still need one.
-      const pending = rows.filter(r => r.status !== 'chain_confirmed');
-      if (pending.length === 0) {
-        alert("Every student already has a confirmed on-chain transfer. Nothing to do.");
-        setShowDeployConfirm(false);
-        await fetchLatestDeploy();
-        setDeployLoading(false);
-        return;
-      }
-
-      const contract = new ethers.Contract(deployed.address, deployed.abi, signer);
-      const failed = [];
-      setDeployProgress({ current: 0, total: pending.length, failed: [] });
-
-      for (let i = 0; i < pending.length; i++) {
-        const row = pending[i];
-        try {
-          console.log(`Transferring ${amountPerStudent} CritCoin to ${row.name} (${row.wallet})`);
-          const tx = await contract.transfer(row.wallet, amountPerStudent);
-          await tx.wait(); // one at a time: nonce safety
-
-          await postWithSignature(`${API.admin}/deploy/record`, 'admin_post_deploy_record', {
-            deployId,
-            wallet: row.wallet,
-            txHash: tx.hash
-          });
-          console.log(`Transfer to ${row.name} confirmed: ${tx.hash}`);
-        } catch (err) {
-          // Record the failure and keep going - one bad student must not stop
-          // the rest of the roster.
-          console.error(`Failed to transfer to ${row.name}:`, err);
-          failed.push({ name: row.name, wallet: row.wallet, error: err.message });
-
-          await postWithSignature(`${API.admin}/deploy/record`, 'admin_post_deploy_record', {
-            deployId,
-            wallet: row.wallet,
-            error: err.message
-          }).catch(recordErr => console.error("Failed to record failure:", recordErr));
-        }
-        setDeployProgress({ current: i + 1, total: pending.length, failed });
-      }
-
-      const succeeded = pending.length - failed.length;
-      if (failed.length === 0) {
-        alert(`CritCoin deployed successfully!\n${succeeded} students received ${amountPerStudent} CritCoin each, on-chain and in the ledger.`);
-      } else {
-        alert(
-          `Deployment finished with ${failed.length} failure(s).\n` +
-          `${succeeded} students confirmed on-chain.\n` +
-          `Failed: ${failed.map(f => f.name).join(', ')}\n\n` +
-          `All students were credited in the ledger. Re-run the deploy to retry the failed transfers.`
-        );
-      }
-
-      setShowDeployConfirm(false);
-      await fetchLatestDeploy();
+      const imported = new Set((students || []).flatMap((s) => s.grantHashes));
+      const missing = [...sent.values()].filter((hash) => !imported.has(hash.toLowerCase()));
+      setDeployMessage(missing.length === 0
+        ? { tone: "positive", text: `Synced: ${data.imported} transfer(s) imported. Grants are on the site.` }
+        : { tone: "warning", text: `Synced, but Etherscan hasn't indexed ${missing.length} transfer(s) yet. Click "Sync now" in a minute, or the auto-sync will pick them up within 5 minutes.` });
     } catch (err) {
-      console.error("Deploy CritCoin error:", err);
-      alert("Error deploying CritCoin: " + err.message);
+      console.error("Deploy sync error:", err);
+      setDeployMessage({ tone: "negative", text: "Transfers sent, but the sync request failed. The auto-sync will pick them up within 5 minutes." });
+    }
+  };
+
+  const runDeploy = async () => {
+    const amount = Number(deployAmount);
+    const recipients = (deployRoster || []).filter((s) => deploySelected[s.wallet] && !s.isAdmin);
+    const stop = (text) => setDeployMessage({ tone: "negative", text });
+
+    if (!Number.isSafeInteger(amount) || amount <= 0) return stop("Amount must be a positive whole number.");
+    if (recipients.length === 0) return stop("No students are checked.");
+    if (!window.ethereum) return stop("MetaMask not found.");
+
+    const total = amount * recipients.length;
+    if (!window.confirm(`Deploy ${amount.toLocaleString()} to ${recipients.length} student(s) = ${total.toLocaleString()} CritCoin total?`)) return;
+
+    setDeployRunning(true);
+    try {
+      // --- Preflight, all through MetaMask's provider. Nothing is sent on failure.
+      setDeployMessage({ tone: "muted", text: "Preflight: checking wallet, network and balance…" });
+      // "any" reads the current network even if MetaMask switched since connect.
+      const web3 = new ethers.providers.Web3Provider(window.ethereum, "any");
+      const metaSigner = web3.getSigner();
+      const from = (await metaSigner.getAddress()).toLowerCase();
+      if (from !== ADMIN_WALLET) {
+        return stop(`MetaMask is connected as ${from}, not the admin wallet ${ADMIN_WALLET}. Switch accounts in MetaMask. Nothing was sent.`);
+      }
+      const { chainId } = await web3.getNetwork();
+      if (chainId !== SEPOLIA_CHAIN_ID) {
+        return stop(`MetaMask is on chain ${chainId}, not Sepolia (${SEPOLIA_CHAIN_ID}). Switch networks in MetaMask. Nothing was sent.`);
+      }
+      const contract = new ethers.Contract(deployed.address, deployed.abi, metaSigner);
+      const units = ethers.utils.parseUnits(String(amount), TOKEN_DECIMALS);
+      const held = await contract.balanceOf(from);
+      if (held.lt(units.mul(recipients.length))) {
+        return stop(`The admin wallet holds ${ethers.utils.formatUnits(held, TOKEN_DECIMALS)} CritCoin; this run needs ${total.toLocaleString()}. Nothing was sent.`);
+      }
+
+      // --- Transfers, strictly one at a time: concurrent sends from one wallet
+      // collide on the nonce. A rejection or failure is marked and skipped.
+      setDeployStatus((prev) => ({
+        ...prev,
+        ...Object.fromEntries(recipients.map((s) => [s.wallet, { state: "waiting" }]))
+      }));
+      const sent = sentWallets(deployStatus);
+
+      for (const [i, s] of recipients.entries()) {
+        setDeployMessage({ tone: "muted", text: `Sending ${i + 1} of ${recipients.length}: ${s.name}. Confirm in MetaMask.` });
+        setDeployRow(s.wallet, { state: "sending" });
+        let tx = null;
+        try {
+          tx = await contract.transfer(s.wallet, units);
+          setDeployRow(s.wallet, { state: "sending", hash: tx.hash });
+          await tx.wait();
+          setDeployRow(s.wallet, { state: "sent", hash: tx.hash });
+          sent.set(s.wallet, tx.hash);
+        } catch (err) {
+          if (err.code === "TRANSACTION_REPLACED" && !err.cancelled) {
+            // Sped up in MetaMask: the replacement carries the transfer.
+            setDeployRow(s.wallet, { state: "sent", hash: err.replacement.hash });
+            sent.set(s.wallet, err.replacement.hash);
+          } else if (isUserRejection(err)) {
+            setDeployRow(s.wallet, { state: "rejected" });
+          } else {
+            console.error(`Deploy transfer to ${s.name} failed:`, err);
+            setDeployRow(s.wallet, {
+              state: "failed",
+              hash: tx?.hash,
+              error: String(err.reason || err.message || "Unknown error").slice(0, 160)
+            });
+          }
+        }
+      }
+
+      if (recipients.some((s) => sent.has(s.wallet))) {
+        await syncDeployGrants(sent);
+      } else {
+        setDeployMessage({ tone: "warning", text: "Run finished. No transfers went through." });
+      }
+    } catch (err) {
+      console.error("Deploy error:", err);
+      stop(`Deploy stopped: ${err.message}`);
     } finally {
-      setDeployLoading(false);
+      setDeployRunning(false);
+    }
+  };
+
+  // Send gas
+  //
+  // Sepolia ETH, not CritCoin: balances are read and sends are signed through
+  // MetaMask, nothing touches the backend, and the chain sync (tokentx only)
+  // never sees these transfers, so they never enter the Transaction ledger.
+
+  // Read every student's ETH balance via MetaMask's provider. Students below the
+  // low threshold come back checked for "Send gas".
+  const fetchGasBalances = async (students = deployRoster || []) => {
+    if (!window.ethereum) {
+      setGasMessage({ tone: "negative", text: "MetaMask not found; can't read ETH balances." });
+      return;
+    }
+    try {
+      const web3 = new ethers.providers.Web3Provider(window.ethereum, "any");
+      const { chainId } = await web3.getNetwork();
+      if (chainId !== SEPOLIA_CHAIN_ID) {
+        setGasMessage({ tone: "negative", text: `MetaMask is on chain ${chainId}, not Sepolia. Switch networks and click "Refresh ETH".` });
+        return;
+      }
+      const balances = await Promise.all(students.map((s) => web3.getBalance(s.wallet)));
+      const byWallet = Object.fromEntries(students.map((s, i) => [s.wallet, balances[i]]));
+      const low = parseEthOrNull(gasLow);
+      setGasBalances(byWallet);
+      setGasSelected(Object.fromEntries(students.map((s) => [
+        s.wallet,
+        !s.isAdmin && Boolean(low) && byWallet[s.wallet].lt(low)
+      ])));
+      return byWallet;
+    } catch (err) {
+      console.error("ETH balance read error:", err);
+      setGasMessage({ tone: "negative", text: `Couldn't read ETH balances: ${err.message}` });
+    }
+  };
+
+  const setGasRow = (address, row) =>
+    setGasStatus((prev) => ({ ...prev, [address]: row }));
+
+  // Top up each checked student to the target; anyone at or above it gets nothing.
+  const gasTopUps = () => {
+    const target = parseEthOrNull(gasTarget);
+    if (!target) return [];
+    return (deployRoster || [])
+      .filter((s) => gasSelected[s.wallet] && !s.isAdmin && gasBalances[s.wallet])
+      .map((s) => ({ ...s, topUp: target.sub(gasBalances[s.wallet]) }))
+      .filter((s) => s.topUp.gt(0));
+  };
+
+  const runSendGas = async () => {
+    const recipients = gasTopUps();
+    const stop = (text) => setGasMessage({ tone: "negative", text });
+
+    if (!parseEthOrNull(gasTarget)) return stop("Target must be a positive ETH amount.");
+    if (recipients.length === 0) return stop("No checked student is below the target.");
+    if (!window.ethereum) return stop("MetaMask not found.");
+
+    const total = recipients.reduce((sum, s) => sum.add(s.topUp), ethers.BigNumber.from(0));
+    if (!window.confirm(`Send ${ethers.utils.formatEther(total)} ETH total to ${recipients.length} student(s)?`)) return;
+
+    setGasRunning(true);
+    try {
+      // --- Preflight through MetaMask. Nothing is sent on failure.
+      setGasMessage({ tone: "muted", text: "Preflight: checking wallet, network and ETH balance…" });
+      const web3 = new ethers.providers.Web3Provider(window.ethereum, "any");
+      const metaSigner = web3.getSigner();
+      const from = (await metaSigner.getAddress()).toLowerCase();
+      if (from !== ADMIN_WALLET) {
+        return stop(`MetaMask is connected as ${from}, not the admin wallet ${ADMIN_WALLET}. Switch accounts in MetaMask. Nothing was sent.`);
+      }
+      const { chainId } = await web3.getNetwork();
+      if (chainId !== SEPOLIA_CHAIN_ID) {
+        return stop(`MetaMask is on chain ${chainId}, not Sepolia (${SEPOLIA_CHAIN_ID}). Switch networks in MetaMask. Nothing was sent.`);
+      }
+      const fees = await web3.getFeeData();
+      const feePerGas = fees.maxFeePerGas || fees.gasPrice;
+      const gasCost = feePerGas.mul(ETH_TRANSFER_GAS).mul(recipients.length);
+      const held = await web3.getBalance(from);
+      if (held.lt(total.add(gasCost))) {
+        return stop(`The admin wallet holds ${formatEth(held)} ETH; this run needs ${formatEth(total)} ETH plus about ${formatEth(gasCost)} ETH in gas. Nothing was sent.`);
+      }
+
+      // --- Sends, one at a time. A rejection or failure is marked and skipped.
+      setGasStatus((prev) => ({
+        ...prev,
+        ...Object.fromEntries(recipients.map((s) => [s.wallet, { state: "waiting" }]))
+      }));
+      let sentCount = 0;
+      for (const [i, s] of recipients.entries()) {
+        setGasMessage({ tone: "muted", text: `Sending gas ${i + 1} of ${recipients.length}: ${formatEth(s.topUp)} ETH to ${s.name}. Confirm in MetaMask.` });
+        setGasRow(s.wallet, { state: "sending" });
+        let tx = null;
+        try {
+          tx = await metaSigner.sendTransaction({ to: s.wallet, value: s.topUp });
+          setGasRow(s.wallet, { state: "sending", hash: tx.hash });
+          await tx.wait();
+          setGasRow(s.wallet, { state: "sent", hash: tx.hash });
+          sentCount++;
+        } catch (err) {
+          if (err.code === "TRANSACTION_REPLACED" && !err.cancelled) {
+            setGasRow(s.wallet, { state: "sent", hash: err.replacement.hash });
+            sentCount++;
+          } else if (isUserRejection(err)) {
+            setGasRow(s.wallet, { state: "rejected" });
+          } else {
+            console.error(`Gas send to ${s.name} failed:`, err);
+            setGasRow(s.wallet, {
+              state: "failed",
+              hash: tx?.hash,
+              error: String(err.reason || err.message || "Unknown error").slice(0, 160)
+            });
+          }
+        }
+      }
+
+      setGasMessage(sentCount > 0
+        ? { tone: "positive", text: `Gas run finished: ${sentCount} of ${recipients.length} send(s) went through.` }
+        : { tone: "warning", text: "Gas run finished. No sends went through." });
+    } catch (err) {
+      console.error("Send gas error:", err);
+      stop(`Send gas stopped: ${err.message}`);
+    } finally {
+      setGasRunning(false);
+      // Re-read every balance, not just the recipients; also re-checks who's low.
+      await fetchGasBalances();
     }
   };
 
@@ -1021,7 +1236,7 @@ export default function Admin() {
 
       {/* Navigation Tabs */}
       <div style={{ marginBottom: "2rem" }}>
-        {["dashboard", "profiles", "posts", "feed", "projects", "bounties", "predictions", "whitelist", "semester", "deploy", "chainsync", "reconcile"].map(tab => (
+        {["dashboard", "profiles", "posts", "feed", "projects", "bounties", "predictions", "pages", "whitelist", "semester", "deploy", "chainsync", "reconcile"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1036,7 +1251,7 @@ export default function Admin() {
               textTransform: "capitalize"
             }}
           >
-{tab === "deploy" ? "Deploy CritCoin" : tab === "chainsync" ? "Sync from Chain" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab === "feed" ? "The Feed" : tab}
+{tab === "deploy" ? "Deploy CritCoin" : tab === "chainsync" ? "Sync from Chain" : tab === "whitelist" ? "Whitelist" : tab === "semester" ? "Semester Archive" : tab === "predictions" ? "Predictions" : tab === "pages" ? "Page Visibility" : tab === "feed" ? "The Feed" : tab}
           </button>
         ))}
       </div>
@@ -1641,6 +1856,50 @@ export default function Admin() {
         </div>
       )}
 
+      {/* Page Visibility Tab */}
+      {activeTab === "pages" && (
+        <div>
+          <h2>Page Visibility</h2>
+          <p>Show or hide a page for students, so it can be revealed when it's introduced in class. A hidden page drops out of the student nav and its API refuses students; you still see and can use it. Nothing is deleted, and archived semesters ignore this.</p>
+          {!pageVisibility ? (
+            <p>Loading...</p>
+          ) : Object.entries(pageVisibility.pages).map(([page, label]) => {
+            const isVisible = pageVisibility.visibility[page] !== false;
+            return (
+              <div key={page} style={{
+                backgroundColor: isVisible ? "var(--tint-positive)" : "var(--tint-warning)",
+                padding: "1.25rem 1.5rem",
+                borderRadius: "8px",
+                marginBottom: "1rem",
+                border: `1px solid ${isVisible ? "var(--status-positive)" : "var(--status-warning)"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}>
+                <h4 style={{ margin: 0 }}>
+                  {label} — <span style={{ color: isVisible ? "var(--status-positive)" : "var(--status-warning)" }}>{isVisible ? "VISIBLE" : "HIDDEN FROM STUDENTS"}</span>
+                </h4>
+                <button
+                  onClick={() => handleTogglePageVisibility(page, isVisible)}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    backgroundColor: isVisible ? "var(--status-negative)" : "var(--status-positive)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {isVisible ? "Hide from Students" : "Show to Students"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Whitelist Tab */}
       {activeTab === "whitelist" && (
         <div>
@@ -2128,194 +2387,236 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Deploy CritCoin Tab */}
-      {activeTab === "deploy" && (
-        <div style={{ textAlign: "center", padding: "2rem" }}>
-          <h2>🚀 Deploy CritCoin</h2>
-          <div style={{ 
-            backgroundColor: "var(--tint-warning)", 
-            border: "1px solid var(--status-warning)", 
-            borderRadius: "8px", 
-            padding: "2rem", 
-            maxWidth: "600px", 
-            margin: "0 auto 2rem"
-          }}>
-            <h3>⚠️ Warning</h3>
-            <p>This credits <strong>10,000 CritCoin</strong> in the ledger <em>and</em> transfers real tokens on Sepolia to all active profiles <strong>(excluding your admin profile)</strong>.</p>
-            <p>Total active profiles: <strong>{dashboard.profiles?.total || 0}</strong></p>
-            <p>Recipients (excluding admin): <strong>{dashboard.profiles?.totalExcludingAdmin || 0}</strong></p>
-            <p>Total CritCoin to be deployed: <strong>{(dashboard.profiles?.totalExcludingAdmin || 0) * 10000} CC</strong></p>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-              Your wallet is checked for enough CritCoin and Sepolia ETH before anything is written.
-              Re-running is safe: confirmed students are skipped, failed ones retried, and nobody is credited twice.
+      {/* Deploy CritCoin Tab - profile checklist, browser-side MetaMask deploy */}
+      {activeTab === "deploy" && (() => {
+        const cell = { padding: "0.5rem", border: "1px solid var(--surface-card-border)" };
+        const students = deployRoster || [];
+        const eligible = students.filter((s) => !s.isAdmin);
+        const checkedCount = eligible.filter((s) => deploySelected[s.wallet]).length;
+        const amount = Number(deployAmount);
+        const amountValid = Number.isSafeInteger(amount) && amount > 0;
+        const setAll = (value) =>
+          setDeploySelected(Object.fromEntries(students.map((s) => [s.wallet, value && !s.isAdmin])));
+        const toneColor = {
+          positive: "var(--status-positive)",
+          warning: "var(--status-warning)",
+          negative: "var(--status-negative)",
+          muted: "var(--text-muted)"
+        };
+        const button = (enabled) => ({
+          padding: "0.5rem 1rem",
+          border: "1px solid var(--surface-card-border)",
+          borderRadius: "6px",
+          cursor: enabled ? "pointer" : "not-allowed",
+          opacity: enabled ? 1 : 0.6
+        });
+        const busy = deployRunning || gasRunning;
+        const lowWei = parseEthOrNull(gasLow);
+        const targetValid = Boolean(parseEthOrNull(gasTarget));
+        const topUps = gasTopUps();
+        const topUpTotal = topUps.reduce((sum, s) => sum.add(s.topUp), ethers.BigNumber.from(0));
+
+        return (
+          <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
+            <h2>🚀 Deploy CritCoin</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Sends CritCoin from your MetaMask wallet to each checked student, one transfer at a time.
+              Nothing goes through the server; afterwards the Etherscan sync imports the transfers as admin grants.
             </p>
 
-            {!showDeployConfirm ? (
-              <button
-                onClick={() => handleDeployCritCoin(false)}
-                style={{
-                  padding: "1rem 2rem",
-                  backgroundColor: "var(--status-warning)",
-                  color: "var(--text-body)",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "1.1rem",
-                  fontWeight: "bold"
-                }}
-              >
-                🚀 Deploy CritCoin
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", margin: "1rem 0" }}>
+              <label>
+                Amount per student{" "}
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={deployAmount}
+                  onChange={(e) => setDeployAmount(e.target.value)}
+                  disabled={busy}
+                  style={{ width: "8rem", padding: "0.4rem" }}
+                />
+              </label>
+              <button onClick={() => setAll(true)} disabled={busy} style={button(!busy)}>Select all</button>
+              <button onClick={() => setAll(false)} disabled={busy} style={button(!busy)}>Select none</button>
+            </div>
+
+            <p style={{ fontWeight: "bold" }}>
+              {amountValid
+                ? `Deploy ${amount.toLocaleString()} to ${checkedCount} student${checkedCount === 1 ? "" : "s"} = ${(amount * checkedCount).toLocaleString()} CritCoin total.`
+                : "Enter a positive whole number amount."}
+            </p>
+
+            <button
+              onClick={runDeploy}
+              disabled={busy || !amountValid || checkedCount === 0}
+              style={{
+                ...button(!busy && amountValid && checkedCount > 0),
+                backgroundColor: "var(--status-positive)",
+                color: "white",
+                fontWeight: "bold",
+                padding: "0.75rem 1.5rem"
+              }}
+            >
+              {deployRunning ? "Deploying…" : "🚀 Deploy"}
+            </button>
+            {!busy && Object.keys(deployStatus).length > 0 && (
+              <button onClick={() => syncDeployGrants()} style={{ ...button(true), marginLeft: "0.75rem" }}>
+                Sync now
               </button>
-            ) : (
-              <div>
-                <h4 style={{ color: "var(--status-negative)" }}>Are you absolutely sure?</h4>
-                <p>This action cannot be undone!</p>
-                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                  Each transfer requires a blockchain transaction. You will need to confirm each in your wallet.
-                </p>
-                {deployLoading && deployProgress.total > 0 && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <div style={{
-                      width: "100%",
-                      height: "20px",
-                      backgroundColor: "var(--surface-card-border)",
-                      borderRadius: "10px",
-                      overflow: "hidden",
-                      marginBottom: "0.5rem"
-                    }}>
-                      <div style={{
-                        width: `${(deployProgress.current / deployProgress.total) * 100}%`,
-                        height: "100%",
-                        backgroundColor: deployProgress.failed.length > 0 ? "var(--status-warning)" : "var(--status-positive)",
-                        transition: "width 0.3s ease"
-                      }} />
-                    </div>
-                    <p style={{ margin: 0 }}>
-                      Progress: {deployProgress.current} / {deployProgress.total}
-                      {deployProgress.failed.length > 0 && (
-                        <span style={{ color: "var(--status-negative)" }}> ({deployProgress.failed.length} failed)</span>
-                      )}
-                    </p>
-                  </div>
-                )}
-                <button
-                  onClick={() => handleDeployCritCoin(false)}
-                  disabled={deployLoading}
-                  style={{
-                    padding: "1rem 2rem",
-                    backgroundColor: "var(--status-negative)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: deployLoading ? "not-allowed" : "pointer",
-                    fontSize: "1.1rem",
-                    fontWeight: "bold",
-                    marginRight: "1rem",
-                    opacity: deployLoading ? 0.6 : 1
-                  }}
-                >
-                  {deployLoading
-                    ? `Deploying... (${deployProgress.current}/${deployProgress.total})`
-                    : "✅ Yes, Deploy Now"}
-                </button>
-                <button
-                  onClick={() => setShowDeployConfirm(false)}
-                  disabled={deployLoading}
-                  style={{
-                    padding: "1rem 2rem",
-                    backgroundColor: "var(--text-muted)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: deployLoading ? "not-allowed" : "pointer",
-                    fontSize: "1.1rem",
-                    opacity: deployLoading ? 0.6 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
             )}
-          </div>
 
-          {/* Per-student status for the current/most recent deploy */}
-          {latestDeploy && (
-            <div style={{ maxWidth: "900px", margin: "0 auto", textAlign: "left" }}>
-              <h3>
-                Most recent deploy
-                <span style={{ fontWeight: "normal", fontSize: "0.9rem", color: "var(--text-muted)", marginLeft: "0.75rem" }}>
-                  {new Date(latestDeploy.createdAt).toLocaleString()} · {latestDeploy.amountPerStudent} CC each
-                </span>
-              </h3>
-
-              <p style={{ fontSize: "0.9rem" }}>
-                <strong>{latestDeploy.summary.confirmed}</strong> confirmed on-chain ·{" "}
-                <strong style={{ color: latestDeploy.summary.failed ? "var(--status-negative)" : "inherit" }}>
-                  {latestDeploy.summary.failed}
-                </strong>{" "}
-                failed ·{" "}
-                <strong>{latestDeploy.summary.awaiting}</strong> awaiting ·{" "}
-                {latestDeploy.summary.total} total
+            {deployMessage && (
+              <p style={{ color: toneColor[deployMessage.tone] || "inherit", marginTop: "1rem" }}>
+                {deployMessage.text}
               </p>
+            )}
 
-              {latestDeploy.status === 'in_progress' && (
-                <button
-                  onClick={() => handleDeployCritCoin(true)}
-                  disabled={deployLoading}
-                  style={{
-                    padding: "0.6rem 1.2rem",
-                    backgroundColor: "var(--primary-blue)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: deployLoading ? "not-allowed" : "pointer",
-                    marginBottom: "1rem",
-                    opacity: deployLoading ? 0.6 : 1
-                  }}
-                >
-                  ▶ Resume deploy ({latestDeploy.summary.awaiting + latestDeploy.summary.failed} remaining)
-                </button>
-              )}
+            <h3 style={{ marginTop: "2rem" }}>⛽ Send gas</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Tops up checked students' Sepolia ETH to the target from your MetaMask wallet, so they can pay for
+              their own CritCoin transfers. Each student gets only the difference. Gas is not CritCoin: these sends
+              never enter the ledger.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", margin: "1rem 0" }}>
+              <label>
+                Low below{" "}
+                <input
+                  type="number" min="0" step="0.001" value={gasLow}
+                  onChange={(e) => setGasLow(e.target.value)} disabled={busy}
+                  style={{ width: "6rem", padding: "0.4rem" }}
+                />{" "}ETH
+              </label>
+              <label>
+                Top up to{" "}
+                <input
+                  type="number" min="0" step="0.001" value={gasTarget}
+                  onChange={(e) => setGasTarget(e.target.value)} disabled={busy}
+                  style={{ width: "6rem", padding: "0.4rem" }}
+                />{" "}ETH
+              </label>
+              <button onClick={() => fetchGasBalances()} disabled={busy || !deployRoster} style={button(!busy && Boolean(deployRoster))}>
+                Refresh ETH
+              </button>
+            </div>
+            <p style={{ fontWeight: "bold" }}>
+              {targetValid
+                ? `Send ${ethers.utils.formatEther(topUpTotal)} ETH total to ${topUps.length} student${topUps.length === 1 ? "" : "s"}.`
+                : "Enter a positive target amount."}
+            </p>
+            <button
+              onClick={runSendGas}
+              disabled={busy || topUps.length === 0}
+              style={{ ...button(!busy && topUps.length > 0), fontWeight: "bold", padding: "0.75rem 1.5rem" }}
+            >
+              {gasRunning ? "Sending gas…" : "⛽ Send gas"}
+            </button>
+            {gasMessage && (
+              <p style={{ color: toneColor[gasMessage.tone] || "inherit", marginTop: "1rem" }}>
+                {gasMessage.text}
+              </p>
+            )}
 
-              <div style={{ overflowX: "auto" }}>
+            {!deployRoster ? (
+              <p style={{ color: "var(--text-muted)" }}>Loading active profiles…</p>
+            ) : (
+              <div style={{ overflowX: "auto", marginTop: "1rem" }}>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                  {students.length} active profile{students.length === 1 ? "" : "s"}
+                </p>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                   <thead>
                     <tr style={{ backgroundColor: "var(--surface-muted)", textAlign: "left" }}>
-                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Student</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Wallet</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Status</th>
-                      <th style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>Transaction</th>
+                      <th style={cell}></th>
+                      <th style={cell}>Student</th>
+                      <th style={cell}>Wallet</th>
+                      <th style={cell}>Granted this semester</th>
+                      <th style={cell}>Deploy status</th>
+                      <th style={cell}>ETH</th>
+                      <th style={cell}>Gas</th>
+                      <th style={cell}>Gas status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {latestDeploy.rows.map(row => (
-                      <tr key={row.wallet}>
-                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>{row.name || "—"}</td>
-                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
-                          <AddressLink address={row.wallet} />
-                        </td>
-                        <td style={{
-                          padding: "0.5rem",
-                          border: "1px solid var(--surface-card-border)",
-                          color: DEPLOY_STATUS_COLORS[row.status] || "inherit",
-                          fontWeight: "bold"
-                        }}>
-                          {DEPLOY_STATUS_LABELS[row.status] || row.status}
-                        </td>
-                        <td style={{ padding: "0.5rem", border: "1px solid var(--surface-card-border)" }}>
-                          {row.status === 'chain_failed'
-                            ? <span style={{ color: "var(--status-negative)", fontSize: "0.85rem" }}>{row.error}</span>
-                            : <TxLink hash={row.txHash} />}
-                        </td>
-                      </tr>
-                    ))}
+                    {students.map((s) => {
+                      const row = deployStatus[s.wallet];
+                      const awaitingSync = row?.state === "sent" && !s.grantHashes.includes(row.hash?.toLowerCase());
+                      const gasRow = gasStatus[s.wallet];
+                      const eth = gasBalances[s.wallet];
+                      const isLow = Boolean(eth && lowWei && !s.isAdmin && eth.lt(lowWei));
+                      return (
+                        <tr key={s.wallet}>
+                          <td style={cell}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(deploySelected[s.wallet])}
+                              disabled={s.isAdmin || busy}
+                              onChange={(e) => setDeploySelected((prev) => ({ ...prev, [s.wallet]: e.target.checked }))}
+                            />
+                          </td>
+                          <td style={cell}>{s.name}</td>
+                          <td style={cell}><AddressLink address={s.wallet} /></td>
+                          <td style={cell}>
+                            {s.isAdmin
+                              ? <span style={{ color: "var(--text-muted)" }}>admin wallet</span>
+                              : s.grantCount > 0
+                                ? `✓ ${s.granted.toLocaleString()} CC${s.grantCount > 1 ? ` (${s.grantCount} grants)` : ""}`
+                                : <span style={{ color: "var(--text-muted)" }}>none</span>}
+                            {awaitingSync && (
+                              <span style={{ color: "var(--accent-orange)", marginLeft: "0.5rem" }}>+ sent, awaiting sync</span>
+                            )}
+                          </td>
+                          <td style={cell}>
+                            {row ? (
+                              <>
+                                <span style={{ color: DEPLOY_STATUS_COLORS[row.state], fontWeight: "bold" }}>
+                                  {DEPLOY_STATUS_LABELS[row.state]}
+                                </span>
+                                {row.hash && <> · <TxLink hash={row.hash} /></>}
+                                {row.error && (
+                                  <div style={{ color: "var(--status-negative)", fontSize: "0.8rem" }}>{row.error}</div>
+                                )}
+                              </>
+                            ) : "—"}
+                          </td>
+                          <td style={cell}>
+                            {eth ? (
+                              <span style={{ color: isLow ? "var(--status-negative)" : "inherit", fontWeight: isLow ? "bold" : "normal" }}>
+                                {formatEth(eth)}{isLow && " · low"}
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td style={cell}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(gasSelected[s.wallet])}
+                              disabled={s.isAdmin || busy}
+                              onChange={(e) => setGasSelected((prev) => ({ ...prev, [s.wallet]: e.target.checked }))}
+                            />
+                          </td>
+                          <td style={cell}>
+                            {gasRow ? (
+                              <>
+                                <span style={{ color: DEPLOY_STATUS_COLORS[gasRow.state], fontWeight: "bold" }}>
+                                  {DEPLOY_STATUS_LABELS[gasRow.state]}
+                                </span>
+                                {gasRow.hash && <> · <TxLink hash={gasRow.hash} /></>}
+                                {gasRow.error && (
+                                  <div style={{ color: "var(--status-negative)", fontSize: "0.8rem" }}>{gasRow.error}</div>
+                                )}
+                              </>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
 
       {/* Sync from Chain Tab - import on-chain transfers; manual adjustment */}
       {activeTab === "chainsync" && (() => {

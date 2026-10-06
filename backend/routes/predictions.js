@@ -4,6 +4,12 @@ const { body, validationResult } = require('express-validator');
 const Prediction = require("../models/Prediction");
 const Profile = require("../models/Profiles");
 const SystemSettings = require("../models/SystemSettings");
+const { requirePageVisible } = require("../lib/pageVisibility");
+
+// Every route here is the live Prediction page's API; while the page is hidden
+// only the admin gets through. The archive reads predictions through
+// routes/archive.js instead, so it ignores the switch.
+router.use(requirePageVisible("prediction"));
 
 // Validation middleware
 const validatePrediction = [

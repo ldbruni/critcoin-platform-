@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ethers } from "ethers";
 import FeedGrid, { FeedPostViewer } from "../components/FeedGrid";
+import { viewerHeaders } from "../utils/pageVisibility";
 
 const API = {
   feed: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/feed` : "http://localhost:3001/api/feed"
@@ -135,7 +136,7 @@ function Composer({ wallet, onPosted }) {
       form.append("wallet", wallet);
       form.append("text", text.trim());
       files.forEach((f) => form.append("images", f));
-      const res = await fetch(API.feed, { method: "POST", body: form });
+      const res = await fetch(API.feed, { method: "POST", headers: viewerHeaders(), body: form });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Post failed");
       setText("");
@@ -248,7 +249,7 @@ export default function Feed() {
     try {
       const params = new URLSearchParams({ limit: PAGE_SIZE });
       if (cursor) params.set("before", cursor);
-      const res = await fetch(`${API.feed}?${params}`);
+      const res = await fetch(`${API.feed}?${params}`, { headers: viewerHeaders() });
       if (!res.ok) throw new Error("Failed to load the feed");
       const body = await res.json();
       setPosts((prev) => {
@@ -269,7 +270,7 @@ export default function Feed() {
   const loadMine = useCallback(async (address, auth) => {
     const res = await fetch(`${API.feed}/mine`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: viewerHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ wallet: address, ...auth })
     });
     if (res.status === 401) {

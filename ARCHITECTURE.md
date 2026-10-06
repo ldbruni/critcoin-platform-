@@ -175,42 +175,35 @@ which discriminates on length: real hashes match `/^0x[0-9a-f]{64}$/i`,
 fabricated ones never do. The UI renders them as "legacy — no on-chain record"
 rather than linking to a dead Etherscan page.
 
-A `null` hash means the row is genuinely off-chain (deploy credit, admin
+A `null` hash means the row is genuinely off-chain (admin
 correction) and renders as "off-chain". Counts of both appear in
 the reconciliation report as drift signals.
 
 ---
 
-## Deploy: database and chain together
+## Deploy: browser-side, imported like any other send
 
-Admin → **Deploy CritCoin** credits the ledger *and* transfers real tokens.
+Admin → **Deploy CritCoin** is a batch of ordinary admin sends. It runs entirely
+in the admin's browser through MetaMask — the same path as a manual send — and
+writes nothing to the database itself. The Etherscan sync imports the transfers
+as `adminGrant` rows, exactly as it would hand-sent ones.
 
-**The backend holds no private key.** The admin's MetaMask wallet signs every
-transfer in the browser. The backend has only a read-only RPC provider
-([backend/lib/chain.js](backend/lib/chain.js)) used for preflight and
-reconciliation. `SEPOLIA_RPC_URL` (falling back to the existing
-`ALCHEMY_API_KEY`, which already holds a full RPC URL) is all it needs.
-
-The split:
-
-| Step | Where | What |
-|---|---|---|
-| `POST /api/admin/deploy/start` | server | Preflight, create/resume the round, credit Mongo |
-| transfer loop | browser | `contract.transfer()` per student, **sequentially** |
-| `POST /api/admin/deploy/record` | server | Store the real hash, or the failure |
-| `GET /api/admin/deploy/latest/:adminWallet` | server | The per-student status table |
-
-**Preflight aborts before any write.** It verifies the deployer holds enough
-CritCoin for the roster and enough Sepolia ETH for the gas, with a 1.5× margin.
-If the RPC is unreachable it refuses to run rather than deploying blind.
+**The backend holds no private key and is not on the deploy path.** It serves
+the checklist (`GET /api/admin/deploy/roster/:adminWallet`: active profiles and
+the `adminGrant`s already imported) and, after the run, triggers the sync
+(`POST /api/admin/chain-sync/run`). Preflight — admin account, Sepolia network,
+enough CritCoin for the total — reads MetaMask's provider, not a server RPC.
 
 **Transfers are strictly sequential.** Concurrent sends from one wallet collide
-on the nonce; each `tx.wait()` completes before the next begins. A failure is
-recorded and the loop continues to the next student.
+on the nonce; each `tx.wait()` completes before the next begins. A rejection or
+failure is marked and the loop continues to the next student.
 
-**Re-running is safe.** Each row moves `pending → credited → chain_confirmed`
-(or `chain_failed`), and the ledger credit is written once, guarded by the row's
-own status. Confirmed students are skipped and failed ones retried. Critically,
-`/deploy/start` **refuses to open a new round while one is unfinished** — without
-that, an admin re-clicking Deploy after a crash would credit everyone twice. The
-only way forward from an interrupted deploy is to resume it.
+**"Already granted" comes from the ledger.** Students holding an `adminGrant`
+start unchecked, so a later deploy to one absent student re-sends to nobody else.
+Because Etherscan can lag a transfer by a little, sends from the current page
+session also stay unchecked until the import catches up.
+
+> This replaced a server-coordinated deploy (`/deploy/start`, `/deploy/record`,
+> a `Deploy` collection) that credited the ledger off-chain before sending and
+> needed the backend's Sepolia RPC for preflight. The RPC was unreachable, and
+> off-chain credits contradict "import, never invent", so it never ran.

@@ -32,7 +32,7 @@ CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-key
 CLOUDINARY_API_SECRET=your-secret
 
-# Read-only Sepolia RPC. Required for deploy preflight and /api/admin/reconcile.
+# Read-only Sepolia RPC. Optional - used only by /api/admin/reconcile.
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
 
 # Etherscan API key (free, etherscan.io/myapikey). Sync from Chain reads
@@ -44,10 +44,9 @@ ETHERSCAN_API_KEY=your-etherscan-key
 
 > **Never set `SEPOLIA_PRIVATE_KEY` (or any deployer key) in Railway.** The backend
 > does not sign transactions. Deploying CritCoin to students is signed in the
-> admin's MetaMask, in the browser. `SEPOLIA_RPC_URL` is read-only — it serves
-> `eth_call` and `eth_getBalance` for preflight and reconciliation, nothing more.
-> Without it, deploy refuses to run rather than deploying blind, and the
-> reconciliation report degrades to database-only figures.
+> admin's MetaMask, in the browser, which also runs the deploy preflight.
+> `SEPOLIA_RPC_URL` is read-only and serves only the reconciliation report;
+> without it that report degrades to database-only figures.
 
 **After first deploying this version**, run the one-off hash migration once
 against production to label legacy fabricated hashes:

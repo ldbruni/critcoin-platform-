@@ -24,7 +24,7 @@ Three deployed pieces, plus a contract on a public testnet:
                             0x8e9A8155dD4f5F1b3f63461659b8C1B3232646d8
 ```
 
-The React app talks to the chain **directly** through MetaMask. The backend never signs or submits transactions and holds **no private key**. It does have a *read-only* RPC provider ([backend/lib/chain.js](backend/lib/chain.js)) used for deploy preflight and reconciliation — `eth_call` and `eth_getBalance` only, never a send.
+The React app talks to the chain **directly** through MetaMask. The backend never signs or submits transactions and holds **no private key**. It does have a *read-only* RPC provider ([backend/lib/chain.js](backend/lib/chain.js)) used only by the reconciliation diagnostic — `eth_call` only, never a send.
 
 ### Which balance is authoritative — read this first
 
@@ -68,9 +68,8 @@ All in MongoDB via Mongoose. Wallet addresses are stored lowercase (mostly — s
 | `Comment` | `postId`, `authorWallet`, `text`, `parentCommentId`, `upvotes[]`, `downvotes[]`, `archived` | `parentCommentId` gives one level of replies. Votes are arrays of wallets. |
 | `Bounty` | `title`, `description`, `reward`, `status`, `completedBy`, `crossedOut` | **Survives semester clears.** |
 | `Transaction` | `txHash` (**partial** unique — real hash or `null`), `hashFabricated`, `fromWallet`, `toWallet`, `amount`, `type`, `description`, `relatedId` | `type`: transfer / project_tip / forum_reward / system / mint / burn / adminGrant / manualAdjustment. See §11, §13. |
-| `Deploy` | `createdBy`, `amountPerStudent`, `status`, `rows[]` (`wallet`, `status`, `txHash`, `error`, `creditTxId`) | One document per deploy round; embedded per-student rows drive idempotent retries. |
 | `Prediction` | `predictorWallet`, `predictedWallet`, `projectNumber`, `archived` | Compound unique on `(predictorWallet, projectNumber)` — one locked prediction per project. |
-| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`, `feedRunStart`, `feedRunDays`, `feedDailyTarget`, `feedTimeZone`. |
+| `SystemSettings` | `key`, `value`, `updatedBy` | Key/value store. Live keys: `predictionEnabled2/3/4/5`, `pageVisibility` (`{ prediction, feed }`, missing = visible), `feedRunStart`, `feedRunDays`, `feedDailyTarget`, `feedTimeZone`. |
 | `Whitelist` | `wallet` (unique, lowercase), `label`, `addedBy`, `notes` | The class roster. Consulted on every profile creation, post, comment, project submission and feed post. |
 | `FeedPost` | `authorWallet` (lowercase), `text`, `images[]` (`url`, `width`, `height`), `hidden` | The Feed. Authorship stored normally; the **public API never sends it**. Images are Cloudinary URLs, never bytes. Indexed on `(authorWallet, createdAt)` and `(createdAt, _id)`. |
 | `SemesterArchive` | `name` (unique), `stats`, plus denormalized `profiles/projects/posts/transactions/bounties/leaderboard/predictions/feedPosts` | Fully self-contained snapshot; wallet→name resolved at archive time. `feedPosts` keeps authorship but is excluded from public reads. |
@@ -119,11 +118,11 @@ Public reads: `GET /` · `GET /:archiveId` *(minus `feedPosts`)* · `GET /:archi
 Admin: `GET /admin/:adminWallet` · `GET /admin/:adminWallet/feed/:archiveId` *(feed with authorship)* · `GET /preview` · `POST /create` · `POST /clear-current` · `POST /delete` · `POST /update`
 
 **Admin** — `/api/admin` (all admin-authenticated except the last)
-`GET /dashboard/:adminWallet` · `GET|POST /profiles*` · `GET|POST /posts*` · `GET|POST /feed*` · `GET|POST /projects*` · `GET|POST /bounties*` · `GET|POST /settings*` · `GET|POST /whitelist*` · `GET /public/bounties` *(public)*
+`GET /dashboard/:adminWallet` · `GET|POST /profiles*` · `GET|POST /posts*` · `GET|POST /feed*` · `GET|POST /projects*` · `GET|POST /bounties*` · `GET|POST /settings*` · `GET|POST /whitelist*` · `POST /page-visibility` · `GET /public/bounties` · `GET /public/page-visibility` *(public)*
 
-Deploy (see §12): `POST /deploy/start` · `POST /deploy/record` · `GET /deploy/latest/:adminWallet`
+Deploy (see §12): `GET /deploy/roster/:adminWallet` — the checklist; read-only
 Diagnostics: `GET /reconcile/:adminWallet` — **read-only**, never writes and never sends a transaction
-Chain sync (see §13): `GET /chain-sync/status/:adminWallet` · `GET /chain-sync/preview/:adminWallet?since=&project=` · `POST /chain-sync/commit` · `POST /ledger/adjust`
+Chain sync (see §13): `GET /chain-sync/status/:adminWallet` · `GET /chain-sync/preview/:adminWallet?since=&project=` · `POST /chain-sync/commit` · `POST /chain-sync/run` · `POST /ledger/adjust`
 
 ---
 
@@ -192,7 +191,7 @@ CORS allowed origins are hardcoded in [backend/server.js](backend/server.js#L47-
 
 Ordered roughly by how much trouble they'll cause.
 
-1. **`backend/sepolia.json` is not written by `scripts/deploy.js`.** Only the three files under `frontend/src/contracts/` are. Redeploying the contract without manually copying leaves the backend copy stale — and the backend **does** now read it, in [backend/lib/chain.js](backend/lib/chain.js). Copy it after any redeploy.
+1. **`backend/sepolia.json` is not written by `scripts/deploy.js`.** Only the three files under `frontend/src/contracts/` are. Redeploying the contract without manually copying leaves the backend copy stale — and the backend **does** read it, in [backend/lib/chain.js](backend/lib/chain.js) (reconciliation). Copy it after any redeploy.
 
 2. **`Token.sol` is not fully ERC-20.** No `approve`/`allowance`/`transferFrom`/`decimals`. Wallets and explorers that assume the full interface will misbehave. Amounts are whole integers.
 
@@ -220,6 +219,7 @@ Ordered roughly by how much trouble they'll cause.
 | Add an API resource | new file in `backend/routes/`, model in `backend/models/`, mount in `backend/server.js` |
 | Add an admin control | `backend/routes/admin.js` (behind `authenticateAdmin`), tab in `frontend/src/pages/Admin.js` |
 | Add a toggleable setting | write a `SystemSettings` key via `POST /api/admin/settings`, read it where enforced |
+| Make a page hideable from students | add it to `TOGGLEABLE_PAGES` in `backend/lib/pageVisibility.js`, `router.use(requirePageVisible("<id>"))` on its routes, then wrap its route in `gated(...)` and its nav link in `showLink(...)` in `App.js`. Hidden pages refuse students (403, `pageHidden: true`); the admin passes via the claimed `X-Wallet` header. Archive routes ignore it. |
 | Change token behavior | `contracts/Token.sol` → `npx hardhat test` → redeploy → copy ABI/address to `frontend/src/contracts/` and `backend/sepolia.json` |
 | Change what the public feed returns | `toPublicPost` in `backend/lib/feed.js` — an allow-list; never spread a `FeedPost` into a public response. Re-run `node backend/scripts/verify-feed.js` |
 | Include new data in archives | `backend/models/SemesterArchive.js` (sub-schema), `backend/routes/archive.js` (`/create` and the read routes), `frontend/src/pages/Archive.js` — register it in [ARCHIVE-MANIFEST.md](ARCHIVE-MANIFEST.md) |
@@ -237,7 +237,7 @@ Ordered roughly by how much trouble they'll cause.
 
 The unique index is **partial** (`partialFilterExpression: { txHash: { $type: 'string' } }`), so real hashes stay unique while any number of rows carry `null`. The old plain `unique: true` index permitted only one null document — which is precisely why the pre-refactor code invented hashes. If you ever see `E11000` on `txHash`, check that the boot migration in `server.js` ran.
 
-- `txHash: null` → genuinely off-chain (deploy credit, admin correction). Renders as "off-chain".
+- `txHash: null` → genuinely off-chain (admin correction). Renders as "off-chain".
 - `hashFabricated: true` → a legacy invented hash, flagged by `backend/migrations/flag-fabricated-hashes.js`. Renders as "legacy — no on-chain record".
 
 Fabricated values are ~19 characters; real ones are exactly 66. That length difference is how the migration tells them apart.
@@ -246,15 +246,16 @@ Fabricated values are ~19 characters; real ones are exactly 66. That length diff
 
 ## 12. Deploy CritCoin
 
-Credits the ledger **and** transfers real tokens. The admin's MetaMask signs; the backend holds no key.
+Runs **entirely in the admin's browser** with MetaMask — no backend RPC, no server key, no off-chain credit.
 
-1. `POST /api/admin/deploy/start` — preflight (deployer's CRIT and Sepolia ETH, 1.5× gas margin) **before any write**; creates or resumes the round; credits Mongo. Refuses to run if the RPC is unreachable.
-2. The browser transfers to each student **sequentially**, awaiting each confirmation (nonce safety), posting each outcome to `POST /api/admin/deploy/record`.
-3. `GET /api/admin/deploy/latest/:adminWallet` drives the status table.
+1. `GET /api/admin/deploy/roster/:adminWallet` lists every active profile (`archived: false`) with the `adminGrant` total already imported this semester. Students with no grant are checked by default; the admin's own profile is listed but can't be checked.
+2. Preflight, through MetaMask's provider: the connected account is `ADMIN_WALLET`, the network is Sepolia, and the wallet's CritCoin covers the total. Any failure sends nothing.
+3. Transfers go **one at a time**, each awaited before the next (nonce safety). A rejection or failure is marked on that row and the run continues.
+4. When the run ends, `POST /api/admin/chain-sync/run` runs the Etherscan sync with the saved settings, so the sends appear as `adminGrant` rows immediately. txHash dedup makes it safe to repeat. If Etherscan hasn't indexed a transfer yet, the row shows "sent, awaiting sync"; *Sync now* or the 5-minute auto-sync picks it up.
 
-**Interrupted deploys are resumed, not restarted.** `/deploy/start` returns `409` if a round is still `in_progress` — restarting instead of resuming would credit everyone twice. Use the *Resume deploy* button. Confirmed students are skipped; failed ones retried.
+Re-running is safe by default: already-granted students start unchecked, as do students sent to earlier in the same page session. Sync from Chain must have been confirmed once (§13) for the post-run sync to work.
 
-Requires `SEPOLIA_RPC_URL` (or the existing `ALCHEMY_API_KEY`, which already holds a full RPC URL) on the server.
+**Send gas** (same tab) tops students up with Sepolia ETH so they can pay for their own transfers. The table's ETH column is read through MetaMask's provider; students below the *low* threshold (default 0.005 ETH ≈ five CritCoin transfers at 20 gwei) are flagged and checked by default. Each checked student is sent `target − balance` (default target 0.01 ETH), and anyone at or above the target gets nothing. Preflight checks the wallet, the network, and that the admin's ETH covers the total plus 21k gas per send. Sends go one at a time, like the deploy. Gas is not CritCoin: nothing is written to the backend, and the sync reads only `tokentx`, so ETH sends never enter the ledger.
 
 ## 13. Sync from Chain
 
