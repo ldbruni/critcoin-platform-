@@ -4,7 +4,7 @@ const router = express.Router();
 const Transaction = require("../models/Transaction");
 const { NON_INVESTMENT_TYPES } = require("../models/Transaction");
 const Profile = require("../models/Profiles");
-const { getBalance } = require("../lib/balances");
+const { getBalance, getInvestedLast24h } = require("../lib/balances");
 
 // GET the authoritative database balance for a wallet.
 //
@@ -23,6 +23,20 @@ router.get("/balance/:wallet", async (req, res) => {
   } catch (err) {
     console.error("Balance fetch error:", err);
     res.status(500).json({ error: "Failed to fetch balance" });
+  }
+});
+
+// GET what a wallet has invested in the last 24 hours, and how much of the
+// daily allowance is left. Display only - investments are not blocked.
+router.get("/invested-24h/:wallet", async (req, res) => {
+  try {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.wallet)) {
+      return res.status(400).json({ error: "Invalid wallet address" });
+    }
+    res.json(await getInvestedLast24h(req.params.wallet));
+  } catch (err) {
+    console.error("24h investment fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch 24h investments" });
   }
 });
 

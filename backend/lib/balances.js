@@ -67,4 +67,30 @@ async function getBalances(wallets) {
   );
 }
 
-module.exports = { getBalance, getBalances };
+// How much CritCoin a student may invest in any rolling 24-hour window. The
+// Projects page shows it; nothing enforces it.
+const DAILY_INVESTMENT_LIMIT = 10000;
+
+// What a wallet has invested in the last 24 hours. Investments are stored as
+// project_tip, whether recorded by the Projects page or imported from the chain
+// by lib/chainSync.js (which stamps the on-chain time), so both count.
+// adminGrant and manualAdjustment are never project_tip and so never count.
+async function getInvestedLast24h(wallet) {
+  const address = String(wallet).toLowerCase();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [result] = await Transaction.aggregate([
+    { $match: { fromWallet: address, type: "project_tip", timestamp: { $gte: since } } },
+    { $group: { _id: null, total: { $sum: "$amount" } } }
+  ]);
+
+  const invested = result?.total || 0;
+  return {
+    wallet: address,
+    invested,
+    limit: DAILY_INVESTMENT_LIMIT,
+    remaining: Math.max(0, DAILY_INVESTMENT_LIMIT - invested)
+  };
+}
+
+module.exports = { getBalance, getBalances, getInvestedLast24h, DAILY_INVESTMENT_LIMIT };

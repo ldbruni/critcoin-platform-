@@ -8,7 +8,8 @@ import { fetchBalance } from "../utils/balance";
 
 const API = {
   profiles: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/profiles` : "http://localhost:3001/api/profiles",
-  projects: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/projects` : "http://localhost:3001/api/projects"
+  projects: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/projects` : "http://localhost:3001/api/projects",
+  explorer: process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/explorer` : "http://localhost:3001/api/explorer"
 };
 
 export default function Projects() {
@@ -23,10 +24,15 @@ export default function Projects() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [sendAmounts, setSendAmounts] = useState({});
+  const [invested24h, setInvested24h] = useState(null);
 
   useEffect(() => {
     if (window.ethereum) connectWallet();
   }, []);
+
+  useEffect(() => {
+    fetchInvested24h();
+  }, [wallet]);
 
   useEffect(() => {
     if (wallet) {
@@ -58,6 +64,19 @@ export default function Projects() {
       }
     } catch (err) {
       console.error("Wallet connect error:", err);
+    }
+  };
+
+  // Invested in the last 24 hours and what's left of the daily allowance,
+  // computed server-side from the ledger (Projects-page sends and chain imports).
+  const fetchInvested24h = async () => {
+    if (!wallet) return setInvested24h(null);
+    try {
+      const res = await fetch(`${API.explorer}/invested-24h/${wallet}`);
+      setInvested24h(res.ok ? await res.json() : null);
+    } catch (err) {
+      console.error("24h investment fetch error:", err);
+      setInvested24h(null);
     }
   };
 
@@ -221,6 +240,7 @@ export default function Projects() {
         // Clear input and refresh projects
         setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
         fetchProjects();
+        fetchInvested24h();
       } else {
         const errorText = await res.text();
         alert("Blockchain transfer succeeded but backend update failed: " + errorText);
@@ -229,6 +249,7 @@ export default function Projects() {
         setBalance(await fetchBalance(wallet));
         setSendAmounts(prev => ({ ...prev, [projectId]: "" }));
         fetchProjects();
+        fetchInvested24h();
       }
     } catch (err) {
       console.error("Send coin error:", err);
@@ -401,6 +422,18 @@ export default function Projects() {
           {/* All Submissions for Current Project */}
           <div>
             <h3>All Submissions - Project {activeProject}</h3>
+            {invested24h && (
+              <div style={{ marginBottom: "1rem" }}>
+                <p style={{ margin: 0 }}>
+                  <span className="ledger-num">{invested24h.invested.toLocaleString()}</span> invested in the last 24 hours
+                  {" · "}
+                  <span className="ledger-num">{invested24h.remaining.toLocaleString()}</span> remaining
+                </p>
+                <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", opacity: 0.7 }}>
+                  Investments made outside this page may take a few minutes to appear.
+                </p>
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               {projects.map((project) => (
                 <div key={project._id} style={{
